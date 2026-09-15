@@ -1,0 +1,533 @@
+/*======================================
+  src/theme/theme.css
+  AJ Institutional
+  GLOBAL APPLICATION THEME
+======================================*/
+
+/*========================================================
+  DARK THEME
+========================================================*/
+
+:root,
+:root[data-theme="dark"] {
+
+  /*--------------------------------------
+    APPLICATION
+  --------------------------------------*/
+
+  --bg-app: #0a0a0a;
+
+  --bg-root: #0a0a0a;
+
+  --bg-panel: #111111;
+
+  --bg-panel-secondary: #171717;
+
+  --bg-panel-tertiary: #1d1d1d;
+
+  --bg-hover: #252525;
+
+  --bg-active: #303030;
+
+  --bg-input: #0d0d0d;
+
+  --bg-toolbar: #111111;
+
+  --bg-chart: #0b0b0b;
+
+  --bg-chart-header: #101010;
+
+  --bg-dashboard: #080808;
+
+  --bg-console: #080808;
+
+  --bg-modal: #151515;
+
+  --bg-dropdown: #151515;
+
+  /*--------------------------------------
+    TEXT
+  --------------------------------------*/
+
+  --text-primary: #ffffff;
+
+  --text-secondary: #d0d0d0;
+
+  --text-muted: #8d8d8d;
+
+  --text-disabled: #555555;
+
+  --text-heading: #ffffff;
+
+  --text-inverse: #000000;
+
+  /*--------------------------------------
+    BORDERS
+  --------------------------------------*/
+
+  --border-primary: #3b3b3b;
+
+  --border-secondary: #26313a;
+
+  --border-subtle: #242424;
+
+  --border-strong: #555555;
+
+  --border-focus: #2962ff;
+
+  /*--------------------------------------
+    ACCENT
+  --------------------------------------*/
+
+  --accent-primary: #2962ff;
+
+  --accent-hover: #4072ff;
+
+  --accent-active: #174de0;
+
+  --accent-bg: rgba(41, 98, 255, 0.14);
+
+  --accent-border: rgba(41, 98, 255, 0.55);
+
+  /*--------------------------------------
+    TRADING SEMANTIC COLORS
+  --------------------------------------*/
+
+  --success: #4caf50;
+
+  --success-text: #66e080;
+
+  --success-bg: rgba(76, 175, 80, 0.12);
+
+  --success-border: rgba(76, 175, 80, 0.5);
+
+  --danger: #ef5350;
+
+  --danger-text: #ff6b68;
+
+  --danger-bg: rgba(239, 83, 80, 0.12);
+
+  --danger-border: rgba(239, 83, 80, 0.5);
+
+  --warning: #ffb300;
+
+  --warning-text: #ffc107;
+
+  --warning-bg: rgba(255, 179, 0, 0.12);
+
+  --warning-border: rgba(255, 179, 0, 0.5);
+
+  --info: #29b6f6;
+
+  /*--------------------------------------
+    CHART
+  --------------------------------------*/
+
+  --chart-background: #0b0b0b;
+
+  --chart-grid: #202020;
+
+  --chart-grid-strong: #303030;
+
+  --chart-text: #bdbdbd;
+
+  --chart-border: #2b2b2b;
+
+  --chart-crosshair: #75808a;
+
+  --chart-candle-up: #26a69a;
+
+  --chart-candle-down: #ef5350;
+
+  --chart-volume-up: #26a69a;
+
+  --chart-volume-down: #ef5350;
+
+  /*--------------------------------------
+    CONSOLE
+  --------------------------------------*/
+
+  --console-background: #050505;
+
+  --console-panel: #080808;
+
+  --console-border: #00ff66;
+
+  --console-text: #00ff66;
+
+  --console-muted: #00aa44;
+
+  /*--------------------------------------
+    SHADOW
+  --------------------------------------*/
+
+  --shadow:
+    rgba(0, 0, 0, 0.55)
+    0 10px 25px -5px;
+
+  --shadow-heavy:
+    rgba(0, 0, 0, 0.75)
+    0 15px 40px -10px;
+
+  /*--------------------------------------
+    SCROLLBAR
+  --------------------------------------*/
+
+  --scrollbar-track: #0b0b0b;
+
+  --scrollbar-thumb: #3b3b3b;
+
+  --scrollbar-thumb-hover: #555555;
+
+  /*--------------------------------------
+    COMPATIBILITY ALIASES
+  --------------------------------------*/
+
+  --text: var(--text-primary);
+
+  --text-h: var(--text-primary);
+
+  --bg: var(--bg-app);
+
+  --border: var(--border-primary);
+
+  --code-bg: #1c1c1c;
+
+  --accent: var(--accent-primary);
+
+  --accent-bg: var(--accent-bg);
+
+  --accent-border: var(--accent-border);
+}
+
+
+/*========================================================
+  LIGHT THEME
+========================================================*/
+
+:root[data-theme="light"] {
+
+  /*--------------------------------------
+    APPLICATION
+  --------------------------------------*/
+
+  --bg-app: #eef1f4;
+
+  --bg-root: #eef1f4;
+
+  --bg-panel: #ffffff;
+
+  --bg-panel-secondary: #f4f6f8;
+
+  --bg-panel-tertiary: #e9edf1;
+
+  --bg-hover: #e3e7eb;
+
+  --bg-active: #d8dde3;
+
+  --bg-input: #ffffff;
+
+  --bg-toolbar: #ffffff;
+
+  --bg-chart: #ffffff;
+
+  --bg-chart-header: #f7f8fa;
+
+  --bg-dashboard: #ffffff;
+
+  --bg-console: #ffffff;
+
+  --bg-modal: #ffffff;
+
+  --bg-dropdown: #ffffff;
+
+  /*--------------------------------------
+    TEXT
+  --------------------------------------*/
+
+  --text-primary: #15191d;
+
+  --text-secondary: #3f4750;
+
+  --text-muted: #737d87;
+
+  --text-disabled: #a4abb2;
+
+  --text-heading: #111418;
+
+  --text-inverse: #ffffff;
+
+  /*--------------------------------------
+    BORDERS
+  --------------------------------------*/
+
+  --border-primary: #c5ccd4;
+
+  --border-secondary: #d5dbe1;
+
+  --border-subtle: #e2e6ea;
+
+  --border-strong: #9da6af;
+
+  --border-focus: #2962ff;
+
+  /*--------------------------------------
+    ACCENT
+  --------------------------------------*/
+
+  --accent-primary: #2962ff;
+
+  --accent-hover: #174de0;
+
+  --accent-active: #0d3fc2;
+
+  --accent-bg: rgba(41, 98, 255, 0.10);
+
+  --accent-border: rgba(41, 98, 255, 0.45);
+
+  /*--------------------------------------
+    TRADING SEMANTIC COLORS
+  --------------------------------------*/
+
+  --success: #2e7d32;
+
+  --success-text: #1b5e20;
+
+  --success-bg: rgba(46, 125, 50, 0.10);
+
+  --success-border: rgba(46, 125, 50, 0.40);
+
+  --danger: #d32f2f;
+
+  --danger-text: #b71c1c;
+
+  --danger-bg: rgba(211, 47, 47, 0.10);
+
+  --danger-border: rgba(211, 47, 47, 0.40);
+
+  --warning: #ed8b00;
+
+  --warning-text: #b56600;
+
+  --warning-bg: rgba(237, 139, 0, 0.10);
+
+  --warning-border: rgba(237, 139, 0, 0.40);
+
+  --info: #0277bd;
+
+  /*--------------------------------------
+    CHART
+  --------------------------------------*/
+
+  --chart-background: #ffffff;
+
+  --chart-grid: #e4e8ec;
+
+  --chart-grid-strong: #ccd2d8;
+
+  --chart-text: #4f5963;
+
+  --chart-border: #c7cdd4;
+
+  --chart-crosshair: #7a858f;
+
+  --chart-candle-up: #26a69a;
+
+  --chart-candle-down: #ef5350;
+
+  --chart-volume-up: #26a69a;
+
+  --chart-volume-down: #ef5350;
+
+  /*--------------------------------------
+    CONSOLE
+  --------------------------------------*/
+
+  --console-background: #ffffff;
+
+  --console-panel: #f8fafb;
+
+  --console-border: #159447;
+
+  --console-text: #08752f;
+
+  --console-muted: #4c8f65;
+
+  /*--------------------------------------
+    SHADOW
+  --------------------------------------*/
+
+  --shadow:
+    rgba(0, 0, 0, 0.14)
+    0 8px 20px -5px;
+
+  --shadow-heavy:
+    rgba(0, 0, 0, 0.20)
+    0 15px 35px -10px;
+
+  /*--------------------------------------
+    SCROLLBAR
+  --------------------------------------*/
+
+  --scrollbar-track: #edf0f3;
+
+  --scrollbar-thumb: #c1c8cf;
+
+  --scrollbar-thumb-hover: #9da6af;
+
+  /*--------------------------------------
+    COMPATIBILITY ALIASES
+  --------------------------------------*/
+
+  --text: var(--text-primary);
+
+  --text-h: var(--text-primary);
+
+  --bg: var(--bg-app);
+
+  --border: var(--border-primary);
+
+  --code-bg: #f1f3f5;
+
+  --accent: var(--accent-primary);
+
+  --accent-bg: var(--accent-bg);
+
+  --accent-border: var(--accent-border);
+}
+
+
+/*========================================================
+  GLOBAL APPLICATION SURFACE
+========================================================*/
+
+html,
+body,
+#root {
+  background:
+    var(--bg-app);
+
+  color:
+    var(--text-primary);
+}
+
+
+/*========================================================
+  GLOBAL FORM CONTROLS
+========================================================*/
+
+button,
+input,
+select,
+textarea {
+
+  color:
+    var(--text-primary);
+
+  font-family:
+    inherit;
+}
+
+button {
+
+  background:
+    var(--bg-panel);
+
+  border-color:
+    var(--border-primary);
+}
+
+button:hover {
+
+  background:
+    var(--bg-hover);
+}
+
+input,
+select,
+textarea {
+
+  background:
+    var(--bg-input);
+
+  color:
+    var(--text-primary);
+
+  border:
+    1px solid var(--border-primary);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+
+  outline:
+    1px solid var(--border-focus);
+
+  border-color:
+    var(--border-focus);
+}
+
+option {
+
+  background:
+    var(--bg-dropdown);
+
+  color:
+    var(--text-primary);
+}
+
+
+/*========================================================
+  COMMON APPLICATION PANELS
+========================================================*/
+
+.chart-window,
+.chart-panel,
+.chart-toolbar,
+.dashboard-panel,
+.console-panel,
+.trading-panel,
+.ai-panel,
+.workspace-panel,
+.modal,
+.dropdown {
+
+  background-color:
+    var(--bg-panel);
+
+  color:
+    var(--text-primary);
+
+  border-color:
+    var(--border-primary);
+}
+
+
+/*========================================================
+  THEME TRANSITION
+========================================================*/
+
+html,
+body,
+#root,
+button,
+input,
+select,
+textarea,
+.chart-window,
+.chart-panel,
+.chart-toolbar,
+.dashboard-panel,
+.console-panel,
+.trading-panel,
+.ai-panel,
+.workspace-panel,
+.modal,
+.dropdown {
+
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}

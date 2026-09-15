@@ -1,0 +1,2508 @@
+One philosophy I want AJ to follow is this:
+
+No single indicator, no single SMC concept, no single AI model should ever decide a trade. Every trade should be the result of independent pieces of evidence converging.
+
+That makes the architecture much more robust across Yahoo, Zerodha, Binance, Dhan, Upstox, Alice Blue, Interactive Brokers, crypto exchanges, and any future provider.
+
+AJ Institutional Trading System v2.0 (Frozen Architecture)
+                           ┌──────────────────────────────┐
+                           │      Raw Market Data         │
+                           │──────────────────────────────│
+                           │ OHLC                         │
+                           │ Volume (Real / Missing)      │
+                           │ Tick Data                    │
+                           │ Options Chain                │
+                           │ Open Interest                │
+                           │ VWAP                         │
+                           │ Market Breadth               │
+                           │ News / Events (Future)       │
+                           └──────────────┬───────────────┘
+                                          │
+                                          ▼
+1. Market State Engine
+
+Determines what type of market we are currently trading.
+
+TREND
+
+RANGE
+
+ACCUMULATION
+
+DISTRIBUTION
+
+EXPANSION
+
+COMPRESSION
+
+VOLATILE
+
+LOW VOLATILITY
+
+NEWS EVENT
+
+GAP UP
+
+GAP DOWN
+
+Outputs
+
+Market Regime
+
+Market Mood
+
+Bullish
+
+Bearish
+
+Neutral
+
+Risk Level
+
+Confidence
+
+This becomes the first filter.
+
+2. Order Flow Engine
+
+Automatically adapts to the available data.
+
+              Volume Available?
+
+             YES           NO
+
+              │             │
+
+              ▼             ▼
+
+        Real Order Flow   Synthetic Order Flow
+
+              │             │
+
+              └──────┬──────┘
+
+                     ▼
+
+           Unified Order Flow
+
+Real mode
+
+CVD
+Delta
+Bid/Ask imbalance
+Volume imbalance
+Aggression
+Absorption
+
+Synthetic mode
+
+Candle pressure
+Body %
+Wick %
+Breakout strength
+ATR expansion
+Momentum pressure
+Velocity
+Swing strength
+
+Downstream engines never know which mode produced the result.
+
+3. Market Structure Engine
+
+Handles institutional structure.
+
+BOS
+
+CHOCH
+
+Weak BOS
+
+Strong BOS
+
+Internal BOS
+
+External BOS
+
+Failed BOS
+
+Swing High
+
+Swing Low
+
+Structure Shift
+
+Trend Continuation
+
+Trend Reversal
+
+Produces
+
+Structure Strength
+
+Structure Bias
+
+Bullish
+
+Bearish
+
+Neutral
+4. Liquidity Engine
+
+Institutional liquidity intelligence.
+
+Liquidity Sweep
+
+Equal High
+
+Equal Low
+
+Stop Hunt
+
+Liquidity Void
+
+Buy-side Liquidity
+
+Sell-side Liquidity
+
+Retail Trap
+
+Fake Breakout
+
+Fake Breakdown
+
+Liquidity Grab
+
+Absorption
+
+Exhaustion
+
+Instead of
+
+Sweep detected
+
+AJ says
+
+Retail Buyers Trapped
+
+Confidence 91%
+
+Reason
+
+Liquidity taken
+
+Weak follow-through
+
+CHOCH confirmed
+5. Order Block Engine
+
+Institutional Order Block management.
+
+Stores
+
+Bullish OB
+
+Bearish OB
+
+Breaker Block
+
+Mitigation Block
+
+Rejection Block
+
+Flip Zone
+
+Supply Zone
+
+Demand Zone
+
+Every block has intelligence.
+
+Fresh
+
+Mitigated
+
+Touch Count
+
+Reaction Count
+
+Strength
+
+Higher TF
+
+Age
+
+Reaction %
+
+Expiration
+
+Institutional Confidence
+
+Example
+
+Bullish Order Block
+
+Strength
+
+93
+
+Fresh
+
+YES
+
+Touches
+
+2
+
+Higher TF
+
+15m
+
+Reaction
+
+Strong
+
+Dynamic coloring
+
+Green
+
+Fresh
+
+Yellow
+
+First Mitigation
+
+Orange
+
+Weak
+
+Gray
+
+Expired
+6. Trend Engine
+
+Independent trend evaluation.
+
+Uses
+
+EMA
+
+VWAP
+
+AlphaTrend Concepts
+
+ADX
+
+Supertrend Concepts
+
+Slope
+
+Regression
+
+Trend Velocity
+
+Outputs
+
+Bullish
+
+Bearish
+
+Neutral
+
+Weak Trend
+
+Strong Trend
+
+Notice I said AlphaTrend concepts, not AlphaTrend itself. We borrow the ideas (trend persistence, adaptive thresholds, momentum gating), not the indicator wholesale.
+
+7. Price Action Engine
+
+Pure candle intelligence.
+
+Pin Bar
+
+Hammer
+
+Shooting Star
+
+Inside Bar
+
+Outside Bar
+
+Engulfing
+
+Marubozu
+
+Doji
+
+Long Wick
+
+Small Body
+
+Strong Close
+
+Weak Close
+
+Gap Candle
+
+Compression
+
+Expansion
+
+Also stores
+
+Upper Wick %
+
+Lower Wick %
+
+Body %
+
+Close Location
+
+Rejection Count
+
+Respect Count
+
+Reaction Quality
+
+This engine is where your idea of "price respected resistance/support three times" naturally belongs.
+
+8. Momentum Engine
+
+Momentum without relying on a single oscillator.
+
+RSI
+
+MACD Concepts
+
+ROC
+
+Momentum Velocity
+
+Acceleration
+
+Deceleration
+
+Impulse
+
+Pullback Strength
+
+Continuation Strength
+
+Outputs
+
+Bullish Momentum
+
+Bearish Momentum
+
+Weak Momentum
+
+Explosive Momentum
+9. Volatility Engine
+ATR
+
+ATR Expansion
+
+ATR Compression
+
+Range Expansion
+
+Range Compression
+
+Volatility Spike
+
+Volatility Collapse
+
+Expected Move
+
+Used for
+
+Entry timing
+
+SL sizing
+
+TP sizing
+
+Trailing Stop
+10. Multi-Timeframe Engine
+
+Institutional alignment.
+
+1m
+
+3m
+
+5m
+
+15m
+
+30m
+
+1h
+
+4h
+
+Daily
+
+Outputs
+
+Alignment %
+
+Conflict %
+
+Higher TF Bias
+
+Lower TF Confirmation
+
+Execution TF
+11. Risk Qualification Engine
+
+One of the most important engines.
+
+Its job is NOT to find trades.
+
+Its job is to reject trades.
+
+Outputs
+
+NO TRADE
+
+WAIT
+
+HIGH RISK
+
+LOW RISK
+
+CHOPPY
+
+OVEREXTENDED
+
+LOW LIQUIDITY
+
+CONFLICTING SIGNALS
+
+Reasons
+
+ATR Compression
+
+Weak BOS
+
+No Momentum
+
+Poor RR
+
+Against HTF
+
+Near News
+
+Equal High
+
+Sideways
+
+Overlapping Candles
+
+This is where the "No Trade Zone" idea from the screenshots belongs.
+
+12. Confidence Engine
+
+(Former Score Engine)
+
+This becomes AJ's brain.
+
+Every engine contributes evidence.
+
+Example
+
+Market State
+
++8
+
+Order Flow
+
++14
+
+Structure
+
++18
+
+Liquidity
+
++12
+
+Order Block
+
++15
+
+Trend
+
++10
+
+Price Action
+
++9
+
+Momentum
+
++8
+
+Volatility
+
++4
+
+MTF
+
++12
+
+Risk
+
+-10
+
+Final
+
+Confidence
+
+90%
+
+Trade Grade
+
+A+
+
+Explanation
+
+Strong BOS
+
+Fresh OB
+
+Retail Trap
+
+Bullish Momentum
+
+HTF Alignment
+
+ATR Expansion
+
+Minor Resistance Ahead
+
+This is no longer just a score.
+
+It is explainable AI.
+
+13. Trade Authority
+
+Final gatekeeper.
+
+Decides
+
+Reject
+
+Wait
+
+Monitor
+
+Prepare
+
+Execute
+
+Generates
+
+Entry
+
+SL
+
+Trail SL
+
+BE
+
+TP1
+
+TP2
+
+TP3
+
+Scale Out
+
+Scale In
+14. Execution Engine
+
+Responsible only for execution.
+
+Never performs analysis.
+
+Responsibilities
+
+Position Size
+
+Risk %
+
+RR
+
+Order Routing
+
+Live Monitoring
+
+Trailing
+
+Partial Exit
+
+Emergency Exit
+15. Explainability & Visualization Layer (New)
+
+This is not a trading engine. It sits above all engines and translates analysis into trader-friendly visuals.
+
+                        Explainability Layer
+────────────────────────────────────────────────────
+
+Dynamic Supply / Demand Zones
+
+Dynamic Order Blocks
+
+Flipped Resistance
+
+Flipped Support
+
+Retail Trap Labels
+
+Liquidity Sweep Labels
+
+No Trade Zone
+
+High Risk Zone
+
+Fresh Order Block
+
+Mitigated Order Block
+
+Weak Order Block
+
+Zone Strength
+
+Reaction Count
+
+Touch Count
+
+Respect Count
+
+Confidence Meter
+
+Evidence Breakdown
+
+Market Mood
+
+Institutional Bias
+
+Bullish Momentum
+
+Bearish Momentum
+
+Execution Readiness
+
+Higher TF Alignment
+
+Tooltip Explanations
+
+Educational Popups
+
+Trade Timeline
+
+Entry
+
+SL
+
+TP1
+
+TP2
+
+TP3
+
+Trail SL
+
+Risk Reward
+
+Trade Lifecycle
+
+────────────────────────────────────────────────────
+
+This is where the Sharma-style presentation ideas belong. They don't change the trading decision—they make the reasoning understandable.
+
+Final UI Philosophy
+
+Instead of showing only:
+
+BUY
+
+AJ should present something like:
+
+AJ Institutional Decision
+────────────────────────
+
+Market Mood
+
+Bullish Expansion
+
+Confidence
+
+91%
+
+Trade Grade
+
+A
+
+Market Structure
+
+Strong BOS
+
+Liquidity
+
+Retail Sellers Trapped
+
+Order Block
+
+Fresh Bullish OB
+
+Trend
+
+Bullish
+
+Momentum
+
+Strong
+
+Multi TF
+
+Aligned
+
+Risk
+
+Low
+
+Action
+
+BUY
+
+Entry
+
+24125
+
+SL
+
+24082
+
+TP1
+
+24165
+
+TP2
+
+24220
+
+TP3
+
+24305
+
+Trailing
+
+ATR Dynamic
+
+Why?
+
+✓ Strong BOS
+✓ Fresh Order Block
+✓ Retail Trap
+✓ Bullish Momentum
+✓ Higher TF Aligned
+✗ Minor resistance above
+
+Status
+
+EXECUTION APPROVED
+
+This combines institutional logic with explainable AI rather than relying on opaque signals.
+
+One additional refinement
+
+I would add one principle that governs the entire system:
+
+Every engine should contribute evidence independently. No engine should directly override another. The Confidence Engine aggregates evidence, the Risk Qualification Engine vetoes unsafe conditions, and the Trade Authority makes the final execution decision.
+
+That separation of responsibilities will make the system easier to maintain, easier to test, and much more adaptable as you add new brokers, indicators, or market concepts in the future. It also ensures that visual features and educational explanations remain decoupled from the core decision logic, so the underlying trading engine stays clean and extensible.
+============================================================
+AJ Institutional Trading System v2.0 Roadmap (Implementation Plan)
+
+We will implement in 13 phases.
+
+Phase 1
+Architecture & Runtime Refactor
+
+↓
+
+Phase 2
+Market Context Foundation
+
+↓
+
+Phase 3
+Order Flow Foundation
+
+↓
+
+Phase 4
+Market Structure
+
+↓
+
+Phase 5
+Liquidity Intelligence
+
+↓
+
+Phase 6
+Order Block Intelligence
+
+↓
+
+Phase 7
+Trend & Price Action
+
+↓
+
+Phase 8
+Momentum & Volatility
+
+↓
+
+Phase 9
+Multi Timeframe Analysis
+
+↓
+
+Phase 10
+Risk Qualification
+
+↓
+
+Phase 11
+Confidence Engine
+(replaces Score Engine)
+
+↓
+
+Phase 12
+Trade Authority
+
+↓
+
+Phase 13
+Execution Engine + Dashboard
+PHASE 1
+Runtime Refactor (Most Important)
+
+This phase prepares the runtime.
+
+No trading logic changes.
+
+No UI changes.
+
+Only architecture.
+
+Goal
+
+Replace the old runtime with one capable of supporting all future engines.
+
+Files to verify
+
+I need these current files.
+
+src/runtime/
+AJRuntimeContext.ts
+AJRuntimeContextBuilder.ts
+AJPayloadBuilder.ts
+RuntimeEngine.ts
+AJRuntimeAdapter.ts
+AJHost.ts
+Output
+
+New runtime context supporting
+
+Market State
+
+Order Flow
+
+Structure
+
+Liquidity
+
+Order Blocks
+
+Trend
+
+Price Action
+
+Momentum
+
+Volatility
+
+MTF
+
+Risk
+
+Confidence
+
+Authority
+PHASE 2
+Market State Engine
+
+New engine.
+
+Folder
+src/indicators/AJIndicator/context/
+
+Expected files
+
+MarketStateEngine.ts
+MarketStateTypes.ts
+
+May also update
+
+AJRuntimeContext.ts
+Output
+TREND
+
+RANGE
+
+ACCUMULATION
+
+DISTRIBUTION
+
+EXPANSION
+
+COMPRESSION
+
+NEWS
+
+GAP
+PHASE 3
+Order Flow Engine
+
+Replace current CVD logic.
+
+Files
+
+Need current
+
+CVDEngine.ts
+
+or whatever currently computes CVD.
+
+Also
+
+AJContextEngine.ts
+
+Output
+
+Real Order Flow
+
+Synthetic Order Flow
+
+Automatic Switching
+PHASE 4
+Market Structure
+
+Need
+
+BOS.ts
+CHOCH.ts
+AJContextEngine.ts
+
+New
+
+MarketStructureEngine.ts
+
+Output
+
+Weak BOS
+
+Strong BOS
+
+Failed BOS
+
+Internal BOS
+
+External BOS
+
+Trend Shift
+PHASE 5
+Liquidity Engine
+
+Need
+
+LiquiditySweep.ts
+
+New
+
+LiquidityEngine.ts
+
+Output
+
+Retail Trap
+
+Stop Hunt
+
+Liquidity Void
+
+Equal High
+
+Equal Low
+
+Fake Breakout
+
+Absorption
+PHASE 6
+Order Block Engine
+
+Need
+
+Current Order Block implementation.
+
+If none exists
+
+We'll create
+
+OrderBlockEngine.ts
+
+Outputs
+
+Fresh
+
+Mitigated
+
+Touch Count
+
+Strength
+
+Expiration
+
+Reaction
+
+Flip Zone
+PHASE 7
+Trend Engine
+
+Need
+
+EMA.ts
+
+VWAP.ts
+
+ADX.ts
+
+RSI.ts
+
+May add
+
+TrendEngine.ts
+PHASE 8
+Price Action Engine
+
+New
+
+PriceActionEngine.ts
+
+Outputs
+
+Pin Bar
+
+Hammer
+
+Engulfing
+
+Body %
+
+Wick %
+
+Compression
+
+Expansion
+
+Respect Count
+PHASE 9
+Momentum
+
+Need
+
+RSI
+
+ADX
+
+ATR
+
+Create
+
+MomentumEngine.ts
+VolatilityEngine.ts
+PHASE 10
+Multi Timeframe
+
+Need
+
+Current timeframe loader.
+
+Likely
+
+DataFeedManager
+
+ChartWindow
+
+RuntimeContextBuilder
+
+New
+
+MTFEngine.ts
+PHASE 11
+Risk Qualification
+
+New
+
+RiskQualificationEngine.ts
+
+Outputs
+
+NO TRADE
+
+WAIT
+
+HIGH RISK
+
+LOW RISK
+
+CHOPPY
+
+NEWS
+
+LOW LIQUIDITY
+PHASE 12
+Confidence Engine
+
+Current
+
+ScoreEngine.ts
+
+will become
+
+ConfidenceEngine.ts
+
+Outputs
+
+Confidence %
+
+Evidence
+
+Reasons
+
+Trade Grade
+PHASE 13
+Authority & Execution
+
+Need
+
+TradeAuthority.ts
+
+ExecutionEngine.ts
+
+AJDecisionEngine.ts
+
+Outputs
+
+Prepare
+
+Wait
+
+Reject
+
+Execute
+
+Trail
+
+Exit
+
+Scale Out
+Dashboard Phase
+
+Finally
+
+Dashboard.
+
+Need
+
+AJDashboard.tsx
+
+or whatever currently renders it.
+
+We'll redesign it.
+
+Show
+
+Market Mood
+
+Confidence
+
+Trade Grade
+
+Evidence
+
+Market State
+
+Risk
+
+Liquidity
+
+Order Block
+
+Momentum
+
+Trend
+
+Entry
+
+SL
+
+TP1
+
+TP2
+
+TP3
+Before Phase 1
+
+I do not want to assume your folder structure anymore. Earlier in the project, we discovered that some files had moved, some were renamed, and others didn't exist yet.
+
+So the first thing I need is your current project structure.
+
+Please provide the following directory trees (folder names and filenames only, no file contents yet):
+
+src/
+├── runtime/
+├── indicators/
+│   ├── AJIndicator/
+│   │   ├── context/
+│   │   ├── execution/
+│   │   ├── authority/
+│   │   ├── options/
+│   │   └── (other files)
+├── feeds/
+├── components/
+├── types/
+
+Also include the server/ tree if there have been changes there.
+
+Once I have the updated structure, I'll map every existing file to the new architecture. If an engine already exists, we'll evolve it. If it doesn't, we'll create it.
+
+Code generation convention (from now on)
+
+I'll follow these rules automatically:
+
+I will always ask for the current version of any file before modifying it if its existing implementation matters.
+If a new file is required, I'll create it without asking for confirmation.
+If a generated file is likely to exceed roughly 400 lines, I'll split it into Part 1, Part 2, Part 3, and Part 4 as needed. Each part will have clear header comments so you can concatenate them in order. I won't interrupt the flow to ask whether to split it.
+Every change will be comment-to-comment or block-to-block, preserving the rest of your file unless a full replacement is genuinely necessary.
+
+That gives us a predictable workflow for the remaining implementation phases and avoids the repeated back-and-forth about response size.
+====================================
+src/runtime/
+type src/indicators/AJIndicator/AJRuntimeContext.ts
+type src/indicators/AJIndicator/AJRuntimeContextBuilder.ts
+type src/indicators/AJIndicator/AJPayloadBuilder.ts
+type src/runtime/RuntimeEngine.ts
+type src/indicators/AJIndicator/AJRuntimeAdapter.ts
+type src/runtime/hosts/cAJHost.ts
+
+===================================================
+Revised Development Plan (Frozen)
+
+From this point onward, we will not redesign the architecture again. We'll only implement it.
+
+The implementation order below is the one I recommend.
+
+Phase 1
+Runtime Foundation
+        │
+Phase 2
+Market State Engine
+        │
+Phase 3
+Order Flow Engine
+        │
+Phase 4
+Market Structure Engine
+        │
+Phase 5
+Liquidity Engine
+        │
+Phase 6
+Order Block Engine
+        │
+Phase 7
+Trend Engine
+        │
+Phase 8
+Price Action Engine
+        │
+Phase 9
+Momentum + Volatility
+        │
+Phase 10
+Multi Timeframe
+        │
+Phase 11
+Risk Qualification
+        │
+Phase 12
+Confidence Engine
+        │
+Phase 13
+Trade Authority
+        │
+Phase 14
+Execution
+        │
+Phase 15
+Dashboard / Visual Layer
+New Documentation Standard (Applied to Every File)
+
+I like your suggestion.
+
+Every regenerated file will begin with a short header that explains why the file exists, not just what it contains.
+
+For example:
+
+/****************************************************************************************
+ * File:
+ * AJRuntimeContext.ts
+ *
+ * Purpose:
+ * Central runtime contract used by every AJ engine.
+ * It carries market state, order flow, market structure, liquidity,
+ * confidence, execution state and institutional intelligence between engines.
+ *
+ * Responsibility:
+ * Defines the shared runtime object only.
+ * No calculations should be performed in this file.
+ *
+ * AJ Architecture:
+ * Runtime -> Engines -> Confidence -> Authority -> Execution
+ ****************************************************************************************/
+
+Every file will have:
+
+Purpose
+Responsibility
+Inputs
+Outputs
+Dependencies
+Architecture Position
+Future Extension Notes
+
+This will replace the older comments, which no longer reflect the revised architecture
+=================================================================
+Phase Plan (Frozen)
+
+This is now the implementation roadmap.
+
+Phase 1 — Runtime Foundation
+===================================
+Files:
+
+type src/indicators/AJIndicator/AJRuntimeContext.ts
+type src/indicators/AJIndicator/AJRuntimeContextBuilder.ts
+type src/indicators/AJIndicator/AJPayloadBuilder.ts
+type src/indicators/AJIndicator/AJTypes.ts
+type src/indicators/AJIndicator/AJDecisionEngine.ts
+type src/indicators/AJIndicator/AJRuntimeEngine.ts
+
+Goal:
+
+Update runtime contracts
+Update documentation
+Replace Score terminology with Confidence
+Introduce new runtime sections
+Keep trading behavior unchanged
+
+Phase 2 — Market State
+===================================
+engines/MarketState/
+
+Enhance:
+
+Trend
+Range
+Expansion
+Compression
+Accumulation
+Distribution
+News
+Session state
+
+Phase 3 — Order Flow
+======================================
+Replace traditional CVD-only logic with:
+
+Real Volume
+
+↓
+
+Synthetic Order Flow
+
+↓
+
+Automatic Selection
+
+No user configuration required.
+
+Phase 4 — Market Structure
+=======================================
+Enhance BOS/CHOCH with:
+
+Strong BOS
+Weak BOS
+Failed BOS
+Internal BOS
+External BOS
+
+Phase 5 — Liquidity
+============================================
+Enhance with:
+
+Retail traps
+Stop hunts
+Liquidity voids
+Equal highs/lows
+Fake breakouts
+
+Phase 6 — Order Blocks
+===============================================
+Enhance with:
+
+Freshness
+Mitigation count
+Touch count
+Reaction %
+Zone strength
+Higher timeframe alignment
+
+Phase 7 — Price Action
+===========================================
+New engine.
+
+Features:
+
+Wick quality
+Body quality
+Candle quality
+Rejections
+Engulfing
+Pin bars
+Compression
+Expansion
+
+Phase 8 — Trend
+========================================
+Dedicated trend engine.
+
+Combines:
+
+EMA
+AlphaTrend concepts
+ADX
+Slope
+HTF trend
+
+Phase 9 — Momentum
+=========================================
+Separate momentum evaluation.
+
+Includes:
+
+RSI
+Momentum acceleration
+Breakout strength
+Impulse quality
+
+Phase 10 — Volatility
+==========================================
+Evaluates:
+
+ATR
+Expansion
+Compression
+Volatility regime
+
+Phase 11 — Multi-Timeframe
+========================================
+Aligns:
+
+1m
+5m
+15m
+1h
+4h
+Daily
+
+Produces MTF agreement.
+
+Phase 12 — Risk Qualification
+==================================
+The final trade gate.
+
+Blocks:
+
+Choppy markets
+Conflicting structure
+Nearby opposing zones
+Low R:R
+High uncertainty
+
+Outputs:
+
+Trade
+
+No Trade
+
+Wait
+Phase 13 — Confidence
+===========================================
+Replaces the current Score engine.
+
+Outputs:
+
+Confidence %
+Evidence list
+Positive factors
+Negative factors
+Trade grade
+
+No execution logic.
+
+Phase 14 — Authority
+===========================================
+Final decision.
+
+Combines:
+
+Confidence
+Risk
+MTF
+State
+
+Outputs:
+
+BUY
+
+SELL
+
+WAIT
+Phase 15 — Execution
+==========================================
+Produces:
+
+Entry
+Stop Loss
+TP1
+TP2
+TP3
+Trail SL
+Position sizing
+Lifecycle management
+
+Phase 16 — Dashboard & Visuals
+===============================================
+This phase incorporates the presentation concepts we discussed (inspired by Sharma Traders, but implemented in your own modular architecture):
+
+Market Mood
+Retail Trap banners
+No Trade Zone
+Order Block strength colors
+Mitigation count
+Support/resistance touch count
+Confidence breakdown
+Mentor/AI explanation
+Educational tooltips
+Smart overlays
+
+These are visualization features built on top of the engines, not separate decision engines.
+
+Development Workflow (Locked)
+
+From now on, I'll follow this workflow consistently:
+
+I will always request the current version of an existing file before modifying it if its implementation matters.
+Every regenerated file will start with a new standardized documentation header.
+Every response will begin with the exact file path being updated.
+New files will include their complete target folder path.
+If a file is too large for one response, I'll automatically split it into Part 1, Part 2, Part 3, etc., without asking for confirmation. Each part will concatenate directly.
+
+This gives us a stable implementation process for the remainder of the AJ v2 architecture refactor.
+================================================
+or Phase 12, I would not replace all of the existing RiskQualification code. Your current files already implement trade plan generation and position sizing, so they should remain as specialized components.
+
+The architecture I'd recommend is:
+
+File	Action	Reason
+EntryRiskEngine.ts	Keep (minor upgrade later)	Generates SL/TP only. This belongs in Phase 15 Execution.
+EntryRiskTypes.ts	Keep	Existing contract is valid.
+EntryRiskResult.ts	Keep	Existing contract is valid.
+RiskModel.ts	Keep (minor upgrade later)	Position sizing belongs to Execution/Risk model.
+RiskTypes.ts	Keep	Valid.
+RiskResult.ts	Keep	Valid.
+RiskQualificationEngine.ts	NEW	Phase 12 decision gate.
+RiskQualificationTypes.ts	NEW	Input contracts.
+RiskQualificationResult.ts	NEW	Output contracts.
+index.ts	NEW	Barrel exports.
+Responsibilities split
+
+RiskQualificationEngine
+
+Choppy market filter
+Low R:R rejection
+Nearby supply
+Nearby demand
+Opposite liquidity
+Opposite BOS
+Opposite trend
+Volatility rejection
+News rejection
+Session rejection
+Final qualification
+
+Output:
+
+TRADE
+
+WAIT
+
+NO_TRADE
+
+EntryRiskEngine
+
+Only calculates
+
+Stop Loss
+TP1
+TP2
+TP3
+
+RiskModel
+
+Only calculates
+
+Position Size
+Risk Amount
+Stop Distance
+Therefore, for Phase 12 I would generate these files in this order:
+RiskQualificationTypes.ts
+RiskQualificationResult.ts
+RiskQualificationEngine.ts
+index.ts
+Existing files that should not be rewritten in Phase 12
+EntryRiskEngine.ts
+EntryRiskTypes.ts
+EntryRiskResult.ts
+RiskModel.ts
+RiskTypes.ts
+RiskResult.ts
+
+Those belong primarily to Phase 15 (Execution) and are already correctly separated by responsibility. The new RiskQualificationEngine should sit before them in the pipeline, acting as the gatekeeper that determines whether a trade proceeds to execution.
+
+===========================
+Phase 13 — Confidence
+
+Current folder
+
+engines/
+    Confidence/
+
+Current files
+
+ConfidenceEngine.ts
+
+ConfidenceTypes.ts
+
+ConfidenceResult.ts
+
+Recommended
+
+ConfidenceEngine.ts      ← upgrade
+
+ConfidenceTypes.ts
+
+ConfidenceResult.ts
+
+ConfidenceEvidence.ts    ← NEW
+
+ConfidenceFactors.ts     ← NEW
+
+index.ts                 ← NEW
+
+Responsibilities
+
+Replace Score Engine completely.
+
+Produces
+
+Confidence %
+
+Trade Grade
+
+Evidence
+
+Positive Factors
+
+Negative Factors
+
+Evidence Weight
+
+Confidence Class
+
+Example output
+
+Confidence : 84%
+
+Grade : A
+
+Positive
+
+EMA Alignment
+Strong BOS
+Liquidity Sweep
+Bull FVG
+ADX
+
+Negative
+
+Nearby Supply
+
+Weak RSI
+
+Low Volume
+
+No execution logic.
+====================================
+Phase 14 — Authority
+
+Current folder
+
+engines/
+    Authority/
+
+Current
+
+ExecutionAuthority.ts
+
+ExecutionAuthorityTypes.ts
+
+ExecutionAuthorityResult.ts
+
+index.ts
+
+Rather than renaming anything, extend it.
+
+Recommended
+
+ExecutionAuthority.ts        ← upgrade
+
+ExecutionAuthorityTypes.ts
+
+ExecutionAuthorityResult.ts
+
+AuthorityDecision.ts         ← NEW
+
+AuthorityDecisionTypes.ts    ← NEW
+
+AuthorityDecisionResult.ts   ← NEW
+
+index.ts
+
+Consumes
+
+Confidence
+
+Risk Qualification
+
+Market State
+
+Trend
+
+Momentum
+
+Liquidity
+
+Order Blocks
+
+MTF
+
+State Machine
+
+Produces only
+
+BUY
+
+SELL
+
+WAIT
+
+No TP calculations.
+============================================
+Phase 15 — Execution
+
+Current folder
+
+engines/
+    Execution/
+
+Already contains
+
+ExecutionEngine.ts
+
+ExecutionTypes.ts
+
+ExecutionResult.ts
+
+ExitEngine.ts
+
+LifecycleEngine.ts
+
+ReEntryEngine.ts
+
+TrailingEngine.ts
+
+TradeManagement.ts
+
+TradeManagementTypes.ts
+
+TradeManagementResult.ts
+
+index.ts
+
+This is already an excellent separation.
+
+I recommend not creating any additional files.
+
+Instead upgrade the existing ones.
+
+ExecutionEngine
+
+Entry
+Initial SL
+Position sizing
+Execution plan
+
+TrailingEngine
+
+ATR trailing
+Swing trailing
+Structure trailing
+Break-even
+
+ExitEngine
+
+TP1
+TP2
+TP3
+Partial exits
+Emergency exit
+
+LifecycleEngine
+
+Pending
+Active
+TP1 Hit
+TP2 Hit
+TP3 Hit
+Trail Active
+Closed
+Cancelled
+
+TradeManagement
+
+Position sizing
+Scale-in
+Scale-out
+Re-entry
+Risk updates
+========================================
+For Phase 15, I would not create any new files. Your Execution folder is already correctly decomposed. The work is to upgrade the existing engines so each one has a single responsibility.
+
+Here is the order I would update them.
+
+Order	File	Action	Responsibility
+1	ExecutionEngine.ts	Upgrade	Master execution orchestration (entry validation, execution plan, initial SL/TP integration, position sizing integration).
+2	ExecutionTypes.ts	Upgrade	Expand the execution input contract to consume Authority, Confidence, RiskQualification, Trend, MTF, etc.
+3	ExecutionResult.ts	Upgrade	Canonical execution output contract.
+4	LifecycleEngine.ts	Upgrade	Pending → Active → TP1 → TP2 → TP3 → Trail → Closed → Cancelled.
+5	TrailingEngine.ts	Upgrade	ATR trailing, swing trailing, structure trailing, break-even.
+6	ExitEngine.ts	Upgrade	TP1, TP2, TP3, partial exits, emergency exits.
+7	ReEntryEngine.ts	Upgrade	Pullback re-entry, BOS re-entry, liquidity re-entry, FVG re-entry.
+8	TradeManagement.ts	Upgrade	Scale-in, scale-out, position management, live risk updates.
+9	TradeManagementTypes.ts	Upgrade	Expanded management contracts.
+10	TradeManagementResult.ts	Upgrade	Canonical management output.
+11	index.ts	Upgrade	Export the upgraded execution modules.
+Recommended implementation sequence
+Execution/
+│
+├── ExecutionTypes.ts
+├── ExecutionResult.ts
+├── ExecutionEngine.ts
+│
+├── LifecycleEngine.ts
+├── TrailingEngine.ts
+├── ExitEngine.ts
+├── ReEntryEngine.ts
+│
+├── TradeManagementTypes.ts
+├── TradeManagementResult.ts
+├── TradeManagement.ts
+│
+└── index.ts
+Execution pipeline after all phases
+MarketState
+      ↓
+OrderFlow
+      ↓
+MarketStructure
+      ↓
+Liquidity
+      ↓
+OrderBlock
+      ↓
+PriceAction
+      ↓
+Trend
+      ↓
+Momentum
+      ↓
+Volatility
+      ↓
+MultiTimeframe
+      ↓
+RiskQualification
+      ↓
+Confidence
+      ↓
+AuthorityDecision
+      ↓
+ExecutionEngine
+      ↓
+LifecycleEngine
+      ↓
+TradeManagement
+      ↓
+TrailingEngine
+      ↓
+ExitEngine
+
+I would start with ExecutionTypes.ts first, because it defines the canonical input/output contracts that every other execution component depends on. Once those contracts are established, the remaining execution engines can be upgraded against a stable interface.
+===========================================================
+Recommended order
+Phase 15.5 — Runtime Validation (recommended)
+
+Before Dashboard & Visuals, validate every engine.
+
+For each runtime evaluation, verify:
+
+Context
+Market Structure
+BOS
+CHOCH
+FVG
+Liquidity Sweep
+Order Block
+CVD
+Order Flow
+Risk Qualification
+Confidence
+Authority
+Execution
+
+Each should have sensible values—not just compile successfully.
+
+Then Phase 16
+
+Once those values are trustworthy, build the dashboard.
+
+The dashboard should become almost "plug-and-play":
+
+Runtime
+      │
+      ▼
+Dashboard
+
+instead of
+
+Dashboard
+      │
+      ▼
+discover engine bugs
+Phase 16 architecture
+
+I would implement it in this order.
+
+Stage 1 — Runtime Panel (highest priority)
+
+This is the live institutional panel.
+
+Market Mood
+
+Confidence
+
+Trade Grade
+
+Bias
+
+Authority
+
+Execution
+
+Market Regime
+
+Risk
+
+No Trade Zone
+Stage 2 — Confidence Breakdown
+82%
+
+TREND          +18
+
+ORDER FLOW     +12
+
+LIQUIDITY      +10
+
+RISK           +8
+
+VOLATILITY     +6
+
+MTF            +9
+Stage 3 — Market Structure
+BOS
+
+CHOCH
+
+Liquidity
+
+OB Strength
+
+FVG
+
+Mitigation Count
+
+Touches
+
+Breakouts
+Stage 4 — Institutional Overlay
+
+Directly on the chart:
+
+Demand zones
+Supply zones
+FVG boxes
+Order Blocks
+Premium / Discount
+Liquidity pools
+Mitigated zones
+TP
+SL
+Entry
+Re-entry
+Smart labels
+Stage 5 — Mentor AI
+
+Explain why the engine reached its decision.
+
+For example:
+
+LONG
+
+Confidence 82%
+
+Reason
+
+✓ Bullish BOS
+
+✓ HTF aligned
+
+✓ Strong Order Block
+
+✓ Liquidity sweep complete
+
+✓ Institutional confluence
+
+Avoid
+
+• Low volume
+
+• ATR expanding
+
+Trade Grade
+
+A
+
+This is educational and makes the system transparent.
+
+Stage 6 — Educational tooltips
+
+Every metric should answer:
+
+What is it?
+Why does it matter?
+Why is the engine showing this value?
+How does it affect the decision?
+Development workflow
+
+I agree with the workflow you've defined. For the remainder of the project I'll follow it:
+
+Every response begins with the exact file path.
+Existing files: I'll ask for the current version before changing implementation details that depend on the current code.
+New files: I'll include the full target folder path.
+Every regenerated file starts with a standardized documentation header.
+Large files are automatically split into Part 1, Part 2, etc., with each part concatenating directly.
+
+I also recommend treating Phase 16 as the final polish phase, after one validation pass confirms that every runtime engine is producing meaningful values rather than placeholder defaults. That will make the visualization layer much cleaner and reduce rework.
+===============================
+Validation order
+
+We'll validate from the lowest-level engines upward because higher layers depend on them.
+
+Step 1 — Context (foundation)
+
+Need current file:
+
+src/indicators/AJIndicator/context/ContextEngine.ts
+
+We'll verify:
+
+Trend
+Momentum
+ATR
+EMA
+VWAP
+Volume
+Session
+Volatility
+Context score
+
+If Context is wrong, everything above it will also be wrong.
+
+Step 2 — Market Structure
+============================================
+Need current file:
+
+src/indicators/AJIndicator/context/MarketStructureEngine.ts
+
+(or the file currently responsible for BOS/CHOCH context, if renamed)
+
+We'll verify:
+
+Swing High
+Swing Low
+BOS
+CHOCH
+Structure Direction
+Structure Strength
+
+Step 3 — Liquidity
+====================================
+Need:
+
+src/indicators/AJIndicator/context/LiquidityEngine.ts
+
+Verify:
+
+Sweep detected
+Internal liquidity
+External liquidity
+Buy-side liquidity
+Sell-side liquidity
+Step 4 — Order Block
+
+Need:
+
+src/indicators/AJIndicator/context/OrderBlockEngine.ts
+
+Verify:
+
+Active block
+Strength
+Mitigated
+Fresh
+Distance
+Touch count
+Step 5 — FVG
+
+Need:
+
+src/indicators/AJIndicator/context/FVGEngine.ts
+
+Verify:
+
+Bullish
+Bearish
+Filled
+Size
+Quality
+Step 6 — Order Flow
+
+Need:
+
+src/indicators/AJIndicator/context/OrderFlowEngine.ts
+
+Verify:
+
+Source
+Confidence
+Institutional participation
+CVD contribution
+Volume confirmation
+Step 7 — CVD
+
+Need:
+
+src/indicators/CVD.ts
+
+The logs already show a likely data issue:
+
+Yahoo candles are arriving with volume: 0.
+Consequently CVD remains 0.
+We need to determine whether:
+Yahoo genuinely provides zero volume for these indices,
+the feed discards valid volume,
+or volume mapping is incorrect.
+
+This should be validated before changing any CVD logic.
+
+Step 8 — Risk Qualification
+
+Need:
+
+src/indicators/AJIndicator/engines/RiskQualification/RiskQualificationEngine.ts
+
+Verify:
+
+Qualified
+Grade
+Risk score
+Penalties
+Stop validation
+Step 9 — Confidence
+
+Need:
+
+src/indicators/AJIndicator/engines/Confidence/ConfidenceEngine.ts
+
+Verify:
+
+Every evidence item
+Contributions
+Final score
+Grade
+Diagnostics
+Step 10 — Authority
+
+Need:
+
+src/indicators/AJIndicator/authority/TradeAuthority.ts
+
+Verify:
+
+Allow
+Reject
+Reject reason
+Overrides
+Step 11 — Execution
+
+Need:
+
+src/indicators/AJIndicator/engines/Execution/AJExecutionEngine.ts
+
+Verify:
+
+Entry
+SL
+TP1
+TP2
+TP3
+Re-entry
+Break-even
+Step 12 — Runtime Builder
+
+Need:
+
+src/runtime/AJRuntimeContextBuilder.ts
+
+Verify that every validated engine is correctly copied into the runtime object and nothing is lost or overwritten.
+
+==========================================
+Architecure explanation====
+============================================
+My understanding of AJ v2 now
+AJ v1
+Indicators
+      │
+      ▼
+Score Engine
+      │
+      ├── Score Mode
+      ├── AI Mode
+      └── AI+SMC Mode
+
+Everything lived together.
+
+AJ v2
+
+The pipeline is split.
+
+Raw Indicators
+        │
+        ▼
+AJRuntimeContextBuilder
+        │
+        ▼
+AJRuntimeContext
+        │
+        ▼
+MarketState
+        ▼
+OrderFlow
+        ▼
+MarketStructure
+        ▼
+Liquidity
+        ▼
+OrderBlock
+        ▼
+Trend
+        ▼
+PriceAction
+        ▼
+Momentum
+        ▼
+Volatility
+        ▼
+MultiTimeframe
+        ▼
+RiskQualification
+        ▼
+Confidence Engine
+        ▼
+Execution Authority
+        ▼
+Execution Engine
+
+Exactly.
+
+Trading modes are NOT removed
+
+Your architecture still supports
+
+Confidence Mode
+AI Mode
+AI + SMC Mode
+
+Only the implementation changed.
+
+Earlier
+
+Builder
+   ↓
+Score calculations
+
+Now
+
+Builder
+   ↓
+Raw evidence
+
+ConfidenceEngine
+   ↓
+confidence
+
+AIConfidenceEngine
+   ↓
+AI decision
+
+ExecutionAuthority
+   ↓
+approval
+
+ExecutionEngine
+   ↓
+execution
+
+That is a huge difference.
+
+So the AI fields are not legacy because AI disappeared.
+
+They are legacy because they are produced in the wrong place.
+
+Therefore I would NOT delete AI fields yet.
+
+Instead we need to determine
+
+Who owns them now?
+
+Example
+
+Current
+
+builder
+
+aiScoreLong
+
+Correct AJ v2
+
+AIConfidenceEngine
+
+↓
+
+AIConfidenceResult.aiScoreLong
+
+Builder should never calculate it.
+
+But it still exists.
+
+Same for Confidence
+
+Old
+
+builder
+
+trendConfidence
+structureConfidence
+executionConfidence
+
+New
+
+ConfidenceEngine
+
+↓
+
+ConfidenceResult
+
+Not deleted.
+
+Just moved.
+
+Same for Trade Score
+
+Old
+
+builder
+
+tradeScore
+
+New
+
+Probably
+
+ExecutionAuthority
+
+or
+
+ExecutionResult
+
+depending on your design.
+=========================================================

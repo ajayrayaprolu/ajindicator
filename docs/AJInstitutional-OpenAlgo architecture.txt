@@ -1,0 +1,2058 @@
+1. AJRuntimeContextBuilder.ts
+2. AJDecisionEngine.ts
+3. AJPayloadBuilder.ts
+4. AJHost.ts
+5. AJSignalBuilder.ts
+6. RuntimeContext.ts
+7. RuntimeResult.ts
+8. ChartWindow.tsx
+9. OpenAlgoAdapter.ts
+10. Fyers/OpenAlgo chart-indicator descriptor
+=====================================
+
+| Native AJ capability  | Current OpenAlgo                 |
+| --------------------- | -------------------------------- |
+| SCORE                 | ✅                                |
+| AI                    | ✅                                |
+| AI + SMC              | ⚠️ needs behavioral verification |
+| Entry                 | ✅ plot registered                |
+| SL                    | ✅ plot registered                |
+| TP1                   | ✅                                |
+| TP2                   | ✅                                |
+| TP3                   | ✅                                |
+| Confidence            | ✅                                |
+| Lifecycle             | ✅ markers                        |
+| Execution markers     | ✅ markers                        |
+| Institutional zones   | ✅ draws                          |
+| Dashboard             | ⚠️ limited table                 |
+| Debug information     | ❌ not exposed                    |
+| Native settings panel | ❌ not exposed                    |
+| Full AJ settings      | ❌ only 4 inputs                  |
+| Option information    | ⚠️ data exists, limited UI       |
+| Re-entry              | ⚠️ data exists, not plotted      |
+| Trade grade           | ⚠️ table only                    |
+| Regime                | ⚠️ table only                    |
+| Trade score           | ⚠️ table only                    |
+| Execution allowed     | ⚠️ table only                    |
+
+
+============================================================
+
+| chart                 | chart                            |
+| --------------------- | -------------------------------- |
+|-----------------------|--------------------------------- | 
+|      dashboard        |           dashboard              |
+| --------------------- | -------------------------------- |
+
+| Priority | File                                           | Why                                                |
+| -------- | ---------------------------------------------- | -------------------------------------------------- |
+| 🔴 1     | `AJRuntimeContextBuilder.ts`                   | AJ context construction                            |
+| 🔴 2     | `RuntimeEngine.ts`                             | Core runtime/state execution                       |
+| 🔴 3     | `AJEngineBundle.ts`                            | Full AJ engine chain                               |
+| 🔴 4     | `AJTypes.ts`                                   | Contracts/interfaces                               |
+| 🔴 5     | **OpenAlgo indicator descriptor/registration** | OpenAlgo integration                               |
+| 🔴 6     | `ChartEngine.tsx`                              | Actual chart rendering                             |
+| 🟠 7     | `AIDashboardAdapter.ts`                        | Dashboard                                          |
+| 🟠 8     | `AJDebugAdapter.ts`                            | Debug/runtime output                               |
+| 🟠 9     | `Signal.ts` + signal producer                  | BUY/SELL markers                                   |
+| 🟡 10    | `Candle.ts`                                    | Candle contract                                    |
+| 🟡 11    | `ChartMarkerBuilder.ts`                        | Marker rendering                                   |
+| 🟡 12    | `AJHost.ts` / `ChartWindow.tsx`                | Already supplied; I'll re-audit after dependencies |
+
+                    Fyers / OpenAlgo OHLCV
+                             │
+                             ▼
+                    Candle Normalizer
+                             │
+                             ▼
+                    RuntimeContext
+                             │
+                             ▼
+              AJRuntimeContextBuilder
+                             │
+                             ▼
+                    AJRuntimeEngine
+                    /       |        \
+                   /        |         \
+          ContextEngine  Decision   Execution
+                   \        |         /
+                    \       |        /
+                     ▼      ▼       ▼
+                       AJ Result
+                           │
+                    ┌──────┴──────┐
+                    ▼             ▼
+              Signal Engine    Dashboard
+                    │             │
+                    ▼             ▼
+                Markers        Table/Panel
+                    │
+                    └──────┬──────┘
+                           ▼
+                  OpenAlgo Indicator
+                           │
+             ┌─────────────┼─────────────┐
+             ▼             ▼             ▼
+          ON-CHART       PANE        BACKGROUND
+       EMA/Entry/SL/TP  Score/Conf.    Zones
+             │             │             │
+             └─────────────┼─────────────┘
+                           ▼
+                     OpenAlgo Chart
+					 
+===============================================================
+AJ(AI+SMC)Indicator.js
+│
+├── 01. OpenAlgo indicator descriptor
+│
+├── 02. User settings / inputs
+│
+├── 03. Candle normalization
+│
+├── 04. Technical calculations
+│      ├── EMA
+│      ├── ATR
+│      ├── RSI
+│      ├── ADX
+│      ├── VWAP
+│      ├── CVD
+│      └── volume
+│
+├── 05. Market Structure
+│      ├── BOS
+│      ├── CHOCH
+│      ├── FVG
+│      ├── Liquidity Sweep
+│      ├── Order Block
+│      └── Premium / Discount
+│
+├── 06. SMC engine
+│
+├── 07. AI engine
+│      ├── AI confidence
+│      ├── AI scoring
+│      ├── risk AI
+│      └── trade safety
+│
+├── 08. Context engine
+│
+├── 09. Decision engine
+│
+├── 10. Execution engine
+│
+├── 11. Lifecycle engine
+│
+├── 12. Risk engine
+│
+├── 13. Entry / SL / TP
+│
+├── 14. Re-entry
+│
+├── 15. Trailing stop
+│
+├── 16. Signal generation
+│
+├── 17. BUY / SELL markers
+│
+├── 18. Chart plots
+│
+├── 19. Background zones
+│
+├── 20. Dashboard/table
+│
+└── 21. OpenAlgo registration
+=======================================
+                 AJInstitutional.entry.ts
+                          │
+                          ▼
+                OpenAlgoAdapter.ts
+                          │
+                          ▼
+                   RuntimeEngine
+                          │
+          ┌───────────────┴────────────────┐
+          ▼                                ▼
+   AJRuntimeContext                 AJPayloadBuilder
+                                           │
+                                           ▼
+                                  AJDecisionEngine
+                                           │
+          ┌────────────┬────────────┬──────┴───────┐
+          ▼            ▼            ▼              ▼
+       Context         AI           SMC        Authority
+          │            │            │              │
+          └────────────┴────────────┴──────┬───────┘
+                                           ▼
+                                     StateMachine
+                                           │
+                                           ▼
+                                    ExecutionEngine
+                                           │
+                                           ▼
+                                   frozen trade plan
+                                           │
+                                           ▼
+                                       AJHost
+                                           │
+          ┌──────────────┬──────────────┬─┴─────────────┐
+          ▼              ▼              ▼               ▼
+       14 plots       BUY/SELL      Dashboard        Debug
+                         markers
+          │              │              │               │
+          └──────────────┴──────────────┴───────────────┘
+                                │
+                                ▼
+                         OpenAlgo Frontend
+						 
+=========================== ===================================
+
+┌────────────────────────────────────┐
+│           OPENALGO PLATFORM        │
+│                                    │
+│ feed / broker / symbol / history   │
+│ orders / account / market data     │
+└────────────────┬───────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────┐
+│            AJ ENGINE               │
+│                                    │
+│ Context                            │
+│ SMC                                │
+│ Score                              │
+│ AI                                 │
+│ Confidence                         │
+│ Authority                          │
+│ State Machine                      │
+│ Execution plan                     │
+│ Options                            │
+└────────────────┬───────────────────┘
+                 │
+                 ▼
+┌────────────────────────────────────┐
+│        OPENALGO REACT UI           │
+│                                    │
+│ Chart                              │
+│ Indicators                         │
+│ Settings                           │
+│ Markers                            │
+│ Dashboard                          │
+│ Debug                              │
+│ Zones                              │
+└────────────────────────────────────┘
+
+==============================================================================
+I would freeze the architecture now and stop extending the current monolithic AJInstitutional.js. The current OpenAlgo implementation is useful as a deployment proof, but it is the wrong long-term architecture for reproducing the original AJIndicator.
+
+The original AJ code already demonstrates the architecture we want: RuntimeEngine → AJRuntimeContextBuilder → AJPayloadBuilder → AJDecisionEngine → AJRuntimeEngine/RuntimeResult, with the decision engine coordinating Context, AI, SMC, Authority, State Machine and Execution rather than putting everything into one indicator file.
+
+AJInstitutional — FROZEN OPENALGO FRONTEND ARCHITECTURE
+1. The fundamental decision
+
+We will build:
+
+A new native React/TypeScript AJInstitutional indicator inside OpenAlgo frontend, using the original AJIndicator engine architecture, while replacing only the original platform/feed/chart integration layer with OpenAlgo services.
+
+So the architecture becomes:
+
+                         OPENALGO PLATFORM
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+              Market Feed             History API
+                    │                     │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ OpenAlgo Data       │
+                    │ Adapter             │
+                    │                     │
+                    │ symbol             │
+                    │ timeframe           │
+                    │ OHLCV               │
+                    │ chartId             │
+                    │ settings            │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ Candle Normalizer   │
+                    │                     │
+                    │ OpenAlgoBar         │
+                    │       ↓             │
+                    │ Candle              │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+              ┌──────────────────────────────────┐
+              │        ORIGINAL AJ ENGINE        │
+              │                                  │
+              │ AJRuntimeContextBuilder           │
+              │          ↓                       │
+              │ AJPayloadBuilder                  │
+              │          ↓                       │
+              │ AJDecisionEngine                  │
+              │    ┌─────┼──────┐                │
+              │    ▼     ▼      ▼                │
+              │ Context AI     SMC                │
+              │    │     │      │                │
+              │    └─────┼──────┘                │
+              │          ▼                       │
+              │     Confidence                   │
+              │          ▼                       │
+              │     Authority                    │
+              │          ▼                       │
+              │     StateMachine                 │
+              │          ▼                       │
+              │     Execution                   │
+              │          ▼                       │
+              │     Trade Plan                  │
+              └──────────────┬───────────────────┘
+                             │
+                             ▼
+                    ┌─────────────────────┐
+                    │ AJRuntimeResult     │
+                    │                     │
+                    │ context             │
+                    │ decision            │
+                    │ execution           │
+                    │ lifecycle           │
+                    │ option              │
+                    │ intelligence        │
+                    │ debug               │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+       Chart Renderer      Dashboard       Debug Panel
+              │                │                │
+       ┌──────┼──────┐         │                │
+       ▼      ▼      ▼         ▼                ▼
+      Plots  Zones Markers   Runtime UI     Diagnostics
+
+That is the architecture I would freeze.
+
+2. What changes between Original AJ and OpenAlgo
+
+This is the most important boundary.
+
+KEEP ORIGINAL
+
+The following remain AJ-owned:
+
+Context logic
+Technical calculations
+Trend
+Momentum
+EMA logic
+VWAP
+ATR
+RSI
+ADX
+CVD/order flow
+Market structure
+BOS
+CHOCH
+FVG
+liquidity sweep
+order blocks
+premium/discount
+AI
+AI confidence
+AI scoring
+AI risk
+AI+SMC
+SMC
+authority
+confidence
+trade qualification
+trade score
+state machine
+SCAN
+ARMED
+CONFIRMED
+EXECUTED
+MANAGE
+CLOSED
+Entry
+SL
+TP1
+TP2
+TP3
+RR
+trailing stop
+break-even
+re-entry
+options
+option recommendation
+lifecycle
+execution permission
+trade-plan locking
+dashboard data model
+debug model
+signal model
+institutional zones
+
+The original AJ runtime already has this separation. In particular, the more recent AJ decision engine coordinates Context, AI, SMC, Authority, StateMachine and Execution rather than performing all of those calculations itself.
+
+3. What OpenAlgo owns
+
+OpenAlgo becomes responsible for:
+
+Feed
+History
+Symbol
+Exchange
+Timeframe
+Chart instance
+Chart lifecycle
+User settings persistence
+React rendering
+Chart drawing
+Frontend UI
+
+And potentially:
+
+Order submission
+Position/account state
+Broker execution
+
+But AJ should not care which broker supplies the candles.
+
+That is the key architectural separation.
+
+4. The new project structure
+
+I recommend creating this structure inside:
+
+C:\AJMultiAlgo\fyersopenalgo\frontend\src\
+
+as:
+
+src/
+│
+├── indicators/
+│   │
+│   └── AJInstitutional/
+│       │
+│       ├── index.ts
+│       ├── AJInstitutional.ts
+│       ├── AJTypes.ts
+│       ├── AJConstants.ts
+│       │
+│       ├── runtime/
+│       │   ├── AJRuntimeContext.ts
+│       │   ├── AJRuntimeContextBuilder.ts
+│       │   ├── AJPayloadBuilder.ts
+│       │   ├── AJRuntimeEngine.ts
+│       │   ├── RuntimeContext.ts
+│       │   └── RuntimeResult.ts
+│       │
+│       ├── engines/
+│       │   │
+│       │   ├── AJDecisionEngine.ts
+│       │   │
+│       │   ├── context/
+│       │   │   ├── AJContextEngine.ts
+│       │   │   ├── ContextEngine.ts
+│       │   │   └── ...
+│       │   │
+│       │   ├── ai/
+│       │   │   ├── AIEngine.ts
+│       │   │   └── ...
+│       │   │
+│       │   ├── smc/
+│       │   │   ├── SMCEngine.ts
+│       │   │   ├── BOS.ts
+│       │   │   ├── CHOCH.ts
+│       │   │   ├── FVG.ts
+│       │   │   ├── LiquiditySweep.ts
+│       │   │   ├── OrderBlock.ts
+│       │   │   └── ...
+│       │   │
+│       │   ├── confidence/
+│       │   │   ├── ConfidenceEngine.ts
+│       │   │   └── ...
+│       │   │
+│       │   ├── authority/
+│       │   │   ├── ExecutionAuthority.ts
+│       │   │   └── ...
+│       │   │
+│       │   ├── execution/
+│       │   │   ├── ExecutionEngine.ts
+│       │   │   ├── ExecutionTypes.ts
+│       │   │   └── ...
+│       │   │
+│       │   └── risk/
+│       │       ├── EntryRiskEngine.ts
+│       │       ├── EntryRiskTypes.ts
+│       │       └── EntryRiskResult.ts
+│       │
+│       ├── core/
+│       │   ├── EngineState.ts
+│       │   ├── StateMachine.ts
+│       │   └── TradePlanLock.ts
+│       │
+│       ├── options/
+│       │   ├── AJOptionsEngine.ts
+│       │   ├── OptionRecommendation.ts
+│       │   └── ...
+│       │
+│       ├── signals/
+│       │   ├── AJSignalBuilder.ts
+│       │   ├── Signal.ts
+│       │   └── ...
+│       │
+│       ├── debug/
+│       │   ├── AJDebugBuilder.ts
+│       │   ├── AJPipelineTrace.ts
+│       │   ├── AJDecisionSnapshot.ts
+│       │   └── AJLoggingGate.ts
+│       │
+│       ├── visualization/
+│       │   ├── AJChartPayload.ts
+│       │   ├── AJMarkerBuilder.ts
+│       │   ├── AJZoneBuilder.ts
+│       │   └── AJPlotBuilder.ts
+│       │
+│       ├── settings/
+│       │   ├── AJIndicatorSettingsStore.ts
+│       │   ├── AJSettingsBridge.ts
+│       │   └── AJSettings.ts
+│       │
+│       └── hosts/
+│           └── AJHost.ts
+│
+├── runtime/
+│   ├── OpenAlgoAdapter.ts
+│   ├── OpenAlgoCandleAdapter.ts
+│   └── OpenAlgoRuntimeStore.ts
+│
+├── chart/
+│   ├── AJChartController.ts
+│   ├── AJChartInstance.ts
+│   └── ...
+│
+├── dashboard/
+│   ├── AJDashboardAdapter.ts
+│   ├── AJDashboardPanel.tsx
+│   └── ...
+│
+└── trading/
+    ├── customIndicators.ts
+    ├── terminal.ts
+    ├── ...
+
+Important: this is not saying every file must be newly invented. Where the original source already contains a file, we port that implementation rather than rewrite the logic.
+
+5. Original → OpenAlgo mapping
+
+This is the actual migration matrix.
+
+Original AJ	New OpenAlgo location	Treatment
+AJTypes.ts	indicators/AJInstitutional/AJTypes.ts	Port
+AJConstants.ts	same	Port
+AJRuntimeContextBuilder.ts	AJInstitutional/runtime/	Port intact
+AJPayloadBuilder.ts	AJInstitutional/runtime/	Port intact
+AJDecisionEngine.ts	AJInstitutional/engines/	Port intact
+AJContextEngine.ts	engines/context/	Port
+AIEngine.ts	engines/ai/	Port
+SMCEngine.ts	engines/smc/	Port
+Confidence	engines/confidence/	Port
+Authority	engines/authority/	Port
+Execution	engines/execution/	Port
+Risk	engines/risk/	Port
+StateMachine.ts	core/	Port
+EngineState.ts	core/	Port
+AJOptionsEngine.ts	options/	Port
+AJSignalBuilder.ts	signals/	Port
+AJRuntimeEngine.ts	runtime/	Port
+RuntimeContext.ts	runtime/	Port/adapt
+RuntimeResult.ts	runtime/	Port/adapt
+AJHost.ts	hosts/	Port + OpenAlgo rendering bridge
+AJDebugBuilder.ts	debug/	Port
+AJPipelineTrace.ts	debug/	Port
+AJDecisionSnapshot.ts	debug/	Port
+AJDashboardAdapter.ts	dashboard/	Adapt UI bridge
+ChartEngine.tsx	OpenAlgo ChartPane/chart layer	Adapt
+ChartWindow.tsx	OpenAlgo chart container	Adapt
+OpenAlgoAdapter.ts	runtime/OpenAlgoAdapter.ts	Platform boundary only
+Fyers descriptor	OpenAlgo descriptor	Rebuild
+Original feed adapter	OpenAlgo feed	Replace
+Original broker adapter	OpenAlgo	Replace
+Original chart API	OpenAlgo chart API	Replace
+Original dashboard	OpenAlgo React dashboard	Rebuild/port
+Original debug UI	OpenAlgo React debug panel	Rebuild
+6. OpenAlgoAdapter.ts becomes extremely small
+
+This is where the current implementation went wrong.
+
+Your existing OpenAlgoAdapter.ts already states the correct architectural intent: OpenAlgo supplies OHLCV/chart/settings identity, while the AJ engines remain responsible for institutional calculations.
+
+The final adapter should essentially do:
+
+OpenAlgo Feed
+     │
+     ▼
+OpenAlgoAdapter
+     │
+     ├── chartId
+     ├── symbol
+     ├── timeframe
+     ├── OHLCV
+     ├── settings
+     ├── option metadata
+     └── chart state
+             │
+             ▼
+      RuntimeContext
+             │
+             ▼
+       AJ Runtime
+
+It should not contain:
+
+EMA calculations
+SMC calculations
+AI calculations
+confidence calculations
+trade scoring
+state-machine decisions
+risk calculations
+entry calculations
+TP calculations
+
+Those belong to AJ.
+
+7. The candle boundary
+
+This is one of the most important pieces.
+
+OpenAlgo may provide something like:
+
+interface OpenAlgoBar {
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+}
+
+Then:
+
+OpenAlgoBar
+      │
+      ▼
+AJ Candle
+
+The AJ engine should only see:
+
+interface Candle {
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+}
+
+This makes the engine completely broker/platform agnostic.
+
+The existing OpenAlgo adapter already defines an OpenAlgoBar with time/OHLCV and carries chart identity such as chartId, symbol and timeframe.
+
+8. RuntimeContext must be the single AJ input
+
+The new pipeline must be:
+
+OpenAlgo
+   ↓
+Candle[]
+   ↓
+RuntimeContext
+   ↓
+AJRuntimeContext
+   ↓
+AJPayload
+   ↓
+Decision
+
+Not:
+
+OpenAlgo
+ ↓
+AJIndicator.js
+ ↓
+random calculations
+ ↓
+dashboard
+
+RuntimeContext is the platform-independent snapshot.
+
+It contains:
+
+symbol
+timeframe
+timestamp
+
+open
+high
+low
+close
+volume
+
+historical candles
+current candle
+
+position state
+previous engine state
+trade plan
+settings
+
+The earlier source contract already defines the basic runtime identity and OHLCV fields, while the richer AJ runtime adds the institutional state.
+
+9. AJRuntimeContextBuilder is a CRITICAL component
+
+This file should be treated as one of the highest-priority files.
+
+Its job:
+
+RuntimeContext
+      │
+      ├── OHLCV
+      ├── history
+      ├── settings
+      ├── previous state
+      ├── trade state
+      └── chart metadata
+             │
+             ▼
+AJRuntimeContextBuilder
+             │
+             ▼
+AJRuntimeContext
+
+It calculates/assembles the AJ runtime intelligence:
+
+EMA
+VWAP
+ATR
+RSI
+ADX
+CVD
+volume
+trend
+momentum
+market structure
+liquidity
+FVG
+BOS
+CHOCH
+SMC
+AI
+regime
+confidence
+trade direction
+
+The existing AJ source explicitly persists institutional zone memory by symbol and constructs the runtime context before the payload/decision pipeline.
+
+10. AJPayloadBuilder
+
+This must remain a mapping layer, not a calculation layer.
+
+The source architecture explicitly describes AJPayloadBuilder as converting runtime context into the payload consumed by the AJ engine pipeline, while keeping decisions in their dedicated engines.
+
+So:
+
+AJRuntimeContext
+       │
+       ▼
+AJPayloadBuilder
+       │
+       ├── contextInputs
+       ├── scoreInputs
+       ├── stateInputs
+       ├── authorityInputs
+       ├── riskInputs
+       └── optionInputs
+
+Then:
+
+AJDecisionEngine
+
+consumes that payload.
+
+11. AJDecisionEngine becomes the orchestration center
+
+Frozen responsibility:
+
+AJDecisionEngine
+│
+├── Context
+│
+├── AI
+│
+├── SMC
+│
+├── Confidence
+│
+├── Authority
+│
+├── StateMachine
+│
+├── Risk
+│
+├── Execution
+│
+└── Options
+
+The newer AJ source already has the richer architecture with AJContextEngine, AIEngine, SMCEngine, ExecutionAuthority, StateMachine, and ExecutionEngine.
+
+The OpenAlgo implementation must consume that architecture rather than recreate it.
+
+12. Very important: fix the direction/confidence failure at the architecture level
+
+Your latest logs show:
+
+canonicalTradeDirection       0
+confidenceTradeDirection      0
+
+ctxLong                       false
+ctxShort                      false
+
+confidence                    0
+grade                         F
+
+recommendation                NO_TRADE
+tradeQualified                false
+
+tradeScore                    0
+tradeDirectionFinal           0
+executionAllowed              false
+
+This is not a chart-rendering problem.
+
+It is upstream.
+
+The architecture needs an explicit invariant:
+
+AJRuntimeContextBuilder
+        ↓
+tradeDirectionFinal
+        ↓
+AJPayloadBuilder
+        ↓
+Context
+        ↓
+AI / SMC
+        ↓
+Confidence
+        ↓
+Authority
+        ↓
+StateMachine
+        ↓
+Execution
+
+The value must never silently become:
+
+0
+
+because a later layer failed to receive the upstream result.
+
+The existing AJ source already documents a previous direction propagation problem where trend.direction and momentum.direction could remain stale at 0, causing confidence checks to fail.
+
+Therefore the new implementation should include runtime invariants such as:
+
+direction produced
+        ↓
+direction propagated
+        ↓
+direction consumed
+
+and diagnostics for every boundary.
+
+13. Trade plan locking must be preserved
+
+This is absolutely non-negotiable.
+
+When AJ enters:
+
+ARMED
+
+the plan becomes:
+
+entryPrice
+stopLoss
+tp1
+tp2
+tp3
+direction
+
+and is frozen.
+
+Then:
+
+ARMED
+  ↓
+CONFIRMED
+  ↓
+EXECUTED
+  ↓
+MANAGE
+
+must continue using that same plan.
+
+It must not recalculate Entry/SL/TP every React render or every live tick.
+
+The newer AJ artifact explicitly introduced trade-plan locking because continuously re-deriving levels from live price caused entries/levels and the advisory verdict to change every cycle instead of remaining locked through the lifecycle.
+
+14. RuntimeResult becomes the single output contract
+
+This is another major correction.
+
+The final output should be:
+
+RuntimeResult
+
+containing:
+
+runtime
+ajRuntime
+decision
+context
+decisionResult
+execution
+option
+runtimeIntelligence
+
+entryPrice
+stopLoss
+
+tp1
+tp2
+tp3
+
+tradeDirection
+tradeScore
+
+engineState
+
+tp1Hit
+tp2Hit
+tp3Hit
+slHit
+
+breakEvenActive
+trailingActive
+trailingStop
+
+reentryTriggered
+reentryPrice
+
+closeTrade
+exitReason
+
+markers
+lifecycleEvents
+zones
+dashboard
+debug
+
+Your current RuntimeResult.ts already defines the platform contract with runtime, decision results, execution, trade levels and lifecycle fields.
+
+That means the UI should never independently calculate these values.
+
+15. AJHost becomes the presentation boundary
+
+Frozen flow:
+
+RuntimeResult
+       │
+       ▼
+     AJHost
+       │
+       ├── markers
+       ├── plots
+       ├── zones
+       ├── dashboard
+       ├── debug
+       └── lifecycle events
+
+AJHost does not decide whether a trade is valid.
+
+It only exposes the already-decided result.
+
+16. Chart rendering architecture
+
+The chart should receive a dedicated immutable-ish payload:
+
+AJChartPayload
+│
+├── plots
+│   ├── entry
+│   ├── SL
+│   ├── TP1
+│   ├── TP2
+│   ├── TP3
+│   ├── equilibrium
+│   ├── EMA20
+│   ├── EMA50
+│   ├── EMA200
+│   ├── VWAP
+│   ├── bull FVG top
+│   ├── bull FVG bottom
+│   ├── bear FVG top
+│   └── bear FVG bottom
+│
+├── markers
+│
+├── lifecycleEvents
+│
+├── zones
+│
+├── dashboard
+│
+└── debug
+
+Your deployment script already verifies exactly these 14 plots:
+
+entryPrice
+stopLoss
+tp1
+tp2
+tp3
+equilibrium
+ema20
+ema50
+ema200
+vwap
+bullFVGTop
+bullFVGBottom
+bearFVGTop
+bearFVGBottom
+
+and verifies markers, lifecycle events, dashboard, debug and zones.
+
+So these become the frozen AJInstitutional visualization contract.
+
+17. BUY / SELL markers
+
+The marker pipeline should be:
+
+AJDecisionEngine
+       ↓
+AJSignalBuilder
+       ↓
+AJSignal
+       ↓
+AJHost
+       ↓
+OpenAlgo ChartPane
+
+For example:
+
+LONG
+ ↓
+BUY marker
+
+SHORT
+ ↓
+SELL marker
+
+But the marker must be generated from the actual AJ decision, not from a frontend heuristic.
+
+18. Lifecycle markers
+
+The UI should support:
+
+SCAN
+ARMED
+CONFIRMED
+EXECUTED
+MANAGE
+CLOSED
+
+and events such as:
+
+ENTRY
+TP1
+TP2
+TP3
+SL
+BREAKEVEN
+TRAIL
+REENTRY
+CLOSE
+
+These come from runtime state, not React state.
+
+19. Institutional zones
+
+Zones should have their own rendering payload:
+
+interface AJZone {
+    id: string;
+    type:
+        | "FVG"
+        | "ORDER_BLOCK"
+        | "LIQUIDITY"
+        | "PREMIUM"
+        | "DISCOUNT"
+        | "EQUILIBRIUM"
+        | "NEUTRAL";
+
+    startTime: number;
+    endTime?: number;
+
+    upper: number;
+    lower: number;
+
+    active: boolean;
+    direction: number;
+}
+
+Critically:
+
+Zone calculation remains AJ-owned.
+
+OpenAlgo merely draws it.
+
+The existing AJ implementation already has zone persistence/memory rather than treating zones as disposable one-frame graphics.
+
+20. Dashboard architecture
+
+The dashboard should no longer be a tiny table containing four or five values.
+
+Build:
+
+AJ Dashboard
+│
+├── MARKET
+│   ├── Symbol
+│   ├── Timeframe
+│   ├── Regime
+│   └── Market State
+│
+├── DIRECTION
+│   ├── Direction
+│   ├── Context
+│   ├── AI
+│   └── SMC
+│
+├── SCORE
+│   ├── Trade Score
+│   ├── Confidence
+│   ├── Grade
+│   └── Evidence
+│
+├── AUTHORITY
+│   ├── Execution Allowed
+│   ├── Trade Qualified
+│   └── Safety
+│
+├── TRADE
+│   ├── Entry
+│   ├── SL
+│   ├── TP1
+│   ├── TP2
+│   └── TP3
+│
+├── LIFECYCLE
+│   ├── State
+│   ├── Position
+│   ├── TP status
+│   ├── SL status
+│   └── Re-entry
+│
+└── OPTIONS
+    ├── Underlying
+    ├── Strike
+    ├── CE/PE
+    └── Recommendation
+21. Debug panel
+
+This is one of the major missing features in the current OpenAlgo implementation.
+
+Create:
+
+AJ Debug
+│
+├── Runtime
+│
+├── Context
+│
+├── Direction
+│
+├── Trend
+│
+├── Momentum
+│
+├── Structure
+│
+├── Liquidity
+│
+├── AI
+│
+├── SMC
+│
+├── Confidence
+│
+├── Authority
+│
+├── State
+│
+├── Risk
+│
+├── Execution
+│
+└── Output
+
+And every pipeline stage gets:
+
+executed
+passed
+value
+message
+details
+
+The AJ source already contains AJPipelineTrace, AJDecisionSnapshot, AJDebugBuilder and logging-gate concepts.
+
+22. Settings architecture
+
+Do not make the indicator descriptor itself responsible for settings logic.
+
+Use:
+
+OpenAlgo Indicator Settings UI
+             │
+             ▼
+      AJSettingsStore
+             │
+             ▼
+       AJSettingsBridge
+             │
+             ▼
+       RuntimeContext
+
+The current deployment artifact has the intended 36-setting AJ surface, including:
+
+useVWAP
+useCVD
+enableADXStrength
+enableAMDProtection
+enableCPRRejection
+biasSMA
+emaFast
+emaSlow
+slATR
+atrLength
+cprBuffer
+tradeEngineMode
+scoreScalperEnabled
+aiScalperEnabled
+smcProfile
+enableAdvancedCrypto
+cryptoBTCMode
+syncMode
+spxDetach
+spxReattach
+bnDetach
+bnReattach
+syncBars
+desyncBars
+showTradeLevels
+trailingSL
+reEntry
+showDashboard
+showTradeDebug
+showZones
+showRRPosition
+algoOptions
+greeksModel
+developerRuntimeOverride
+showConfidence
+showSignals
+
+The deployment verification explicitly expects all 36.
+
+So the new OpenAlgo UI should expose all 36 rather than the current reduced four-input surface.
+
+23. OpenAlgo indicator descriptor
+
+The descriptor should be deliberately thin.
+
+Something conceptually like:
+
+AJInstitutional
+│
+├── metadata
+├── 36 settings
+├── 14 plot definitions
+├── marker channel
+├── lifecycle channel
+├── dashboard channel
+├── debug channel
+└── zones channel
+
+It should NOT contain the AJ engine.
+
+This is the difference between:
+
+GOOD
+
+descriptor
+    ↓
+AJ runtime
+    ↓
+result
+    ↓
+chart
+
+and the current problematic:
+
+AJInstitutional.js
+    ↓
+1.5 MB everything
+    ↓
+chart
+24. Why the current AJInstitutional.js is slow
+
+Your observation is correct.
+
+A ~1.5 MB generated JavaScript bundle is not automatically bad, but here it is a symptom of the wrong architecture.
+
+The current artifact contains the AJ runtime modules, engines, adapters and UI-side integration bundled together. The saved artifact is approximately 1.5 MB.
+
+The new architecture should instead be:
+
+OpenAlgo application bundle
+        │
+        ├── AJ framework code
+        │
+        └── AJInstitutional module
+
+rather than repeatedly constructing/loading:
+
+AJInstitutional.js
+    └── entire AJ application
+25. More important than bundle size: execution frequency
+
+This is probably an even bigger source of your lag.
+
+We need:
+
+Historical load
+      ↓
+calculate initial AJ state once
+      ↓
+cache
+
+Then on every market update:
+
+same candle?
+    │
+    ├── YES → update only live state
+    │
+    └── NO → process new bar
+
+The engine should not run the complete historical pipeline on every React render.
+
+26. Frozen runtime lifecycle
+
+Use this exact model:
+
+OPENALGO FEED
+      │
+      ▼
+Bar Update
+      │
+      ▼
+Is New Bar?
+   ┌──┴──┐
+   │     │
+  NO    YES
+   │     │
+   │     ▼
+   │  Append Candle
+   │     │
+   │     ▼
+   │  AJ Runtime
+   │
+   ▼
+Update Current Runtime
+      │
+      ▼
+AJRuntimeResult
+      │
+      ├───────────┬─────────────┬─────────────┐
+      ▼           ▼             ▼             ▼
+    Chart      Dashboard      Debug        Lifecycle
+27. Per-chart state isolation
+
+This is essential for OpenAlgo.
+
+Never use one global AJ runtime for all charts.
+
+Use:
+
+AJRuntimeStore
+│
+├── chartId: NIFTY-5M
+│      └── RuntimeState
+│
+├── chartId: BANKNIFTY-5M
+│      └── RuntimeState
+│
+├── chartId: NIFTY-15M
+│      └── RuntimeState
+│
+└── chartId: NIFTY-OPTION
+       └── RuntimeState
+
+Every chart gets:
+
+chartId
+symbol
+timeframe
+settings
+candles
+runtime
+trade plan
+lifecycle
+zones
+dashboard
+debug
+
+This prevents one chart's:
+
+direction
+zones
+trade plan
+state
+option data
+
+from contaminating another chart.
+
+28. Options architecture
+
+Options remain inside AJ.
+
+OpenAlgo only provides:
+
+underlying
+symbol
+strike
+expiry
+option type
+
+Then:
+
+AJOptionsEngine
+       ↓
+OptionRecommendation
+       ↓
+AJRuntimeResult
+       ↓
+Dashboard
+
+For option charts, the existing AJ architecture already distinguishes the underlying index bias from the option's own premium execution levels.
+
+That behavior should be preserved.
+
+29. What ChartWindow.tsx should do
+
+ChartWindow.tsx should not execute AJ logic.
+
+It should:
+
+mount chart
+     ↓
+create chart instance
+     ↓
+subscribe feed
+     ↓
+create AJ instance
+     ↓
+pass runtime data
+     ↓
+receive AJChartPayload
+     ↓
+render
+
+In other words:
+
+ChartWindow
+     │
+     ├── OpenAlgo chart lifecycle
+     ├── feed subscription
+     ├── indicator lifecycle
+     └── rendering
+
+Not:
+
+ChartWindow
+     ├── SMC
+     ├── AI
+     ├── confidence
+     ├── risk
+     └── execution
+30. ChartPane.tsx
+
+ChartPane.tsx becomes the rendering consumer.
+
+It receives:
+
+AJChartPayload
+
+and maps:
+
+plots → series
+
+markers → chart markers
+
+zones → rectangles/areas
+
+lifecycleEvents → annotations
+
+dashboard → AJDashboard
+
+debug → AJDebugPanel
+
+It should never ask:
+
+"Should this be BUY?"
+
+It should receive:
+
+"AJ has already decided this is BUY."
+
+31. customIndicators.ts
+
+This becomes registration only.
+
+Something conceptually:
+
+customIndicators.ts
+       │
+       ▼
+AJInstitutional descriptor
+       │
+       ├── metadata
+       ├── inputs
+       ├── plots
+       └── runtime adapter
+
+No giant AJ engine implementation here.
+
+32. terminal.ts
+
+The terminal becomes the bridge:
+
+OpenAlgo terminal
+      │
+      ├── symbol
+      ├── timeframe
+      ├── candles
+      ├── live feed
+      ├── chartId
+      └── settings
+             │
+             ▼
+      OpenAlgoAdapter
+             │
+             ▼
+       AJInstitutional
+
+This is where the current OpenAlgo integration should remain platform-specific.
+
+33. Data ownership matrix
+
+This should be frozen as an architectural rule.
+
+Data	Owner
+Broker feed	OpenAlgo
+Historical candles	OpenAlgo
+Live candles	OpenAlgo
+Symbol	OpenAlgo
+Timeframe	OpenAlgo
+Chart instance	OpenAlgo
+Settings UI	OpenAlgo UI
+Candle normalization	AJ/OpenAlgo boundary
+EMA	AJ
+ATR	AJ
+RSI	AJ
+ADX	AJ
+VWAP	AJ
+CVD	AJ
+Market structure	AJ
+SMC	AJ
+AI	AJ
+Confidence	AJ
+Authority	AJ
+Trade score	AJ
+Entry	AJ
+SL	AJ
+TP1-3	AJ
+State machine	AJ
+Lifecycle	AJ
+Re-entry	AJ
+Trailing	AJ
+Option recommendation	AJ
+Zones	AJ
+Signals	AJ
+Runtime result	AJ
+Chart drawing	OpenAlgo
+Dashboard rendering	OpenAlgo React
+Debug rendering	OpenAlgo React
+Indicator registration	OpenAlgo
+Order execution API	OpenAlgo
+
+This is the core contract.
+
+34. What we will NOT do
+
+This is equally important.
+
+❌ No more monolithic AJInstitutional.js
+
+We should retire the generated giant file as the primary implementation.
+
+❌ No duplicate AJ calculations in OpenAlgo
+
+For example:
+
+AJ EMA
++
+OpenAlgo EMA
+
+should not both exist for the same AJ calculation.
+
+❌ No frontend heuristic BUY/SELL
+
+No:
+
+if (emaBull && price > vwap) BUY
+
+inside ChartPane.
+
+❌ No dashboard-generated trading decisions
+
+Dashboard is presentation.
+
+❌ No React state as the trading state machine
+
+React state renders the state.
+
+AJ owns the state.
+
+❌ No repeated full-history recalculation on every render
+
+This is a major performance requirement.
+
+❌ No broker-specific logic inside AJ
+
+Fyers/Upstox/etc. differences terminate at the data adapter.
+
+35. The final execution architecture
+
+I would freeze it as:
+
+                  OPENALGO
+                     │
+             ┌───────┴────────┐
+             │                │
+          HISTORY           LIVE FEED
+             │                │
+             └───────┬────────┘
+                     ▼
+              OpenAlgoAdapter
+                     │
+                     ▼
+             CandleNormalizer
+                     │
+                     ▼
+              RuntimeContext
+                     │
+                     ▼
+        AJRuntimeContextBuilder
+                     │
+                     ▼
+             AJPayloadBuilder
+                     │
+                     ▼
+             AJDecisionEngine
+                     │
+       ┌─────────────┼──────────────┐
+       ▼             ▼              ▼
+    Context          AI             SMC
+       │             │              │
+       └─────────────┼──────────────┘
+                     ▼
+                Confidence
+                     │
+                     ▼
+                 Authority
+                     │
+                     ▼
+               StateMachine
+                     │
+                     ▼
+                  Risk
+                     │
+                     ▼
+                Execution
+                     │
+                     ▼
+               Trade Plan
+                     │
+                     ▼
+               AJRuntimeResult
+                     │
+             ┌───────┼────────┐
+             ▼       ▼        ▼
+           AJHost  Signals  Debug
+             │
+     ┌───────┼───────────┐
+     ▼       ▼           ▼
+   Plots   Markers      Zones
+     │       │           │
+     └───────┼───────────┘
+             ▼
+        OpenAlgo Chart
+             │
+       ┌─────┴──────┐
+       ▼            ▼
+   Dashboard      Debug UI
+36. The implementation phases should also be frozen
+
+I would not build all of this simultaneously.
+
+Phase 1 — Source extraction
+
+Inventory every original AJ source:
+
+src/indicators/AJIndicator/**
+src/runtime/**
+src/types/**
+src/dashboard/**
+src/chart/**
+
+Create a dependency graph.
+
+No code modification yet.
+
+Phase 2 — AJ engine port
+
+Move:
+
+AJTypes
+AJConstants
+AJRuntimeContextBuilder
+AJPayloadBuilder
+AJDecisionEngine
+Context
+AI
+SMC
+Confidence
+Authority
+Risk
+Execution
+StateMachine
+Options
+Signal
+Debug
+
+into the new OpenAlgo AJ module.
+
+Goal:
+
+same input
+     ↓
+same AJ decision
+
+before worrying about chart rendering.
+
+Phase 3 — Runtime contract
+
+Implement:
+
+RuntimeContext
+AJRuntimeContext
+RuntimeResult
+AJRuntimeEngine
+
+Goal:
+
+OpenAlgo candles
+      ↓
+RuntimeResult
+
+with no chart dependency.
+
+Phase 4 — OpenAlgo adapter
+
+Implement:
+
+OpenAlgo feed
+      ↓
+OpenAlgoAdapter
+      ↓
+RuntimeContext
+
+This is the only major platform-specific boundary.
+
+Phase 5 — Descriptor
+
+Create:
+
+AJInstitutional descriptor
+
+with:
+
+36 settings
+14 plots
+markers
+zones
+dashboard
+debug
+lifecycle
+Phase 6 — Chart
+
+Connect:
+
+RuntimeResult
+      ↓
+AJHost
+      ↓
+AJChartPayload
+      ↓
+ChartPane
+Phase 7 — Dashboard
+
+Implement the complete AJ dashboard.
+
+Phase 8 — Debug
+
+Expose pipeline-level diagnostics.
+
+This is where the current:
+
+direction = 0
+confidence = 0
+score = 0
+
+problem becomes immediately diagnosable.
+
+Phase 9 — Performance
+
+Add:
+
+per-chart runtime cache
+new-bar detection
+incremental recalculation
+memoized derived values
+chart-instance isolation
+
+If necessary, move heavy AJ computation to a:
+
+Web Worker
+
+without changing the AJ engine contract.
+
+37. The acceptance test for the new architecture
+
+Before declaring AJInstitutional complete, the same chart must prove:
+
+Market data
+OpenAlgo NIFTY
+5m
+OHLCV
+
+↓
+
+AJ runtime
+EMA20
+EMA50
+EMA200
+VWAP
+ATR
+RSI
+ADX
+CVD
+SMC
+AI
+
+↓
+
+Decision
+direction
+trade score
+confidence
+grade
+authority
+
+↓
+
+Lifecycle
+SCAN
+ARMED
+CONFIRMED
+EXECUTED
+MANAGE
+CLOSED
+
+↓
+
+Trade plan
+Entry
+SL
+TP1
+TP2
+TP3
+
+↓
+
+Visualization
+BUY
+SELL
+Entry
+SL
+TP1
+TP2
+TP3
+14 plots
+FVG
+zones
+lifecycle
+
+↓
+
+UI
+Dashboard
+Debug
+Settings
+Options
+38. The most important validation: compare Original vs OpenAlgo
+
+We should create a dual-runtime comparison harness.
+
+For identical candle input:
+
+                 SAME CANDLES
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+    Original AJ             OpenAlgo AJ
+          │                     │
+          ▼                     ▼
+    RuntimeResult          RuntimeResult
+          │                     │
+          └──────────┬──────────┘
+                     ▼
+                Comparator
+
+Compare:
+
+tradeDirection
+tradeScore
+confidence
+regime
+context
+AI
+SMC
+authority
+state
+entry
+SL
+TP1
+TP2
+TP3
+re-entry
+trailing
+zones
+signals
+
+This is how we establish that the OpenAlgo version is genuinely the same AJ engine, rather than an approximation.
+
+39. One critical distinction
+
+There are really two systems after this rebuild:
+
+             AJ INSTITUTIONAL ENGINE
+                     │
+        platform-independent intelligence
+                     │
+                     ▼
+             RuntimeResult
+                     │
+          ┌──────────┴──────────┐
+          ▼                     ▼
+    OpenAlgo Host          Future Hosts
+          │
+          ▼
+      OpenAlgo UI
+
+That means later we could theoretically attach:
+
+OpenAlgo
+Fyers
+TradingView-like host
+Backtester
+Replay
+Paper trading
+AI research
+
+without rewriting AJ itself.
+
+That is the architectural value of doing this correctly.
+
+40. Final frozen decision
+We should build AJInstitutional v2 for OpenAlgo as:
+
+Original AJIndicator engine + OpenAlgo-native data/host layer + OpenAlgo React visualization layer.
+
+Not:
+
+OpenAlgo indicator + pieces of AJ logic copied into one JavaScript file.
+
+The distinction is enormous.
+
+Frozen boundaries
+OPENALGO
+    owns
+        ↓
+data / feed / history / chart / React / settings / execution APIs
+
+AJ
+    owns
+        ↓
+context / SMC / AI / confidence / authority /
+state / risk / execution / lifecycle / options /
+signals / zones / dashboard data / debug data
+
+HOST
+    owns
+        ↓
+translation between the two
+
+CHART
+    owns
+        ↓
+drawing only
+
+And AJRuntimeContextBuilder → AJPayloadBuilder → AJDecisionEngine → RuntimeResult → AJHost is the spine that everything else attaches to. The existing AJ source already contains the core of that separation; our job is to transplant it into OpenAlgo rather than recreate it.
+
+The immediate next engineering task should therefore NOT be another fix to AJInstitutional.js.
+
+It should be a full source-to-source dependency inventory of the original C:\AI-Institutional\src and the OpenAlgo frontend/src, followed by creating the new src/indicators/AJInstitutional/ module and porting the AJ engine in dependency order.
+
+That will also let us explicitly account for the ten things you identified as missing—especially AJRuntimeContextBuilder.ts, AJDecisionEngine.ts, AJPayloadBuilder.ts, AJHost.ts, AJSignalBuilder.ts, RuntimeContext.ts, RuntimeResult.ts, ChartWindow.tsx, OpenAlgoAdapter.ts, and the descriptor—instead of discovering another missing layer after each deployment.
+
+I can also 
+create an image showing this frozen AJInstitutional/OpenAlgo architecture as a single engineering block diagram.
+==========================================
+
+
+powershell -ExecutionPolicy Bypass -File .\DeployAJInstitutionaltoOpenAlgoIndicator.ps1 -SourceRoot "C:\AI-Institutional\src" -FrontendRoot "C:\AJMultiAlgo\fyersopenalgo\frontend" -Execute

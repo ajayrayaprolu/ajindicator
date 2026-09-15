@@ -1,0 +1,82 @@
+# ============================================
+# 0. SERVER + AUTH SANITY
+# ============================================
+curl.exe "https://localhost:3001/health"
+curl.exe "https://localhost:3001/api/fyers/status"
+# Expect: loggedIn: true, hasAccessToken: true
+
+# ============================================
+# 1. SYMBOL MASTER STATUS
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/options/status"
+# Expect: loaded:true, count > 0, sane nifty/sensex expiry dates
+
+# ============================================
+# 2. EQUITY HISTORY (existing symbols.js path â€” should already work)
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/history?symbol=RELIANCE&timeframe=5m"
+# Expect: ok:true, candles.length > 0
+
+# ============================================
+# 3. INDEX HISTORY (this is the one that just 401'd/failed â€” retest)
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/history?symbol=NIFTY&timeframe=5m"
+curl.exe "https://localhost:3001/api/fyers/history?symbol=NSE:NIFTY50-INDEX&timeframe=5m"
+curl.exe "https://localhost:3001/api/fyers/history?symbol=BSE:SENSEX-INDEX&timeframe=5m"
+# Expect: ok:true, candles.length > 0
+# If still failing, check server console for the [FYERS HISTORY] Raw response: log added earlier
+
+# ============================================
+# 4. OPTION SEARCH â€” NIFTY
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/options/search?underlying=NIFTY&expiry=2026-08-25&limit=10"
+curl.exe "https://localhost:3001/api/fyers/options/search?underlying=NIFTY&expiry=2026-08-25&type=CE&limit=10"
+curl.exe "https://localhost:3001/api/fyers/options/search?underlying=NIFTY&strike=25000&limit=10"
+
+# ============================================
+# 5. OPTION SEARCH â€” SENSEX
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/options/search?underlying=SENSEX&expiry=2026-08-27&limit=10"
+curl.exe "https://localhost:3001/api/fyers/options/search?underlying=SENSEX&expiry=2026-08-27&type=PE&limit=10"
+
+# ============================================
+# 6. AVAILABLE EXPIRIES
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/options/expiries?underlying=NIFTY"
+curl.exe "https://localhost:3001/api/fyers/options/expiries?underlying=SENSEX"
+
+# ============================================
+# 7. EXACT RESOLVE â€” pick real values from step 4/5 output
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/options/resolve?underlying=NIFTY&expiry=2026-08-25&strike=25000&type=CE"
+curl.exe "https://localhost:3001/api/fyers/options/resolve?underlying=SENSEX&expiry=2026-08-27&strike=82000&type=PE"
+# Expect: success:true, result.symbol = FYERS-native ticker like NSE:NIFTY26AUG25000CE
+
+# ============================================
+# 8. OPTION HISTORY â€” feed the resolved symbol straight in
+# ============================================
+curl.exe "https://localhost:3001/api/fyers/history?symbol=NSE:NIFTY26AUG25000CE&timeframe=5m"
+curl.exe "https://localhost:3001/api/fyers/history?symbol=BSE:SENSEX2682782000PE&timeframe=5m"
+# Expect: ok:true, candles.length > 0
+# (use whatever exact symbol step 7 actually returned, not this literal example)
+
+# ============================================
+# 9. LIVE WEBSOCKET â€” subscribe an option, watch the console
+# ============================================
+# There's no HTTP subscribe endpoint yet â€” this exercises it via the
+# feed adapter. Easiest check right now: confirm the WS layer is up.
+curl.exe "https://localhost:3001/health"
+# Then open the chart in the UI with an option symbol (step 10) and
+# watch the server console for "[FYERS WS] Subscribed:" with the
+# option ticker â€” that confirms live tick flow end-to-end.
+
+# ============================================
+# 10. FULL CHART TEST (frontend) â€” manual, in-browser
+# ============================================
+# a. Equity:  select datasource=Fyers, symbol=RELIANCE      -> chart loads
+# b. Index:   select datasource=Fyers, symbol=NIFTY          -> chart loads
+# c. Index:   select datasource=Fyers, symbol=SENSEX         -> chart loads
+# d. Option:  NOT YET WORKING â€” ChartWindow.tsx still guesses the
+#             option ticker via regex instead of calling
+#             /api/fyers/options/resolve. This is the one piece
+#             we flagged earlier and haven't touched.

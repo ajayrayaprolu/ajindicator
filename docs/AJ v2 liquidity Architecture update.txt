@@ -1,0 +1,1384 @@
+this transcript is very useful for AJ v2, because it exposes several liquidity concepts that are more specific than simply having a liquidityScore and liquiditySweep.
+
+I compared the transcript against the architecture/state we have already built. My conclusion is:
+
+We considered the broad liquidity/SMC idea, but we have NOT yet fully modeled the liquidity mechanics described in this video.
+
+The biggest missing pieces are internal vs external liquidity, liquidity targets / Draw on Liquidity, tapped vs untapped liquidity, sweep-vs-run classification, and explicit liquidity context such as equal highs/lows and previous session/day levels.
+
+That is actually good news: we do not need to redesign AJ v2. We need to strengthen the existing Liquidity → Structure → SMC → Intelligent Mode pipeline.
+
+1. Overall comparison
+| Video concept                | AJ v2 status                | Assessment                                                                      |
+| ---------------------------- | --------------------------- | ------------------------------------------------------------------------------- |
+| Liquidity as market context  | 🟢 Considered / implemented | We already have liquidity inputs                                                |
+| Buy-side liquidity           | 🟡 Partial                  | Generic liquidity exists, explicit BSL model not verified                       |
+| Sell-side liquidity          | 🟡 Partial                  | Same                                                                            |
+| Liquidity pools              | 🟡 Partial                  | Need explicit pool representation                                               |
+| Swing highs/lows             | 🟢                          | Structure engine already considers structure                                    |
+| Equal highs                  | 🟡                          | Not explicitly modeled                                                          |
+| Equal lows                   | 🟡                          | Not explicitly modeled                                                          |
+| Liquidity sweep              | 🟢                          | Already present                                                                 |
+| Sweep → reversal             | 🟡                          | CHOCH/structure can contribute, but sequence should be explicit                 |
+| Liquidity run                | 🔴 Missing explicit model   | Important addition                                                              |
+| Sweep vs run distinction     | 🔴 Missing                  | Should be added                                                                 |
+| Internal liquidity           | 🔴 Missing explicit model   | Important                                                                       |
+| External liquidity           | 🔴 Missing explicit model   | Very important                                                                  |
+| Range liquidity              | 🟡                          | Range/structure exists, but liquidity classification is missing                 |
+| Draw on Liquidity            | 🔴 Missing                  | **Major missing concept**                                                       |
+| Liquidity target             | 🔴 Missing                  | Needed for DOL                                                                  |
+| Tapped liquidity             | 🔴 Missing explicit state   | Important                                                                       |
+| Untapped liquidity           | 🔴 Missing explicit state   | Important                                                                       |
+| Liquidity exhaustion         | 🔴 Missing                  | Useful confidence/risk feature                                                  |
+| Premium / Discount           | 🔴 / 🟡                     | Not currently a first-class liquidity feature                                   |
+| Equilibrium 50%              | 🔴                          | Should be part of dealing-range context                                         |
+| Post-sweep displacement      | 🟡                          | Displacement exists conceptually, but not explicitly tied to sweep              |
+| Sweep depth                  | 🔴                          | Missing                                                                         |
+| Sweep rejection              | 🟡                          | Partially inferable from price action                                           |
+| Sweep direction              | 🟡                          | Inferable, but should be explicit                                               |
+| BOS confirmation after sweep | 🟢/🟡                       | BOS + CHOCH exist; sequencing needs strengthening                               |
+| Liquidity → OB               | 🟡                          | Both concepts exist, relationship needs strengthening                           |
+| Liquidity → FVG              | 🟡                          | Both exist, relationship needs strengthening                                    |
+| Liquidity → OB/FVG reaction  | 🟡                          | Repeated reactions discussed in architecture, but needs explicit evidence chain |
+| Multi-timeframe liquidity    | 🔴                          | Not established                                                                 |
+| Liquidity target hierarchy   | 🔴                          | Missing                                                                         |
+| Psychology/trap context      | 🟢                          | Retail trap / AI contextual logic exists                                        |
+| Risk protection              | 🟢                          | Strong existing architecture                                                    |
+| Hard stop-loss removal       | ❌ Do not implement          | Video advice should NOT become an AJ architecture rule                          |
+
+2. The most important thing in this video
+
+The video is not really teaching "liquidity score."
+
+It is teaching a liquidity state machine.
+
+That distinction is important.
+
+The logic is roughly:
+
+IDENTIFY LIQUIDITY
+       ↓
+CLASSIFY LIQUIDITY
+       ↓
+PRICE APPROACHES LIQUIDITY
+       ↓
+     ┌───────────────┐
+     │               │
+   SWEEP           RUN
+     │               │
+     ↓               ↓
+REJECTION        CONTINUATION
+     │               │
+     ↓               ↓
+CHOCH/BOS       BOS / DISPLACEMENT
+     │               │
+     ↓               ↓
+REVERSAL         CONTINUATION
+
+Our current AJ architecture has many of the boxes, but the relationships between them are not yet explicit enough.
+
+That's where I would improve AJ v2.
+
+3. Buy-side and sell-side liquidity
+
+The video gives a very clear classification:
+
+             BUY-SIDE LIQUIDITY
+                    ↑
+          Previous highs
+          Swing highs
+          Equal highs
+          Range highs
+          Resistance
+                    ↑
+                 PRICE
+                    ↓
+          Previous lows
+          Swing lows
+          Equal lows
+          Range lows
+          Support
+                    ↓
+             SELL-SIDE LIQUIDITY
+What we have
+
+We already have:
+
+liquidity scoring
+liquidity sweep
+market structure
+BOS
+CHOCH
+institutional context
+FVG
+order-block concepts
+retail trap context
+
+So the foundation is there.
+
+What I recommend
+
+Don't leave liquidity as just:
+
+liquidityScore
+liquiditySweep
+
+We should eventually have something closer to:
+
+liquidityContext: {
+    buySide: ...
+    sellSide: ...
+
+    nearestBuySide: ...
+    nearestSellSide: ...
+
+    strongestBuySide: ...
+    strongestSellSide: ...
+
+    internalLiquidity: ...
+    externalLiquidity: ...
+
+    activePool: ...
+    targetPool: ...
+
+    sweep: ...
+    draw: ...
+}
+
+That becomes much more intelligent.
+
+4. Equal highs / equal lows are important
+
+This is one of the clearest additions from the video.
+
+The transcript repeatedly uses:
+
+double top
+triple top
+double bottom
+triple bottom
+obvious swing
+range boundary
+
+These are effectively liquidity pool candidates.
+
+So:
+
+Equal High
+Equal High
+     ↓
+BUY-SIDE LIQUIDITY
+
+and:
+
+Equal Low
+Equal Low
+     ↓
+SELL-SIDE LIQUIDITY
+Current status
+
+I would mark this PARTIAL, not GREEN.
+
+Our structure engine can recognize swing structure, but we haven't established that the system explicitly says:
+
+EQH detected
+→ BSL candidate
+→ liquidity strength = X
+
+That distinction matters.
+
+5. Liquidity Sweep — we already have this
+
+This is one of the strongest alignments.
+
+The current AJ architecture already has:
+
+liquiditySweep
+
+and the intelligent mode receives it as an input.
+
+That's correct.
+
+But the video adds an important refinement.
+
+A sweep isn't simply:
+
+price crossed liquidity
+
+It is more like:
+
+price approaches liquidity
+        ↓
+takes liquidity
+        ↓
+rejects
+        ↓
+closes back inside / away
+        ↓
+possible reversal
+
+Therefore I recommend eventually representing:
+
+liquiditySweep: {
+    detected: boolean;
+
+    side: "BUY_SIDE" | "SELL_SIDE";
+
+    level: number;
+
+    penetration: number;
+    penetrationPct: number;
+
+    rejection: boolean;
+
+    closeBackInside: boolean;
+
+    displacementAfterSweep: boolean;
+
+    structureShiftAfterSweep: boolean;
+
+    strength: number;
+}
+
+This would make our current liquiditySweep far more useful.
+
+6. Sweep vs Run is a major missing concept
+
+This is probably the single most important idea from this video after Draw on Liquidity.
+
+The speaker makes the distinction:
+
+Sweep
+Liquidity taken
+      ↓
+Wick / penetration
+      ↓
+Rejection
+      ↓
+Price reverses
+Run
+Liquidity taken
+      ↓
+Candle closes through level
+      ↓
+Continuation
+      ↓
+BOS / displacement
+
+Currently we have liquidity sweep + BOS/CHOCH.
+
+But we don't have an explicit:
+
+LIQUIDITY_EVENT =
+    SWEEP
+    RUN
+    FAILED_SWEEP
+    UNKNOWN
+
+I strongly recommend adding it.
+
+For example:
+
+type LiquidityEventType =
+    | "NONE"
+    | "SWEEP"
+    | "RUN"
+    | "FAILED_SWEEP";
+
+Then:
+
+LiquidityEvent
+       ↓
+ ┌─────┴──────┐
+SWEEP         RUN
+ ↓             ↓
+reversal       continuation
+ ↓             ↓
+CHOCH          BOS
+ ↓             ↓
+OB/FVG         OB/FVG
+ ↓             ↓
+trade context
+
+This is much closer to the video's actual logic.
+
+7. Internal vs External Liquidity — currently missing
+
+This is a significant gap.
+
+The video explains:
+
+       EXTERNAL LIQUIDITY
+              ↑
+       ┌──────────────┐
+       │              │
+       │   INTERNAL   │
+       │   LIQUIDITY  │
+       │              │
+       └──────────────┘
+              ↓
+       EXTERNAL LIQUIDITY
+
+For example:
+
+Large range
+
+High ─────────────────── ← External BSL
+
+
+       small range
+       ↑       ↓
+       internal liquidity
+
+
+Low ──────────────────── ← External SSL
+Why this matters for AJ
+
+Without this classification, the system knows:
+
+"There is liquidity."
+
+But it doesn't know:
+
+"This is internal liquidity and the likely target is external liquidity."
+
+That's a much more intelligent statement.
+
+Recommendation
+
+Add:
+
+liquidityClassification:
+    "INTERNAL"
+    | "EXTERNAL"
+
+and ideally:
+
+rangeLiquidity: {
+    rangeHigh: number;
+    rangeLow: number;
+
+    equilibrium: number;
+
+    internalPools: LiquidityPool[];
+    externalPools: LiquidityPool[];
+}
+8. Draw on Liquidity is probably the biggest missing architectural feature
+
+This is the most interesting part of the transcript.
+
+The speaker essentially says:
+
+Don't only ask where liquidity is.
+
+Ask:
+
+Which liquidity is price likely to seek next?
+
+That's a completely different question.
+
+For AJ:
+
+WHERE IS LIQUIDITY?
+        ↓
+WHICH LIQUIDITY IS ACTIVE?
+        ↓
+WHICH LIQUIDITY HAS ALREADY BEEN TAKEN?
+        ↓
+WHICH LIQUIDITY REMAINS?
+        ↓
+WHICH TARGET IS MOST LIKELY?
+        ↓
+DRAW ON LIQUIDITY
+
+This fits beautifully into our intelligent controller.
+
+9. Proposed Draw-on-Liquidity architecture
+
+I would add this concept inside the existing market-context layer, not as another trading engine.
+
+Something like:
+
+LiquidityEngine
+      │
+      ├── Buy-side pools
+      ├── Sell-side pools
+      ├── Internal pools
+      ├── External pools
+      ├── Sweeps
+      ├── Runs
+      ├── Tapped liquidity
+      └── Untapped liquidity
+              │
+              ▼
+      LiquidityTargetEngine
+              │
+              ├── Candidate targets
+              ├── Target strength
+              ├── Target distance
+              ├── Target freshness
+              ├── Target type
+              └── Target direction
+              │
+              ▼
+        DRAW ON LIQUIDITY
+              │
+              ▼
+       Intelligent Controller
+
+That would be a major upgrade.
+
+10. Tapped vs untapped liquidity
+
+Another very valuable point.
+
+The transcript says, essentially:
+
+LIQUIDITY POOL
+      ↓
+already swept?
+   /       \
+ YES       NO
+ ↓          ↓
+Tapped    Untapped
+ ↓          ↓
+weaker     potentially
+candidate  fresh target
+
+This is very useful computationally.
+
+For example:
+
+LiquidityPool {
+    level: number;
+    side: "BUY_SIDE" | "SELL_SIDE";
+
+    type: "SWING" | "EQH" | "EQL" | "RANGE";
+
+    internalExternal: "INTERNAL" | "EXTERNAL";
+
+    tapped: boolean;
+    sweepCount: number;
+
+    strength: number;
+}
+
+Then the AI can reason:
+
+External BSL
+Distance: 0.8 ATR
+Untapped: YES
+Strength: HIGH
+Structure alignment: YES
+
+→ Strong upside liquidity target
+
+That is considerably better than a single liquidity score.
+
+11. Premium / Discount
+
+The video also introduces:
+
+Range High
+──────────────
+ PREMIUM
+──────────────
+     50%
+──────────────
+ DISCOUNT
+──────────────
+Range Low
+
+This is not currently strong enough as a first-class AJ context feature.
+
+I recommend adding:
+
+dealingRange: {
+    high: number;
+    low: number;
+    equilibrium: number;
+
+    premium: boolean;
+    discount: boolean;
+
+    positionPct: number;
+}
+
+Then:
+
+Liquidity target
+        +
+Market structure
+        +
+Premium / Discount
+        +
+Sweep state
+        +
+BOS / CHOCH
+        ↓
+Directional liquidity draw
+
+This is much more powerful than making Premium/Discount itself a trade signal.
+
+12. The video actually gives us a very good sequencing model
+
+This section is especially valuable.
+
+For a bullish setup:
+
+SELL-SIDE LIQUIDITY
+        ↓
+liquidity sweep
+        ↓
+rejection
+        ↓
+displacement
+        ↓
+CHOCH / BOS
+        ↓
+FVG / OB
+        ↓
+target = BUY-SIDE LIQUIDITY
+
+Bearish:
+
+BUY-SIDE LIQUIDITY
+        ↓
+liquidity sweep
+        ↓
+rejection
+        ↓
+displacement
+        ↓
+CHOCH / BOS
+        ↓
+FVG / OB
+        ↓
+target = SELL-SIDE LIQUIDITY
+
+This is exactly the kind of relationship AJ v2 should learn.
+
+Not:
+
+OB = trade
+FVG = trade
+BOS = trade
+Liquidity = trade
+
+Instead:
+
+LIQUIDITY EVENT
+       ↓
+STRUCTURE RESPONSE
+       ↓
+INSTITUTIONAL EVIDENCE
+       ↓
+MOMENTUM / VOLUME
+       ↓
+RISK
+       ↓
+CONFIDENCE
+
+That is consistent with our original architecture philosophy.
+
+13. Liquidity + OB + FVG relationship
+
+The video itself ends by saying the next lesson will combine:
+
+Liquidity
++
+FVG
++
+Order Block
+
+Our architecture already has these concepts.
+
+But the important thing is how we combine them.
+
+I recommend:
+
+Liquidity Sweep
+      ↓
+Displacement
+      ↓
+FVG created
+      ↓
+Order Block identified
+      ↓
+Price retests OB/FVG
+      ↓
+Structure confirms
+      ↓
+Confidence modifier
+
+Rather than:
+
+OB detected
++
+FVG detected
++
+Liquidity detected
+=
+mandatory trade
+
+That's important because we explicitly don't want an over-constrained SMC engine.
+
+14. What I would NOT copy from the video
+
+There are a couple of places where I would not translate the speaker's advice directly into AJ.
+
+❌ Don't implement "don't use stop-loss"
+
+The speaker discusses manually managing a mental stop-loss for index options.
+
+AJ should not remove hard risk protection because of that.
+
+Our architecture should retain:
+
+Entry
+SL
+Risk
+Maximum loss
+Execution protection
+Position sizing
+Emergency exit
+
+A liquidity sweep can cause a stop hunt, but the answer is better stop/risk modeling, not removing risk controls.
+
+❌ Don't hardcode "institutions want 200–500 points"
+
+That's instrument/context dependent.
+
+Instead:
+
+Expected movement
+      ↓
+ATR
+      +
+volatility
+      +
+liquidity distance
+      +
+structure
+      +
+historical movement
+
+Then estimate:
+
+Expected Move = X ATR
+
+rather than:
+
+NIFTY should move 200 points
+⚠️ Treat "institutions engineer liquidity" as a trading hypothesis
+
+The video uses the institutional-intent explanation extensively.
+
+That's useful as an SMC framework, but AJ shouldn't claim it has direct knowledge of institutional orders.
+
+Better internal language:
+
+"High-probability liquidity target"
+
+rather than:
+
+"Institutional players are definitely hunting stops."
+
+That keeps the engine quantitatively defensible.
+
+15. This gives us a much better Liquidity architecture
+
+I would upgrade the architecture to this:
+
+                     MARKET DATA
+                         │
+                         ▼
+                MARKET STRUCTURE
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+              ▼                     ▼
+       STRUCTURE CONTEXT       LIQUIDITY ENGINE
+                                    │
+                    ┌───────────────┼────────────────┐
+                    │               │                │
+                    ▼               ▼                ▼
+                BSL / SSL      INTERNAL /       RANGE LIQUIDITY
+                               EXTERNAL
+                    │
+                    ▼
+             LIQUIDITY POOLS
+                    │
+        ┌───────────┼────────────┐
+        │           │            │
+        ▼           ▼            ▼
+      SWEEP        RUN       TAPPED/UNTAPPED
+        │           │            │
+        └───────────┼────────────┘
+                    ▼
+             LIQUIDITY DRAW
+                    │
+                    ▼
+             TARGET LIQUIDITY
+                    │
+                    ▼
+          PREMIUM / DISCOUNT
+                    │
+                    ▼
+           BOS / CHOCH RESPONSE
+                    │
+                    ▼
+          DISPLACEMENT / MOMENTUM
+                    │
+                    ▼
+              OB / FVG
+                    │
+                    ▼
+             AI / SMC CONTEXT
+                    │
+                    ▼
+              RISK ENGINE
+                    │
+                    ▼
+          EXECUTION AUTHORITY
+
+This fits our existing architecture extremely well.
+
+16. How it connects to Intelligent Mode
+
+This is where I think the transcript becomes especially valuable for the work we're doing now.
+
+Our current intelligent controller already considers things such as:
+
+trend
+momentum
+structure
+liquidity
+institutional
+volatility
+BOS
+CHOCH
+liquidity sweep
+FVG retest
+retail trap
+market regime
+
+So instead of replacing that controller, we enrich its inputs.
+
+Current
+Liquidity
+   ↓
+Liquidity Score
+   ↓
+AI / SMC controller
+Target
+Liquidity Context
+      │
+      ├── BSL
+      ├── SSL
+      ├── EQH
+      ├── EQL
+      ├── Internal
+      ├── External
+      ├── Sweep
+      ├── Run
+      ├── Tapped
+      ├── Untapped
+      ├── Sweep depth
+      ├── Rejection
+      ├── Displacement
+      ├── Target
+      └── Draw direction
+             │
+             ▼
+      Intelligent Controller
+
+Then:
+
+NORMAL MARKET
+      ↓
+SCORE
+
+AMBIGUOUS / VOLATILE / TRAP
+      ↓
+AI
+
+STRONG LIQUIDITY + STRUCTURE +
+OB/FVG + SWEEP/CHOCH
+      ↓
+AI_SMC
+
+That is exactly aligned with the intelligent-mode objective we have been implementing.
+
+17. Priority order — what we should actually implement
+
+I would not implement everything from the transcript at once.
+
+The best sequence is:
+
+Phase L1 — Liquidity foundation 🔴
+
+Add explicit:
+
+BSL
+SSL
+EQH
+EQL
+Swing liquidity
+Range liquidity
+Phase L2 — Liquidity event classification 🔴
+
+Add:
+
+SWEEP
+RUN
+FAILED_SWEEP
+
+with:
+
+direction
+level
+depth
+rejection
+close-through
+displacement
+Phase L3 — Internal / External 🔴
+
+Add:
+
+INTERNAL
+EXTERNAL
+
+based on dealing/range context.
+
+Phase L4 — Tapped / Untapped 🔴
+
+Add:
+
+tapped
+untapped
+sweepCount
+freshness/exhaustion
+Phase L5 — Draw on Liquidity 🔴
+
+Add:
+
+candidate liquidity targets
+target ranking
+target direction
+target distance
+target strength
+Phase L6 — Premium / Discount 🔴
+
+Add:
+
+dealingRange
+equilibrium
+premium
+discount
+Phase L7 — Sequencing 🟡
+
+Connect:
+
+Sweep
+ ↓
+Rejection
+ ↓
+Displacement
+ ↓
+CHOCH/BOS
+ ↓
+OB/FVG
+ ↓
+Liquidity target
+Phase L8 — Intelligent Mode integration
+
+Only after the above exists:
+
+LiquidityContext
+        ↓
+AI / AI_SMC decision
+
+This prevents us from polluting the mode controller with dozens of raw conditions.
+
+18. Most important architectural principle
+
+I would make this a hard rule for AJ v2:
+
+Liquidity is evidence, not an automatic trade trigger.
+
+For example:
+
+EQH detected
+
+does not mean:
+
+SHORT
+
+Likewise:
+
+SSL swept
+
+doesn't automatically mean:
+
+LONG
+
+Instead:
+
+SSL swept
++
+rejection
++
+bullish displacement
++
+CHOCH
++
+bullish OB/FVG
++
+acceptable risk
++
+liquidity draw toward BSL
+
+creates stronger evidence.
+
+This is exactly how we avoid the problem we've seen where AI/AI+SMC can become so restrictive that it produces no trades.
+
+19. Final verdict
+🟢 We already got the foundation right
+
+We already have:
+
+Market structure
+BOS
+CHOCH
+Liquidity
+Liquidity sweep
+FVG
+Order Block architecture
+Institutional context
+Retail trap
+AI contextual logic
+AI+SMC
+Risk qualification
+Execution Authority
+Intelligent mode controller
+Advanced Crypto
+Strategy profiles
+
+So the architecture is absolutely compatible with this video.
+
+🟡 But the liquidity model is currently too coarse
+
+The biggest missing intelligence is:
+
+Liquidity Pool
+       ↓
+BSL / SSL
+       ↓
+Internal / External
+       ↓
+Tapped / Untapped
+       ↓
+Sweep / Run
+       ↓
+Rejection / Continuation
+       ↓
+Structure response
+       ↓
+Draw on Liquidity
+       ↓
+Target liquidity
+🔴 The two biggest additions I recommend
+
+If we only implement two things from this video first, I would choose:
+
+1. LiquidityContext
+
+and
+
+2. DrawOnLiquidity / LiquidityTargetEngine
+
+Those two additions will give the existing AI/SMC architecture considerably more contextual intelligence without turning SMC into a giant collection of mandatory gates.
+
+And importantly, this should be implemented before final production tuning, because otherwise we would tune thresholds around an incomplete liquidity model.
+
+Today 9:15 AM
+in conclusion what i wnat to do now  we already having PS C:\AI-Institutional> dir .\src\indicators\AJIndicator\engines\Liquidity\ 
+ 
+ 
+    Directory: C:\AI-Institutional\src\indicators\AJIndicator\engines\Liquidity 
+ 
+ 
+Mode                 LastWriteTime         Length Name 
+----                 -------------         ------ ---- 
+-a----        27-07-2026     20:50           1739 index.ts 
+-a----        03-08-2026     12:48           9490 LiquidityEngine.ts 
+-a----        30-07-2026     20:05           4160 LiquidityResult.ts 
+-a----        27-07-2026     20:48           4792 LiquidityTypes.ts 
+ 
+ 
+PS C:\AI-Institutional> liquidity engine and architecture so you need to take the best of this video analysis which is more usefull or best thing or mandatory things to have for our archicture, so i would like to include those mandatory things in our liquidty engine architeture so that we can get best trades or avoid traping from the inititutional physicolgy or traps. now just suggest what you are going to include which is missing in our liquidity architeture which is must be having and proceed our actual project , so now you provide the code update for liquidity without further explanation you need to say 2 liners hey as i analyzed the video transcption you are architure is is not having this and which is mandatory or best to avoid market traps so we need include in our architure and update this code, directly provide updated surgical fix thats it.. now proceed our original 7. Internal vs External Liquidity — currently missing " today this current engine code "/****************************************************************************************
+ * File:
+ * LiquidityEngine.ts
+ *
+ * Path:
+ * src/indicators/AJIndicator/engines/Liquidity/LiquidityEngine.ts
+ *
+ * Purpose:
+ * Detects institutional liquidity behavior from raw price action.
+ *
+ * Responsibilities
+ * • Liquidity Sweeps
+ * • Stop Hunts
+ * • Retail Traps
+ * • Equal Highs
+ * • Equal Lows
+ * • Liquidity Voids
+ * • Fake Breakouts
+ *
+ * This engine performs detection only.
+ * No confidence scoring or execution logic belongs here.
+ ****************************************************************************************/
+
+import type { Candle } from "../../../../types/Candle";
+import type { LiquidityResult } from "./LiquidityResult";
+
+export class LiquidityEngine {
+
+    private static readonly LOOKBACK = 20;
+    private static readonly EQUAL_LEVEL_TOLERANCE = 0.0015;
+
+    static evaluate(
+        candles: Candle[]
+    ): LiquidityResult {
+
+        if (candles.length < 5) {
+            return this.empty();
+        }
+
+        const current = candles.at(-1)!;
+        const previous = candles.at(-2)!;
+
+        const history =
+            candles.slice(
+                Math.max(
+                    0,
+                    candles.length - this.LOOKBACK
+                ),
+                candles.length - 1
+            );
+
+        //--------------------------------------------------
+        // HIGH / LOW
+        //--------------------------------------------------
+
+        const highest =
+            Math.max(
+                ...history.map(c => c.high)
+            );
+
+        const lowest =
+            Math.min(
+                ...history.map(c => c.low)
+            );
+
+		//--------------------------------------------------
+		// SWEEPS
+		//--------------------------------------------------
+		
+		const sweepHigh =
+			current.high > highest &&
+			current.close < highest;
+		
+		const sweepLow =
+			current.low < lowest &&
+			current.close > lowest;
+		
+        //--------------------------------------------------
+        // STOP HUNT
+        //--------------------------------------------------
+
+        const stopHuntHigh =
+            sweepHigh &&
+            current.close < current.open;
+
+        const stopHuntLow =
+            sweepLow &&
+            current.close > current.open;
+
+        const stopHuntDetected =
+            stopHuntHigh ||
+            stopHuntLow;
+
+        //--------------------------------------------------
+        // RETAIL TRAPS
+        //--------------------------------------------------
+
+        const retailBuyTrap =
+            sweepHigh &&
+            previous.close > previous.open &&
+            current.close < previous.low;
+
+        const retailSellTrap =
+            sweepLow &&
+            previous.close < previous.open &&
+            current.close > previous.high;
+
+        //--------------------------------------------------
+        // EQUAL HIGHS
+        //--------------------------------------------------
+
+        let equalHigh = false;
+
+        for (const candle of history) {
+            if (
+                Math.abs(
+                    candle.high - current.high
+                ) <=
+                current.high *
+                this.EQUAL_LEVEL_TOLERANCE
+            ) {
+                equalHigh = true;
+                break;
+            }
+        }
+
+        //--------------------------------------------------
+        // EQUAL LOWS
+        //--------------------------------------------------
+
+        let equalLow = false;
+
+        for (const candle of history) {
+            if (
+                Math.abs(
+                    candle.low - current.low
+                ) <=
+                current.low *
+                this.EQUAL_LEVEL_TOLERANCE
+            ) {
+                equalLow = true;
+                break;
+            }
+        }
+
+		//--------------------------------------------------
+		// INTERNAL / EXTERNAL LIQUIDITY
+		//--------------------------------------------------
+		
+		const externalBuySideLiquidity =
+			equalHigh ||
+			sweepHigh;
+		
+		const externalSellSideLiquidity =
+			equalLow ||
+			sweepLow;
+		
+		const internalBuySideLiquidity =
+			!externalBuySideLiquidity &&
+			current.high > previous.high &&
+			current.high < highest;
+		
+		const internalSellSideLiquidity =
+			!externalSellSideLiquidity &&
+			current.low < previous.low &&
+			current.low > lowest;
+		
+		//--------------------------------------------------
+		// BUY SIDE / SELL SIDE LIQUIDITY
+		//--------------------------------------------------
+		
+		const buySideLiquidity =
+			externalBuySideLiquidity ||
+			internalBuySideLiquidity;
+		
+		const sellSideLiquidity =
+			externalSellSideLiquidity ||
+			internalSellSideLiquidity;
+	
+        //--------------------------------------------------
+        // LIQUIDITY VOID
+        //--------------------------------------------------
+
+        const previousRange =
+            previous.high -
+            previous.low;
+
+        const currentRange =
+            current.high -
+            current.low;
+
+        const liquidityVoid =
+            currentRange >
+            previousRange * 2.0;
+
+        //--------------------------------------------------
+        // FAKE BREAKOUT
+        //--------------------------------------------------
+
+        const fakeBreakoutBull =
+            current.high > highest &&
+            current.close < highest;
+
+        const fakeBreakoutBear =
+            current.low < lowest &&
+            current.close > lowest;
+
+        //--------------------------------------------------
+        // STRENGTH
+        //--------------------------------------------------
+
+        let strength = 0;
+
+        if (sweepHigh || sweepLow)
+            strength += 20;
+
+        if (stopHuntDetected)
+            strength += 20;
+
+        if (retailBuyTrap || retailSellTrap)
+            strength += 20;
+
+        if (equalHigh || equalLow)
+            strength += 15;
+
+        if (liquidityVoid)
+            strength += 15;
+
+        if (fakeBreakoutBull || fakeBreakoutBear)
+            strength += 10;
+
+        strength =
+            Math.min(
+                strength,
+                100
+            );
+
+        //--------------------------------------------------
+        // MARKET BIAS
+        //--------------------------------------------------
+
+        let marketBias: -1 | 0 | 1 = 0;
+
+        if (
+            retailSellTrap ||
+            sweepLow
+        ) {
+            marketBias = 1;
+        }
+
+        if (
+            retailBuyTrap ||
+            sweepHigh
+        ) {
+            marketBias = -1;
+        }
+
+        //--------------------------------------------------
+        // RETURN
+        //--------------------------------------------------
+
+        return {
+
+            sweepHigh,
+            sweepLow,
+            stopHuntDetected,
+            stopHuntHigh,
+            stopHuntLow,
+            retailBuyTrap,
+            retailSellTrap,
+            equalHigh,
+            equalLow,
+            liquidityVoid,
+            fakeBreakoutBull,
+            fakeBreakoutBear,
+			marketBias,
+			
+			//--------------------------------------------------
+			// INTERNAL / EXTERNAL LIQUIDITY
+			//--------------------------------------------------
+			
+			externalBuySideLiquidity,
+			
+			externalSellSideLiquidity,
+			
+			internalBuySideLiquidity,
+			
+			internalSellSideLiquidity,
+			
+			//--------------------------------------------------
+			// BUY / SELL SIDE LIQUIDITY
+			//--------------------------------------------------
+			
+			buySideLiquidity,
+			
+			sellSideLiquidity,
+			
+			liquidityState: "NEUTRAL",
+			activeSignal: "NONE",
+			liquidityScore: strength,
+			reactionStrength: strength,
+			sweepDistance: 0,
+			mitigationProbability: 0,
+			strength,
+            confidence: strength
+        };
+    }
+
+    //--------------------------------------------------
+    // EMPTY
+    //--------------------------------------------------
+
+    private static empty(): LiquidityResult {
+
+        return {
+
+            sweepHigh: false,
+            sweepLow: false,
+            stopHuntDetected: false,
+            stopHuntHigh: false,
+            stopHuntLow: false,
+            retailBuyTrap: false,
+            retailSellTrap: false,
+            equalHigh: false,
+            equalLow: false,
+            liquidityVoid: false,
+            fakeBreakoutBull: false,
+            fakeBreakoutBear: false,
+			marketBias: 0,
+			
+			//--------------------------------------------------
+			// INTERNAL / EXTERNAL LIQUIDITY
+			//--------------------------------------------------
+			
+			externalBuySideLiquidity: false,
+			
+			externalSellSideLiquidity: false,
+			
+			internalBuySideLiquidity: false,
+			
+			internalSellSideLiquidity: false,
+			
+			//--------------------------------------------------
+			// BUY / SELL SIDE LIQUIDITY
+			//--------------------------------------------------
+			
+			buySideLiquidity: false,
+			
+			sellSideLiquidity: false,
+			
+			liquidityState: "NEUTRAL",
+
+			activeSignal: "NONE",
+			liquidityScore: 0,
+			reactionStrength: 0,
+			sweepDistance: 0,
+			mitigationProbability: 0,
+			strength: 0,
+            confidence: 0
+        };
+    }
+}
+
+As analyzed from the video transcript, our current engine has the internal/external concept but classifies it incorrectly; true external liquidity should be the outer dealing-range boundaries, while liquidity inside that range is internal.
+So we should correct this now without changing the existing LiquidityResult interface or downstream architecture. 🔧

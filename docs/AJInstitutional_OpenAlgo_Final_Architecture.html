@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AJInstitutional on OpenAlgo — Final Architecture & Implementation Blueprint</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#fff; --ink:#182230; --muted:#5d6b7b;
+    --line:#d9e0e8; --accent:#2457d6; --accent2:#0b7a68; --warn:#a15c00;
+    --code:#111827; --codeink:#e5edf7; --soft:#eef3ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,Segoe UI,Arial,sans-serif;line-height:1.62}
+  .wrap{max-width:1180px;margin:auto;padding:36px 28px 80px}
+  .hero{background:linear-gradient(135deg,#13213a,#2457d6);color:#fff;border-radius:18px;padding:42px 44px;margin-bottom:26px}
+  .hero h1{font-size:38px;line-height:1.15;margin:0 0 12px}
+  .hero p{font-size:18px;max-width:900px;margin:8px 0;color:#eaf0ff}
+  .badge{display:inline-block;padding:5px 10px;border-radius:999px;background:#ffffff20;border:1px solid #ffffff35;font-size:12px;margin-right:7px}
+  .toc,.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px 28px;margin:20px 0;box-shadow:0 2px 8px #10204008}
+  .toc a{color:var(--accent);text-decoration:none}
+  .toc ol{columns:2;column-gap:45px}
+  h2{font-size:28px;margin-top:48px;border-bottom:2px solid var(--line);padding-bottom:8px}
+  h3{font-size:21px;margin-top:30px}
+  h4{font-size:17px;margin-top:22px}
+  .note,.decision,.warning,.success{padding:16px 18px;border-radius:10px;margin:16px 0;border-left:5px solid}
+  .note{background:#eef4ff;border-color:var(--accent)}
+  .decision{background:#eefaf7;border-color:var(--accent2)}
+  .warning{background:#fff7e9;border-color:var(--warn)}
+  .success{background:#edf9f2;border-color:#2d8a54}
+  table{width:100%;border-collapse:collapse;margin:16px 0;background:#fff}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:#f0f3f8}
+  code{font-family:Consolas,Monaco,monospace;background:#edf0f5;padding:2px 5px;border-radius:4px}
+  pre{background:var(--code);color:var(--codeink);padding:18px;border-radius:10px;overflow:auto;line-height:1.5;font-size:13px}
+  pre code{background:none;padding:0;color:inherit}
+  .diagram{background:#fbfcfe;border:1px solid var(--line);border-radius:12px;padding:20px;overflow:auto}
+  .diagram pre{background:#fff;color:#1b2735;border:0;margin:0}
+  .small{font-size:13px;color:var(--muted)}
+  .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .kpi div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}
+  .kpi strong{display:block;font-size:22px;color:var(--accent)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .pill{display:inline-block;background:var(--soft);color:#244da8;padding:3px 8px;border-radius:6px;margin:2px;font-size:12px}
+  .footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+  @media(max-width:800px){.toc ol{columns:1}.two,.three,.kpi{grid-template-columns:1fr}.hero{padding:30px 24px}.hero h1{font-size:30px}}
+  @media print{body{background:#fff}.wrap{max-width:none}.card,.toc{box-shadow:none;break-inside:avoid}.hero{print-color-adjust:exact}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section class="hero">
+  <div>
+    <span class="badge">Architecture Decision Record</span>
+    <span class="badge">AJInstitutional</span>
+    <span class="badge">OpenAlgo</span>
+    <span class="badge">Multi-instance / Multi-broker</span>
+  </div>
+  <h1>AJInstitutional on OpenAlgo<br>Final Architecture & Implementation Blueprint</h1>
+  <p>Reusable, broker-independent indicator architecture for deploying the same AJInstitutional capability across multiple OpenAlgo instances while retaining OpenAlgo's charting, market-data and broker integration model.</p>
+  <p class="small" style="color:#d9e5ff">Prepared as the consolidated architecture document from the design discussion, including the recommended target architecture, migration strategy, performance model, package boundaries, registration strategy and acceptance criteria.</p>
+</section>
+
+<section class="toc">
+<h2 style="margin-top:0;border:0">Table of contents</h2>
+<ol>
+<li><a href="#executive">Executive architecture decision</a></li>
+<li><a href="#objectives">Objectives and non-goals</a></li>
+<li><a href="#current">Current-state assessment</a></li>
+<li><a href="#constraints">Architecture constraints</a></li>
+<li><a href="#target">Target architecture</a></li>
+<li><a href="#layers">Layer responsibilities</a></li>
+<li><a href="#packages">Recommended package structure</a></li>
+<li><a href="#contracts">Canonical data contracts</a></li>
+<li><a href="#orchestrator">AJ Indicator Orchestrator</a></li>
+<li><a href="#registration">Registration and OpenAlgo integration</a></li>
+<li><a href="#lifecycle">Calculation lifecycle</a></li>
+<li><a href="#performance">Performance and UI responsiveness</a></li>
+<li><a href="#visualization">Visualization and dashboard strategy</a></li>
+<li><a href="#brokers">Multi-broker / multi-instance model</a></li>
+<li><a href="#deployment">Deployment and versioning</a></li>
+<li><a href="#migration">Migration plan from the current code</a></li>
+<li><a href="#selection">How to select only required AJ source files</a></li>
+<li><a href="#testing">Testing and acceptance criteria</a></li>
+<li><a href="#security">Security and operational boundaries</a></li>
+<li><a href="#failure">Failure modes and safeguards</a></li>
+<li><a href="#roadmap">Implementation roadmap</a></li>
+<li><a href="#decisions">Final architecture decisions</a></li>
+<li><a href="#references">References</a></li>
+</ol>
+</section>
+
+<section id="executive" class="card">
+<h2>1. Executive architecture decision</h2>
+<p>The recommended architecture is to <strong>separate AJInstitutional business logic from OpenAlgo integration and from OpenAlgo UI rendering</strong>. AJInstitutional becomes a reusable package that consumes a canonical candle/runtime contract and produces a canonical indicator-result contract. A single generic OpenAlgo adapter/orchestrator then connects that package to any OpenAlgo instance.</p>
+
+<div class="decision">
+<strong>Core decision:</strong> Do not copy the original AJMultiAlgo application into every OpenAlgo instance. Do not create a new 30–40 KB monolithic registration file for every indicator. Instead, build one reusable AJ platform consisting of:
+<ul>
+<li><strong>AJInstitutional Core</strong> — broker- and UI-independent calculation engine.</li>
+<li><strong>AJ OpenAlgo Adapter</strong> — translates OpenAlgo chart data into AJ contracts and AJ results into OpenAlgo chart primitives.</li>
+<li><strong>AJ Indicator Orchestrator</strong> — one generic lifecycle/registration/cache layer shared by all AJ indicators.</li>
+<li><strong>AJ UI package</strong> — dashboard, debug, advisory and zone-inspection components that consume engine state.</li>
+<li><strong>Thin indicator manifests/factories</strong> — metadata and factory definitions, not business logic.</li>
+</ul>
+</div>
+
+<div class="kpi">
+<div><strong>1</strong>generic OpenAlgo integration/orchestration layer</div>
+<div><strong>N</strong>AJ indicator packages can be installed through the same mechanism</div>
+<div><strong>1</strong>AJ core version can serve Fyers, IndStocks and other OpenAlgo instances</div>
+</div>
+
+<p>OpenAlgo is currently structured as a self-hosted Flask + React platform with broker plugins, while the OpenAlgo Charts project uses a descriptor/registry-oriented chart architecture. This makes a thin adapter + descriptor approach a natural fit rather than embedding AJ logic into the chart core. <a href="https://github.com/marketcalls/openalgo">OpenAlgo repository</a> and <a href="https://github.com/marketcalls/openalgo-charts">OpenAlgo Charts</a>.</p>
+</section>
+
+<section id="objectives" class="card">
+<h2>2. Objectives and non-goals</h2>
+<h3>2.1 Objectives</h3>
+<ul>
+<li>Run the same AJInstitutional indicator on every OpenAlgo instance.</li>
+<li>Allow Fyers, IndStocks, AliceBlue and future brokers to use the same AJ source package.</li>
+<li>Use OpenAlgo as the broker/data boundary rather than maintaining broker API logic inside AJInstitutional.</li>
+<li>Use OpenAlgo's own chart frontend as the visualization surface.</li>
+<li>Preserve AJ plots, markers, zones, dashboard information, debug information and advisory output where practical.</li>
+<li>Remove unnecessary duplication of the original AJMultiAlgo application.</li>
+<li>Make adding another indicator a package/manifest operation instead of rewriting an OpenAlgo integration.</li>
+<li>Improve responsiveness by moving expensive calculation away from the chart's synchronous UI path.</li>
+<li>Make indicator output deterministic and testable independently of broker.</li>
+</ul>
+<h3>2.2 Non-goals</h3>
+<ul>
+<li>Do not port the complete AJMultiAlgo frontend/backend.</li>
+<li>Do not maintain a second chart engine such as a separate TradingView/lightweight-charts rendering stack for the OpenAlgo implementation.</li>
+<li>Do not embed broker credentials, broker APIs or broker-specific WebSocket logic in AJInstitutional Core.</li>
+<li>Do not make the AJ engine depend on React, DOM, canvas or OpenAlgo chart objects.</li>
+<li>Do not force a single OpenAlgo installation to become a multi-broker router.</li>
+</ul>
+</section>
+
+<section id="current" class="card">
+<h2>3. Current-state assessment</h2>
+<p>The current migration uses an OpenAlgo frontend with an AJInstitutional subtree containing the migrated AJ runtime, core modules, UI, dashboard, debug, zones, services and a large <code>register.ts</code> integration adapter.</p>
+
+<h3>3.1 What the current registration layer is doing</h3>
+<p>The current registration approach is conceptually valid because OpenAlgo needs a descriptor/registration boundary. However, the registration file should be treated as an <strong>adapter boundary</strong>, not as the home of the indicator's business logic.</p>
+<p>The current pattern performs historical calculations by iterating through bars, building runtime contexts and executing the AJ pipeline. The important architectural issue is that the chart calculation path is synchronous and repeatedly constructs growing candle prefixes. For a dataset of <em>n</em> bars, repeatedly executing <code>slice(0, index + 1)</code> alone creates O(n²) array-copy work before considering the indicator engine itself.</p>
+
+<div class="warning">
+<strong>Important:</strong> Splitting a large <code>register.ts</code> into smaller files will improve maintainability, but it will not by itself solve chart lag. The calculation model must also become incremental and preferably run in a Web Worker for expensive historical/replay processing.
+</div>
+
+<h3>3.2 Current architectural duplication to avoid</h3>
+<table>
+<tr><th>Current concern</th><th>Target treatment</th></tr>
+<tr><td>Original broker integrations</td><td>Exclude from AJ Core. OpenAlgo is the broker/data boundary.</td></tr>
+<tr><td>Original chart engine / chart components</td><td>Exclude unless a specific non-rendering domain calculation is required.</td></tr>
+<tr><td>Original application shell, routes and pages</td><td>Exclude. OpenAlgo owns application lifecycle.</td></tr>
+<tr><td>AJ calculation logic</td><td>Retain in reusable AJ Core package.</td></tr>
+<tr><td>AJ zones/signals/decision logic</td><td>Retain where they are domain logic.</td></tr>
+<tr><td>AJ dashboard/debug/advisory concepts</td><td>Retain as UI components or state consumers, not as a second application shell.</td></tr>
+<tr><td>OpenAlgo registration</td><td>Retain as a thin platform adapter/bridge.</td></tr>
+</table>
+</section>
+
+<section id="constraints" class="card">
+<h2>4. Architecture constraints</h2>
+<ol>
+<li><strong>One OpenAlgo instance = one active broker deployment.</strong> The same AJ package must therefore be broker-neutral and reusable across instances.</li>
+<li><strong>OpenAlgo owns broker connectivity.</strong> The AJ indicator should consume normalized chart bars and context rather than call Fyers/IndStocks/AliceBlue APIs directly.</li>
+<li><strong>OpenAlgo Charts owns rendering.</strong> AJ should produce plots, markers and drawing descriptors rather than recreate the charting engine.</li>
+<li><strong>OpenAlgo custom indicators have a registration contract.</strong> Therefore registration cannot be eliminated; it must be centralized and made generic.</li>
+<li><strong>AJ calculation may be computationally expensive.</strong> Historical calculations must be incremental/cached and should be moved off the browser main thread when they can block interaction.</li>
+<li><strong>AJ output contains more than a single line.</strong> The architecture must support plots, markers, zones, tables, dashboard state, debug state and advisory information.</li>
+<li><strong>New broker instances must not require AJ source changes.</strong></li>
+</ol>
+</section>
+
+<section id="target" class="card">
+<h2>5. Target architecture</h2>
+
+<div class="diagram"><pre>
+                    ┌─────────────────────────────────────────┐
+                    │        SHARED AJ INDICATOR PLATFORM     │
+                    │                                         │
+                    │  @ajmulti/aj-institutional-core        │
+                    │  @ajmulti/aj-openalgo                  │
+                    │  @ajmulti/aj-ui                        │
+                    │  AJ Indicator Catalog / Manifests      │
+                    └───────────────────┬─────────────────────┘
+                                        │
+                           AJ Indicator Orchestrator
+                                        │
+                         ┌──────────────┴──────────────┐
+                         │                             │
+                  OpenAlgo Adapter              AJ State / Cache
+                         │                             │
+              ┌──────────┴──────────┐                  │
+              │                     │                  │
+       OpenAlgo Instance A   OpenAlgo Instance B   ... │
+           Fyers                IndStocks              │
+              │                     │                  │
+        Broker/data API       Broker/data API          │
+              │                     │                  │
+              └──────────┬──────────┘                  │
+                         │                             │
+                   Canonical AJBar[]                   │
+                         │                             │
+                         ▼                             │
+              ┌─────────────────────────┐               │
+              │     AJInstitutional     │               │
+              │      Runtime Core       │               │
+              │                         │               │
+              │ RuntimeContext          │               │
+              │ RuntimeEngine           │               │
+              │ Context/Decision engines│               │
+              │ Signals / Lifecycle     │               │
+              │ Risk / Confidence       │               │
+              └────────────┬────────────┘               │
+                           │                            │
+                    AJIndicatorResult                   │
+                           │                            │
+             ┌─────────────┼──────────────┐             │
+             ▼             ▼              ▼             │
+           Plots         Markers         Zones           │
+             │             │              │             │
+             └─────────────┼──────────────┘             │
+                           ▼                            │
+                   OpenAlgo Chart                       │
+                           │                            │
+             ┌─────────────┼──────────────┐             │
+             ▼             ▼              ▼             │
+        Dashboard        Debug         Advisory / Zones │
+        React panel      panel             panel        │
+</pre></div>
+
+<h3>5.1 Architectural flow</h3>
+<ol>
+<li>OpenAlgo obtains historical and live market data through its configured broker integration.</li>
+<li>OpenAlgo chart data is passed to the generic AJ OpenAlgo Adapter.</li>
+<li>The adapter converts OpenAlgo bars into the canonical <code>AJBar</code> representation.</li>
+<li>The orchestrator owns an AJ engine instance for the chart/indicator context.</li>
+<li>The AJ Core executes the domain logic.</li>
+<li>The core emits an <code>AJIndicatorResult</code>.</li>
+<li>The result adapter converts the result into OpenAlgo plot/marker/draw/table descriptors.</li>
+<li>OpenAlgo Charts renders those primitives.</li>
+<li>Dashboard/debug/advisory components subscribe to the same AJ state/result stream and do not independently recalculate the indicator.</li>
+</ol>
+</section>
+
+<section id="layers" class="card">
+<h2>6. Layer responsibilities</h2>
+
+<table>
+<tr><th>Layer</th><th>Responsibility</th><th>Must not know about</th></tr>
+<tr><td><strong>AJ Core</strong></td><td>Indicator algorithms, runtime context, decision engine, confidence, lifecycle, signals, zones, risk calculations and canonical result generation.</td><td>React, DOM, OpenAlgo, broker names, WebSocket implementation.</td></tr>
+<tr><td><strong>AJ OpenAlgo Adapter</strong></td><td>OpenAlgo bar/context conversion, result conversion, descriptor creation, chart lifecycle hooks.</td><td>Broker-specific API details.</td></tr>
+<tr><td><strong>AJ Orchestrator</strong></td><td>Registration, engine lifecycle, cache, incremental update, worker communication, chart-instance isolation.</td><td>Specific indicator algorithm internals.</td></tr>
+<tr><td><strong>AJ UI</strong></td><td>Dashboard, debug, advisory, zone inspector and configuration components.</td><td>Broker API and direct chart calculation.</td></tr>
+<tr><td><strong>OpenAlgo</strong></td><td>Broker connection, market data, application lifecycle and chart rendering.</td><td>AJ internal algorithm details.</td></tr>
+</table>
+
+<div class="success">
+<strong>Dependency rule:</strong> dependencies should point inward toward AJ Core. AJ Core should have zero dependency on OpenAlgo.
+</div>
+</section>
+
+<section id="packages" class="card">
+<h2>7. Recommended package structure</h2>
+<p>The strongest long-term implementation is a shared package/workspace model rather than copying AJ source into every OpenAlgo repository.</p>
+
+<pre><code>C:\AJMultiAlgo\
+│
+├── packages\
+│   ├── aj-institutional-core\
+│   │   ├── src\
+│   │   │   ├── core\
+│   │   │   │   ├── context\
+│   │   │   │   ├── decision\
+│   │   │   │   ├── execution\
+│   │   │   │   ├── lifecycle\
+│   │   │   │   ├── confidence\
+│   │   │   │   ├── authority\
+│   │   │   │   └── risk\
+│   │   │   ├── engine\
+│   │   │   ├── indicators\
+│   │   │   ├── signals\
+│   │   │   ├── runtime\
+│   │   │   ├── zones\
+│   │   │   ├── types\
+│   │   │   └── config\
+│   │   └── package.json
+│   │
+│   ├── aj-openalgo\
+│   │   ├── src\
+│   │   │   ├── adapter\
+│   │   │   │   ├── AJBarAdapter.ts
+│   │   │   │   ├── AJContextAdapter.ts
+│   │   │   │   └── AJResultAdapter.ts
+│   │   │   ├── orchestration\
+│   │   │   │   ├── AJIndicatorOrchestrator.ts
+│   │   │   │   ├── AJIndicatorFactory.ts
+│   │   │   │   └── AJIndicatorRegistry.ts
+│   │   │   ├── worker\
+│   │   │   │   ├── AJIndicator.worker.ts
+│   │   │   │   └── AJWorkerProtocol.ts
+│   │   │   ├── registry\
+│   │   │   └── types\
+│   │   └── package.json
+│   │
+│   ├── aj-ui\
+│   │   ├── src\
+│   │   │   ├── dashboard\
+│   │   │   ├── debug\
+│   │   │   ├── advisory\
+│   │   │   ├── zones\
+│   │   │   └── shared\
+│   │   └── package.json
+│   │
+│   └── aj-indicators\
+│       └── AJInstitutional\
+│           ├── manifest.ts
+│           ├── module.ts
+│           └── settings.ts
+│
+├── instances\
+│   ├── fyersopenalgo\
+│   ├── indstockopenalgo\
+│   └── aliceblueopenalgo\
+│
+└── tools\
+    ├── install-aj-platform.ps1
+    └── verify-aj-installation.ps1
+</code></pre>
+
+<h3>7.1 Preferred dependency model</h3>
+<p>Each OpenAlgo instance should depend on the shared packages rather than containing copied AJ source.</p>
+<pre><code>{
+  "dependencies": {
+    "@ajmulti/aj-institutional-core": "workspace:*",
+    "@ajmulti/aj-openalgo": "workspace:*",
+    "@ajmulti/aj-ui": "workspace:*"
+  }
+}</code></pre>
+
+<p>If a single workspace cannot be used across the repositories, publish the packages to a private npm registry or consume versioned tarballs/Git packages. The architectural principle is unchanged: <strong>one source of truth for AJ Core</strong>.</p>
+</section>
+
+<section id="contracts" class="card">
+<h2>8. Canonical data contracts</h2>
+<p>The canonical contracts are the key to broker independence.</p>
+
+<h3>8.1 Canonical candle</h3>
+<pre><code>export interface AJBar {
+  time: number;          // UTC epoch seconds
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}</code></pre>
+
+<h3>8.2 Instrument context</h3>
+<pre><code>export interface AJInstrumentContext {
+  symbol: string;
+  exchange?: string;
+  timeframe: string;
+  timezone?: string;
+  session?: string;
+}</code></pre>
+
+<h3>8.3 Runtime context</h3>
+<pre><code>export interface AJRuntimeContext {
+  bars: readonly AJBar[];
+  current: AJBar;
+  previous?: AJBar;
+  index: number;
+  instrument: AJInstrumentContext;
+  state: AJState;
+  settings: AJSettings;
+}</code></pre>
+
+<h3>8.4 Canonical result</h3>
+<pre><code>export interface AJIndicatorResult {
+  time: number;
+
+  plots?: Record&lt;string, number | null&gt;;
+
+  markers?: AJMarker[];
+
+  zones?: AJZone[];
+
+  dashboard?: AJDashboardState;
+
+  debug?: AJDebugState;
+
+  advisory?: AJAdvisoryState;
+
+  decision?: AJDecisionState;
+
+  execution?: AJExecutionState;
+
+  tradeScore?: number;
+
+  confidence?: number;
+
+  lifecycle?: string;
+}</code></pre>
+
+<h3>8.5 Design principle</h3>
+<p>The core should never return OpenAlgo-specific objects such as <code>SeriesMarker</code> or chart renderer instances. Those belong to <code>AJResultAdapter</code>. This keeps the core testable and portable.</p>
+</section>
+
+<section id="orchestrator" class="card">
+<h2>9. AJ Indicator Orchestrator</h2>
+<p>The orchestrator is the central component that eliminates repeated custom integration work.</p>
+
+<h3>9.1 Responsibilities</h3>
+<ul>
+<li>Discover installed AJ indicator modules.</li>
+<li>Validate indicator manifests.</li>
+<li>Create one engine/runtime instance per chart/indicator context.</li>
+<li>Manage history calculation.</li>
+<li>Process incremental live updates.</li>
+<li>Cache results/state.</li>
+<li>Coordinate Web Worker execution when enabled.</li>
+<li>Convert results into chart-facing descriptors.</li>
+<li>Notify dashboard/debug/advisory subscribers.</li>
+<li>Destroy and clean up engine state when a chart is removed.</li>
+</ul>
+
+<h3>9.2 Generic interface</h3>
+<pre><code>export interface AJIndicatorModule {
+  manifest: AJIndicatorManifest;
+
+  createEngine(settings?: AJSettings): AJRuntimeEngine;
+
+  createAdapter(): AJOpenAlgoAdapter;
+
+  createUI?(): AJIndicatorUI;
+}
+
+export interface AJIndicatorManifest {
+  id: string;
+  version: string;
+  engine: string;
+  capabilities: string[];
+}</code></pre>
+
+<h3>9.3 Orchestrator API</h3>
+<pre><code>export interface AJIndicatorOrchestrator {
+  registerPackage(module: AJIndicatorModule): void;
+
+  initialize(
+    chartId: string,
+    instrument: AJInstrumentContext,
+    settings: AJSettings
+  ): AJIndicatorSession;
+
+  calculateHistory(
+    sessionId: string,
+    bars: readonly OpenAlgoBar[]
+  ): Promise&lt;AJIndicatorResult[]&gt;;
+
+  update(
+    sessionId: string,
+    bar: OpenAlgoBar
+  ): Promise&lt;AJIndicatorResult&gt;;
+
+  snapshot(sessionId: string): AJIndicatorSnapshot;
+
+  destroy(sessionId: string): void;
+}</code></pre>
+</section>
+
+<section id="registration" class="card">
+<h2>10. Registration and OpenAlgo integration</h2>
+<p>OpenAlgo Charts uses a descriptor/registry model. Its documentation explicitly describes indicators as registered descriptors and states that adding a custom indicator is a registration rather than a core-chart switch. This is directly compatible with the proposed architecture. <a href="https://github.com/marketcalls/openalgo-charts/blob/master/README.md">OpenAlgo Charts README</a>.</p>
+
+<h3>10.1 What replaces the current large register.ts</h3>
+<p>The recommended future registration path is a <strong>thin generic bridge</strong>. It may still be called a registration module because OpenAlgo requires registration, but it contains almost no business logic.</p>
+
+<pre><code>import {
+  registerAJPackages
+} from "@ajmulti/aj-openalgo";
+
+import {
+  AJInstitutionalModule
+} from "@ajmulti/aj-indicators";
+
+export default function register(api) {
+  registerAJPackages(api, [
+    AJInstitutionalModule
+  ]);
+}</code></pre>
+
+<p>The OpenAlgo bridge owns the registration contract. AJInstitutional owns its manifest and engine factory. A new indicator is added to the catalog; the bridge itself does not change.</p>
+
+<h3>10.2 Manifest example</h3>
+<pre><code>export const AJInstitutionalManifest = {
+  id: "AJInstitutional",
+  version: "1.0.0",
+  engine: "aj-institutional",
+  adapter: "openalgo",
+  capabilities: [
+    "overlay",
+    "markers",
+    "zones",
+    "table",
+    "dashboard",
+    "debug",
+    "advisory"
+  ]
+};</code></pre>
+
+<h3>10.3 Architectural rule</h3>
+<div class="decision">
+The registration boundary is a <strong>platform contract</strong>, not an indicator implementation. A registration file may remain because OpenAlgo requires it; what must disappear is the large amount of calculation, state construction and visualization mapping currently embedded in that file.
+</div>
+</section>
+
+<section id="lifecycle" class="card">
+<h2>11. Calculation lifecycle</h2>
+
+<h3>11.1 Initial history</h3>
+<pre><code>OpenAlgo history
+      ↓
+AJBarAdapter
+      ↓
+AJIndicatorOrchestrator
+      ↓
+RuntimeEngine.initialize()
+      ↓
+calculateHistory(history)
+      ↓
+cached AJIndicatorResult[]
+      ↓
+AJResultAdapter
+      ↓
+OpenAlgo Chart</code></pre>
+
+<h3>11.2 Live candle/tick update</h3>
+<pre><code>new/changed OpenAlgo bar
+        ↓
+AJBarAdapter
+        ↓
+engine.update(bar)
+        ↓
+incremental state transition
+        ↓
+one AJIndicatorResult
+        ↓
+chart series/marker/zone update</code></pre>
+
+<h3>11.3 Recommended engine contract</h3>
+<pre><code>engine.initialize(history);
+engine.calculateHistory(history);  // once
+engine.update(bar);                 // incremental
+engine.snapshot();                  // current state
+engine.reset();                     // symbol/timeframe/settings change</code></pre>
+
+<p>The goal is to avoid reconstructing the complete historical prefix for every bar and to avoid creating a fresh engine for each calculation step.</p>
+</section>
+
+<section id="performance" class="card">
+<h2>12. Performance and UI responsiveness</h2>
+
+<div class="warning">
+<strong>Performance priority:</strong> The largest likely cause of the reported mouse/crosshair/candle delay is not simply the size of the registration file. It is the synchronous calculation model, repeated prefix-array construction and potentially repeated full pipeline work on the chart thread.
+</div>
+
+<h3>12.1 Problems to remove</h3>
+<table>
+<tr><th>Anti-pattern</th><th>Replacement</th></tr>
+<tr><td><code>candles.slice(0, index + 1)</code> inside every historical iteration</td><td>Persistent history/state; pass index/window references or immutable shared history.</td></tr>
+<tr><td>New RuntimeEngine for each bar</td><td>One engine per indicator/chart session.</td></tr>
+<tr><td>Full recompute for every tick</td><td>Incremental <code>update(bar)</code>.</td></tr>
+<tr><td>Dashboard reruns calculation</td><td>Dashboard subscribes to result/state.</td></tr>
+<tr><td>Debug UI reruns calculation</td><td>Debug UI consumes emitted events/snapshots.</td></tr>
+<tr><td>Large synchronous historical run</td><td>Web Worker for heavy calculation.</td></tr>
+<tr><td>Full result arrays sent to chart on every tick</td><td>Send only changed result/delta where chart API permits.</td></tr>
+</table>
+
+<h3>12.2 Web Worker model</h3>
+<div class="diagram"><pre>
+Main UI thread
+    │
+    ├── OpenAlgo Chart
+    ├── Crosshair / mouse
+    ├── React dashboard
+    │
+    └── AJ Worker Client
+             │
+             │ postMessage()
+             ▼
+        AJ Indicator Worker
+             │
+             ├── RuntimeEngine
+             ├── historical calculation
+             ├── incremental update
+             └── state cache
+             │
+             │ postMessage(result/delta)
+             ▼
+        AJ Worker Client
+             │
+             ├── Chart result adapter
+             └── UI state store
+</pre></div>
+
+<h3>12.3 Performance acceptance targets</h3>
+<ul>
+<li>Initial historical calculation may take longer, but it must not freeze the main UI thread for the full duration.</li>
+<li>Live update processing should be incremental.</li>
+<li>Crosshair movement must remain responsive during AJ calculation.</li>
+<li>Chart rendering must not repeatedly receive complete historical datasets when only the last bar changed.</li>
+<li>Multiple charts must maintain isolated AJ sessions.</li>
+<li>Engine state must be explicitly destroyed when a chart is removed.</li>
+</ul>
+
+<h3>12.4 OpenAlgo chart compatibility</h3>
+<p>OpenAlgo Charts is designed around a canvas rendering pipeline, indexed data and live updates. Its architecture explicitly emphasizes cheap cursor/crosshair repainting and live candle updates. The AJ integration should therefore feed the chart with native series/marker/drawing primitives rather than introduce another DOM-heavy rendering layer. <a href="https://github.com/marketcalls/openalgo-charts/blob/master/ARCHITECTURE.md">OpenAlgo Charts architecture</a>.</p>
+</section>
+
+<section id="visualization" class="card">
+<h2>13. Visualization and dashboard strategy</h2>
+
+<h3>13.1 Rendering ownership</h3>
+<table>
+<tr><th>AJ output</th><th>Owner</th><th>Implementation</th></tr>
+<tr><td>Indicator plots</td><td>OpenAlgo Charts</td><td>Series/indicator descriptor</td></tr>
+<tr><td>Buy/sell/entry markers</td><td>OpenAlgo Charts</td><td>Marker descriptor</td></tr>
+<tr><td>Zones</td><td>OpenAlgo Charts / draw layer</td><td>Rectangle/band/zone primitives as supported</td></tr>
+<tr><td>Dashboard</td><td>AJ UI package</td><td>React panel subscribed to AJ state</td></tr>
+<tr><td>Debug</td><td>AJ UI package</td><td>Read-only event/state panel</td></tr>
+<tr><td>Advisory</td><td>AJ UI package</td><td>Derived presentation of latest AJ result</td></tr>
+<tr><td>Configuration</td><td>OpenAlgo/AJ UI</td><td>Settings object passed to engine</td></tr>
+</table>
+
+<h3>13.2 Important rule</h3>
+<p>The original AJ dashboard/debug/advisory components can be reused selectively, but they must become <strong>consumers of AJ state</strong>. They must not instantiate a second chart/data engine or independently calculate the indicator.</p>
+
+<h3>13.3 Why OpenAlgo should remain the chart engine</h3>
+<p>OpenAlgo Charts already supports custom indicators and a registry-oriented extension model. The architecture describes indicator descriptors, lifecycle ownership and live update behavior. Reusing it avoids duplicated interaction state, time scales, crosshair logic and chart rendering. <a href="https://github.com/marketcalls/openalgo-charts/blob/master/README.md">OpenAlgo Charts indicator documentation</a>.</p>
+</section>
+
+<section id="brokers" class="card">
+<h2>14. Multi-broker / multi-instance model</h2>
+
+<p>The target deployment model is:</p>
+
+<div class="diagram"><pre>
+                    Shared AJ packages
+                           │
+            ┌──────────────┼──────────────┐
+            │              │              │
+            ▼              ▼              ▼
+       Fyers OA       IndStocks OA    AliceBlue OA
+       instance        instance         instance
+            │              │              │
+        Fyers API      IndStocks API   AliceBlue API
+            │              │              │
+            └──────────────┬──────────────┘
+                           │
+                     normalized bars
+                           │
+                           ▼
+                 AJ OpenAlgo Adapter
+                           │
+                           ▼
+                    AJ Core Engine
+</pre></div>
+
+<h3>14.1 Broker independence</h3>
+<p>There should be no code such as:</p>
+<pre><code>if (broker === "fyers") { ... }
+else if (broker === "indstocks") { ... }</code></pre>
+
+<p>Instead:</p>
+<pre><code>OpenAlgoDataSource
+       ↓
+AJOpenAlgoAdapter
+       ↓
+AJCore</code></pre>
+
+<p>Broker-specific differences belong at the OpenAlgo boundary. The AJ engine receives the same canonical contract regardless of the broker instance.</p>
+
+<h3>14.2 Golden broker-independence test</h3>
+<p>Feed the same canonical candle sequence into the AJ Core from Fyers and IndStocks adapters. The AJ result must be identical apart from explicitly documented feed differences such as missing/late bars.</p>
+</section>
+
+<section id="deployment" class="card">
+<h2>15. Deployment and versioning</h2>
+
+<h3>15.1 Recommended deployment model</h3>
+<p>Maintain a common OpenAlgo-AJ base/template containing the generic AJ bridge. Each broker instance is then a deployment of that base with broker-specific configuration.</p>
+
+<pre><code>OpenAlgo-AJ Base
+     │
+     ├── Fyers instance
+     ├── IndStocks instance
+     ├── AliceBlue instance
+     └── future broker instances</code></pre>
+
+<h3>15.2 Versioning</h3>
+<table>
+<tr><th>Component</th><th>Version independently?</th><th>Reason</th></tr>
+<tr><td>AJ Core</td><td>Yes</td><td>Indicator algorithm releases should not require OpenAlgo changes.</td></tr>
+<tr><td>AJ OpenAlgo Adapter</td><td>Yes</td><td>OpenAlgo API/chart contract can evolve.</td></tr>
+<tr><td>AJ UI</td><td>Yes</td><td>Dashboard/debug UI can evolve independently.</td></tr>
+<tr><td>Indicator manifest</td><td>Yes</td><td>Controls capabilities and compatibility.</td></tr>
+<tr><td>OpenAlgo instance</td><td>Yes</td><td>Broker/platform upgrades remain independent.</td></tr>
+</table>
+
+<h3>15.3 Example release</h3>
+<pre><code>@ajmulti/aj-institutional-core 1.4.0
+@ajmulti/aj-openalgo            1.2.0
+@ajmulti/aj-ui                  1.1.0
+OpenAlgo                        compatible version
+AJInstitutional manifest        1.4.0</code></pre>
+
+<h3>15.4 New broker deployment</h3>
+<ol>
+<li>Create/clone an OpenAlgo instance.</li>
+<li>Configure the broker plugin and credentials according to OpenAlgo's broker model.</li>
+<li>Install the same AJ package versions.</li>
+<li>Enable the generic AJ indicator bridge.</li>
+<li>Open the chart and verify the indicator.</li>
+</ol>
+<p>No AJ source changes should be required.</p>
+
+<p>OpenAlgo's broker documentation describes broker adapters as plugin directories and states that an OpenAlgo instance uses one configured broker at a time. This reinforces the decision to keep broker concerns outside AJ Core. <a href="https://github.com/marketcalls/openalgo/blob/main/docs/userguide/06-broker-connection/README.md">OpenAlgo broker connection documentation</a>.</p>
+</section>
+
+<section id="migration" class="card">
+<h2>16. Migration plan from the current code</h2>
+
+<h3>Phase 1 — Freeze the working implementation</h3>
+<ul>
+<li>Do not delete the current <code>register.ts</code>.</li>
+<li>Tag the current working version.</li>
+<li>Capture screenshots and golden output for known symbols/timeframes.</li>
+</ul>
+
+<h3>Phase 2 — Build the dependency graph</h3>
+<p>Start from the actual AJ runtime entry points such as <code>RuntimeEngine</code>, decision engine, result types and indicator calculations. Follow TypeScript imports to determine the required closure.</p>
+
+<h3>Phase 3 — Extract AJ Core</h3>
+<ul>
+<li>Move pure calculation modules into <code>aj-institutional-core</code>.</li>
+<li>Remove React/OpenAlgo imports.</li>
+<li>Remove broker services.</li>
+<li>Remove old chart rendering dependencies.</li>
+<li>Preserve algorithm behavior exactly.</li>
+</ul>
+
+<h3>Phase 4 — Create canonical contracts</h3>
+<ul>
+<li><code>AJBar</code></li>
+<li><code>AJInstrumentContext</code></li>
+<li><code>AJRuntimeContext</code></li>
+<li><code>AJIndicatorResult</code></li>
+<li>AJ settings/state types</li>
+</ul>
+
+<h3>Phase 5 — Create OpenAlgo adapter</h3>
+<ul>
+<li>Bar conversion.</li>
+<li>Context construction.</li>
+<li>Result mapping.</li>
+<li>Plot/marker/zone mapping.</li>
+</ul>
+
+<h3>Phase 6 — Create orchestrator</h3>
+<ul>
+<li>Session lifecycle.</li>
+<li>Engine caching.</li>
+<li>Incremental updates.</li>
+<li>Registry/catalog.</li>
+<li>Cleanup.</li>
+</ul>
+
+<h3>Phase 7 — Refactor register.ts into compatibility mode</h3>
+<p>The current registration module should delegate to the new orchestrator. Once the new path is proven, the old large implementation can be retired.</p>
+
+<h3>Phase 8 — Add Web Worker</h3>
+<p>Move expensive historical/replay calculations into the worker while keeping the chart and UI on the main thread.</p>
+
+<h3>Phase 9 — Extract UI</h3>
+<p>Convert dashboard/debug/advisory/zone views into state consumers.</p>
+
+<h3>Phase 10 — Install into second OpenAlgo instance</h3>
+<p>Install the exact same AJ package into the IndStocks OpenAlgo instance. Only broker/OpenAlgo configuration should differ.</p>
+
+<h3>Phase 11 — Build the reusable base</h3>
+<p>Once Fyers and IndStocks both work from the same package, freeze the generic bridge as the standard AJ/OpenAlgo integration layer for future instances.</p>
+</section>
+
+<section id="selection" class="card">
+<h2>17. How to select only the required AJ source files</h2>
+
+<p><strong>Do not copy the AJInstitutional directory wholesale.</strong> Build the required set using an import/dependency graph.</p>
+
+<h3>17.1 Keep if it is pure domain/runtime logic</h3>
+<ul>
+<li>Runtime engine and runtime context.</li>
+<li>Decision engine.</li>
+<li>Signal generation.</li>
+<li>Lifecycle state.</li>
+<li>Confidence/scoring logic.</li>
+<li>Risk/execution calculations that do not call a broker.</li>
+<li>Zone calculations.</li>
+<li>Indicator calculations.</li>
+<li>AJ-specific types and configuration.</li>
+<li>Pure utilities referenced by the above.</li>
+</ul>
+
+<h3>17.2 Exclude by default</h3>
+<ul>
+<li>Broker clients.</li>
+<li>Broker authentication.</li>
+<li>Original WebSocket infrastructure.</li>
+<li>Original data-feed adapters.</li>
+<li>Original chart renderer.</li>
+<li>TradingView/lightweight chart wrappers.</li>
+<li>Application-level routing.</li>
+<li>Original authentication pages.</li>
+<li>Original app shell.</li>
+<li>Pages/layouts unrelated to the OpenAlgo extension.</li>
+<li>Duplicate state stores that exist only for the old application shell.</li>
+</ul>
+
+<h3>17.3 Automated extraction is recommended</h3>
+<p>For maintainability, create a small tooling command that starts from declared entry points and traverses local imports:</p>
+
+<pre><code>AJ Core entry points
+        ↓
+TypeScript import graph
+        ↓
+reachable source files
+        ↓
+dependency classification
+        ↓
+core package
+</code></pre>
+
+<p>This prevents accidental copying of the entire original application and makes future AJ indicator extraction repeatable.</p>
+</section>
+
+<section id="testing" class="card">
+<h2>18. Testing and acceptance criteria</h2>
+
+<h3>18.1 Functional tests</h3>
+<table>
+<tr><th>Test</th><th>Expected result</th></tr>
+<tr><td>Initial historical load</td><td>Plots, markers and zones match the baseline implementation.</td></tr>
+<tr><td>Live candle update</td><td>Only required state/results change.</td></tr>
+<tr><td>Symbol change</td><td>Old engine session is destroyed; new session starts cleanly.</td></tr>
+<tr><td>Timeframe change</td><td>Runtime resets/recalculates correctly.</td></tr>
+<tr><td>Chart removal/re-add</td><td>No stale engine or event listeners remain.</td></tr>
+<tr><td>Multiple charts</td><td>Each chart has isolated state.</td></tr>
+<tr><td>Dashboard</td><td>Reads the same result/state as chart; no duplicate calculation.</td></tr>
+<tr><td>Debug</td><td>Shows engine events/state without affecting calculation.</td></tr>
+<tr><td>Advisory</td><td>Matches latest AJ result.</td></tr>
+<tr><td>Broker switch by deployment</td><td>Same AJ package works in both instances.</td></tr>
+</table>
+
+<h3>18.2 Golden-output tests</h3>
+<p>Create a deterministic fixture:</p>
+<pre><code>input candles
+      ↓
+AJ Core
+      ↓
+expected result JSON
+</code></pre>
+
+<p>The same fixture must produce the same AJ result regardless of which OpenAlgo broker adapter supplied the candles.</p>
+
+<h3>18.3 Performance tests</h3>
+<ul>
+<li>Measure initial history calculation time.</li>
+<li>Measure main-thread long tasks during initial calculation.</li>
+<li>Measure live update latency.</li>
+<li>Measure memory growth during long sessions.</li>
+<li>Verify no duplicate engine instances after chart changes.</li>
+<li>Verify no unbounded event-listener accumulation.</li>
+</ul>
+
+<h3>18.4 Acceptance condition</h3>
+<div class="success">
+The architecture is considered successful when the same AJ package can be installed into Fyers OpenAlgo and IndStocks OpenAlgo without modifying AJ Core and produces equivalent results for equivalent candle input.
+</div>
+</section>
+
+<section id="security" class="card">
+<h2>19. Security and operational boundaries</h2>
+<ul>
+<li>AJ Core must never receive broker API secrets.</li>
+<li>AJ Core should not directly call broker REST/WebSocket APIs.</li>
+<li>OpenAlgo remains responsible for authenticated market-data access.</li>
+<li>AJ dashboard/debug panels should not expose credentials or tokens.</li>
+<li>Worker messages should contain market/indicator state only.</li>
+<li>Persistent settings should be validated before reaching the engine.</li>
+<li>Use explicit package versions so a broker deployment cannot silently load an incompatible AJ engine.</li>
+</ul>
+</section>
+
+<section id="failure" class="card">
+<h2>20. Failure modes and safeguards</h2>
+<table>
+<tr><th>Failure mode</th><th>Safeguard</th></tr>
+<tr><td>OpenAlgo chart API changes</td><td>Contain changes inside <code>aj-openalgo</code>; keep AJ Core unchanged.</td></tr>
+<tr><td>Broker sends malformed/partial data</td><td>Validate in <code>AJBarAdapter</code>.</td></tr>
+<tr><td>Historical data contains gaps</td><td>Define explicit gap/session handling in adapter/core contract.</td></tr>
+<tr><td>AJ calculation throws</td><td>Worker/orchestrator returns structured error; chart remains usable.</td></tr>
+<tr><td>Worker becomes stale after symbol change</td><td>Use session IDs/generation IDs and reject stale messages.</td></tr>
+<tr><td>Duplicate registration</td><td>Registry must be idempotent by indicator ID/version.</td></tr>
+<tr><td>Dashboard causes duplicate calculation</td><td>Only orchestrator owns the engine.</td></tr>
+<tr><td>Memory leak</td><td>Explicit <code>destroy(sessionId)</code>, worker termination and listener cleanup.</td></tr>
+<tr><td>Incompatible AJ/OpenAlgo versions</td><td>Manifest compatibility metadata and package version pinning.</td></tr>
+</table>
+</section>
+
+<section id="roadmap" class="card">
+<h2>21. Implementation roadmap</h2>
+
+<div class="three">
+<div>
+<h4>Milestone 1</h4>
+<p><strong>Architecture extraction</strong></p>
+<p>Define contracts, package boundaries and import graph. Keep current implementation intact.</p>
+</div>
+<div>
+<h4>Milestone 2</h4>
+<p><strong>Core + adapter</strong></p>
+<p>Move AJ logic into Core and build the generic OpenAlgo adapter/orchestrator.</p>
+</div>
+<div>
+<h4>Milestone 3</h4>
+<p><strong>Performance</strong></p>
+<p>Incremental engine, caching and Web Worker execution.</p>
+</div>
+</div>
+
+<div class="three">
+<div>
+<h4>Milestone 4</h4>
+<p><strong>UI integration</strong></p>
+<p>Dashboard, debug, advisory and zone panels consume shared state.</p>
+</div>
+<div>
+<h4>Milestone 5</h4>
+<p><strong>Second broker</strong></p>
+<p>Install unchanged AJ packages into IndStocks OpenAlgo and run golden tests.</p>
+</div>
+<div>
+<h4>Milestone 6</h4>
+<p><strong>Reusable platform</strong></p>
+<p>Freeze the AJ/OpenAlgo base and add future indicators through manifests/catalog entries.</p>
+</div>
+</div>
+
+<h3>Recommended implementation order</h3>
+<ol>
+<li>Do not start by rewriting the UI.</li>
+<li>Do not start by optimizing individual AJ calculations.</li>
+<li>First isolate the calculation core and define the contracts.</li>
+<li>Then build the generic adapter/orchestrator.</li>
+<li>Then prove identical output against the current working implementation.</li>
+<li>Then move the calculation into a worker and optimize incremental updates.</li>
+<li>Finally migrate dashboard/debug/advisory components.</li>
+</ol>
+</section>
+
+<section id="decisions" class="card">
+<h2>22. Final architecture decisions</h2>
+
+<table>
+<tr><th>#</th><th>Decision</th><th>Recommendation</th></tr>
+<tr><td>1</td><td>AJ source ownership</td><td>Single shared AJ Core package.</td></tr>
+<tr><td>2</td><td>Broker integration</td><td>OpenAlgo owns broker connectivity; AJ consumes normalized bars.</td></tr>
+<tr><td>3</td><td>OpenAlgo integration</td><td>One generic AJ OpenAlgo adapter/orchestrator.</td></tr>
+<tr><td>4</td><td>Registration</td><td>Keep a thin registration boundary because OpenAlgo requires registration; remove business logic from it.</td></tr>
+<tr><td>5</td><td>Visualization</td><td>OpenAlgo Charts is the renderer; AJ supplies descriptors/results.</td></tr>
+<tr><td>6</td><td>Dashboard/debug/advisory</td><td>React UI consumers of shared AJ state.</td></tr>
+<tr><td>7</td><td>Performance</td><td>Incremental calculation + cache + Web Worker for expensive computation.</td></tr>
+<tr><td>8</td><td>Multi-instance</td><td>Same AJ packages installed into every OpenAlgo broker instance.</td></tr>
+<tr><td>9</td><td>New broker</td><td>No AJ source modification.</td></tr>
+<tr><td>10</td><td>New indicator</td><td>Add indicator package/manifest; reuse the same orchestrator.</td></tr>
+<tr><td>11</td><td>Original application</td><td>Do not copy the full AJMultiAlgo frontend/backend.</td></tr>
+<tr><td>12</td><td>Validation</td><td>Golden candle/result tests prove broker independence.</td></tr>
+</table>
+
+<div class="decision">
+<h3 style="margin-top:0">Final recommendation in one sentence</h3>
+<p style="font-size:18px"><strong>Build AJInstitutional as a broker-neutral calculation SDK, connect it to OpenAlgo through one reusable adapter/orchestrator and thin registration bridge, let OpenAlgo Charts own rendering, and deploy the same versioned packages into every broker-specific OpenAlgo instance.</strong></p>
+</div>
+
+<h3>Final conceptual architecture</h3>
+<div class="diagram"><pre>
+┌───────────────────────────────────────────────────────────────────────┐
+│                         AJ SHARED PLATFORM                            │
+│                                                                       │
+│  AJInstitutional Core       AJ OpenAlgo Adapter       AJ UI           │
+│  ───────────────────        ───────────────────       ─────────       │
+│  RuntimeEngine              Bar Adapter              Dashboard        │
+│  RuntimeContext             Context Adapter          Debug            │
+│  Decision Engine             Result Adapter           Advisory         │
+│  Signals                     Orchestrator             Zones            │
+│  Lifecycle                   Worker                  Settings          │
+│  Confidence                  Registry                                  │
+│  Risk / Zones                                                            │
+└──────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                         Generic AJ Bridge
+                                   │
+             ┌─────────────────────┼─────────────────────┐
+             ▼                     ▼                     ▼
+       Fyers OpenAlgo        IndStocks OpenAlgo    AliceBlue OpenAlgo
+             │                     │                     │
+       Fyers broker           IndStocks broker      AliceBlue broker
+             │                     │                     │
+             └─────────────────────┼─────────────────────┘
+                                   │
+                            OpenAlgo data
+                                   │
+                                   ▼
+                         Canonical AJBar stream
+                                   │
+                                   ▼
+                           AJ Runtime Engine
+                                   │
+                           AJIndicatorResult
+                                   │
+              ┌────────────────────┼────────────────────┐
+              ▼                    ▼                    ▼
+          OpenAlgo Chart       AJ Dashboard        AJ Debug/Advisory
+</pre></div>
+</section>
+
+<section id="references" class="card">
+<h2>23. References</h2>
+<p>The architecture is primarily derived from the design discussion and current project constraints. The following external references were used to validate the OpenAlgo extension and broker boundaries:</p>
+<ul>
+<li><a href="https://github.com/marketcalls/openalgo">OpenAlgo GitHub repository</a> — current platform architecture, Flask/React frontend and broker-plugin model.</li>
+<li><a href="https://github.com/marketcalls/openalgo/blob/main/docs/userguide/06-broker-connection/README.md">OpenAlgo broker connection documentation</a> — broker adapter and one-broker-per-instance deployment model.</li>
+<li><a href="https://github.com/marketcalls/openalgo/blob/main/docs/broker-integration-guide.md">OpenAlgo broker integration guide</a> — broker adapter/plugin boundaries.</li>
+<li><a href="https://github.com/marketcalls/openalgo-charts">OpenAlgo Charts repository</a> — custom indicator, registry and chart-rendering model.</li>
+<li><a href="https://github.com/marketcalls/openalgo-charts/blob/master/README.md">OpenAlgo Charts README</a> — indicator descriptor/registration and lifecycle model.</li>
+<li><a href="https://github.com/marketcalls/openalgo-charts/blob/master/ARCHITECTURE.md">OpenAlgo Charts architecture</a> — canvas pipeline, data layer, live updates and rendering principles.</li>
+<li><a href="https://github.com/marketcalls/openalgo-charts/blob/master/docs/getting-started.md">OpenAlgo Charts getting started</a> — chart creation, candle data and live update concepts.</li>
+</ul>
+
+<h3>Source boundary</h3>
+<p>Statements about the user's existing AJInstitutional implementation, current registration approach, desired broker-instance model and prior migration decisions are treated as project-context requirements from the architecture discussion. External OpenAlgo statements above are linked to the official OpenAlgo/OpenAlgo Charts repositories.</p>
+</section>
+
+<div class="footer">
+<strong>Document:</strong> AJInstitutional on OpenAlgo — Final Architecture & Implementation Blueprint<br>
+<strong>Purpose:</strong> Long-term technical reference and implementation baseline<br>
+<strong>Recommended next artifact:</strong> an implementation-specific migration manifest mapping the current AJ source files to <code>aj-institutional-core</code>, <code>aj-openalgo</code> and <code>aj-ui</code>, followed by the actual refactoring.
+</div>
+
+</div>
+</body>
+</html>

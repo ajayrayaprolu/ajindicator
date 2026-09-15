@@ -1,0 +1,521 @@
+Phase 1 â†’ Phase 5 implementation plan
+
+We will do this as a controlled migration, not a rewrite.
+
+Phase 1 â€” Identify and isolate the current symbol-selection path
+
+Objective: establish exactly how the current symbol dropdown works before changing anything.
+
+You will provide the next prompt:
+
+PHASE 1 â€” CURRENT SYMBOL SELECTION AUDIT
+
+Do not change any code yet.
+
+Based on the current project structure and the outputs already provided, identify the complete execution path for symbol selection:
+
+Workspace8 / ChartWindow â†’ SymbolSelector â†’ SymbolMaster â†’ chart state â†’ feed â†’ Yahoo/Zerodha
+
+Verify which files actually control:
+
+Current symbol dropdown UI.
+Current hardcoded symbol list.
+Symbol state/store.
+Symbol change callback.
+Yahoo symbol mapping.
+Zerodha symbol/instrument mapping.
+Existing Zerodha instrument cache/download mechanism.
+
+Tell me exactly which additional file contents you need.
+
+Do not modify code.
+
+After reviewing those files, provide:
+
+Exact current architecture.
+Exact current symbol-selection owner.
+Exact files that will be changed in Phase 1.
+Exact files that must NOT be changed.
+Surgical block-to-block replacement instructions only.
+No implementation until I provide the requested file outputs.
+Phase 1 implementation
+
+Once I provide those outputs, you will give me surgical replacements, for example:
+
+FILE:
+src/components/SymbolSelector.tsx
+
+REPLACE FROM:
+// ======================================
+// OLD BLOCK START
+// ======================================
+
+...
+
+// ======================================
+// OLD BLOCK END
+// ======================================
+
+with:
+
+// ======================================
+// NEW BLOCK START
+// ======================================
+
+...
+
+// ======================================
+// NEW BLOCK END
+// ======================================
+
+Then we build:
+
+npm run build
+
+Phase 1 must leave the application functionally equivalent to today.
+
+Phase 2 â€” SQLite instrument master
+
+Objective: introduce SQLite on the backend without changing the UI yet.
+====================================================================
+Next prompt:
+
+PHASE 2 â€” SQLITE INSTRUMENT MASTER
+
+Now implement the SQLite instrument master.
+
+Requirements:
+
+SQLite must live on the backend.
+Create a dedicated instrument database/module.
+Define a normalized instrument schema supporting:
+exchange
+segment
+symbol
+trading symbol
+display name
+instrument type
+expiry
+strike
+option type
+underlying
+token/identifier
+feed/source
+active status
+last updated
+Do not delete or break the existing Zerodha instrument cache.
+Do not change the existing chart symbol-selection UI yet.
+Do not remove SymbolMaster yet.
+SQLite becomes the future source of truth, but Phase 2 should only establish the database layer.
+
+First tell me which existing files you need to inspect.
+
+Do not guess file contents.
+
+After inspection, provide surgical block-to-block replacements and new files required.
+
+Run/build verification must be included.
+======================================================================
+Phase 3 â€” Populate SQLite automatically
+
+Objective: stop manually maintaining instruments.
+
+The existing Zerodha infrastructure is particularly important here because your project already contains:
+
+server/zerodha/instruments.js
+src/feeds/ZerodhaInstrumentCache.ts
+src/feeds/ZerodhaFeed.ts
+src/feeds/ZerodhaLiveFeed.ts
+
+We will inspect how those currently work before touching them.
+
+Next prompt:
+
+PHASE 3 â€” AUTOMATIC INSTRUMENT MASTER SYNCHRONIZATION
+
+Connect the SQLite instrument master to the existing Zerodha instrument download/cache mechanism.
+
+Requirements:
+
+Reuse the existing Zerodha instrument source where possible.
+Do not create a second independent Zerodha instrument downloader if the existing implementation already provides the required data.
+Import equities, indices and derivatives.
+Include options with:
+underlying
+expiry
+strike
+CE/PE
+trading symbol
+instrument token
+Support automatic refresh.
+Target refresh interval: 30 minutes.
+Avoid duplicate records.
+Mark expired/inactive instruments appropriately.
+Preserve the existing Zerodha feed behavior.
+Do not change the symbol UI yet.
+
+First inspect the existing instrument/cache implementation and identify the minimum files that need modification.
+
+Then provide surgical block-to-block changes only.
+
+Do not rewrite unrelated files.
+
+At the end of Phase 3 we should have:
+
+Zerodha instrument source
+        â†“
+Instrument synchronizer
+        â†“
+SQLite
+        â†“
+instrument master
+Phase 4 â€” Symbol search API
+
+Objective: expose SQLite through a clean backend search API.
+
+Next prompt:
+
+PHASE 4 â€” SYMBOL SEARCH API
+
+Implement the backend symbol-search API against SQLite.
+
+Required endpoint:
+
+/api/symbols/search
+
+Requirements:
+
+Search SQLite, not SymbolMaster.
+Support normal text search:
+NIFTY
+BANKNIFTY
+RELIANCE
+TCS
+Support numeric strike search:
+24500
+Numeric search must return matching options such as:
+NIFTY 24500 CE
+NIFTY 24500 PE
+BANKNIFTY 24500 CE
+BANKNIFTY 24500 PE
+Support combined searches:
+NIFTY 24500
+BANKNIFTY 52000
+Return enough metadata for the UI to display the result and select the actual instrument.
+Do not make Yahoo responsible for discovering symbols.
+Do not change the existing SymbolSelector UI yet.
+Add appropriate indexes for fast search.
+Preserve existing Yahoo and Zerodha chart APIs.
+
+First inspect the relevant backend files.
+
+Then provide surgical block-to-block implementation instructions.
+
+Finally provide test commands and expected API responses.
+
+The important design point here is that:
+
+User searches: 24500
+
+does not mean we manufacture a symbol.
+
+SQLite tells us what actually exists:
+
+NIFTY 24500 CE
+NIFTY 24500 PE
+NIFTY 24500 ...
+BANKNIFTY 24500 CE
+BANKNIFTY 24500 PE
+...
+
+That is much safer for expiring derivatives.
+
+=====================================================
+9. Test normal search
+Invoke-RestMethod "https://localhost:3001/api/symbols/search?q=NIFTY"
+
+Expected structure:
+
+{
+  "success": true,
+  "query": "NIFTY",
+  "count": 50,
+  "results": [
+    {
+      "id": 123,
+      "exchange": "NSE",
+      "segment": "NSE",
+      "symbol": "NIFTY",
+      "trading_symbol": "...",
+      "display_name": "...",
+      "instrument_type": "...",
+      "expiry": "...",
+      "strike": null,
+      "option_type": null,
+      "underlying": "NIFTY",
+      "token_identifier": "...",
+      "feed_source": "zerodha",
+      "active_status": 1,
+      "last_updated": "..."
+    }
+  ]
+}
+10. Test equity
+Invoke-RestMethod "https://localhost:3001/api/symbols/search?q=RELIANCE"
+11. Test numeric strike
+Invoke-RestMethod "https://localhost:3001/api/symbols/search?q=24500"
+
+Expected results will contain actual SQLite records where:
+
+strike = 24500
+active_status = 1
+
+including CE/PE records if they exist in the synchronized Zerodha master.
+
+12. Test combined search
+Invoke-RestMethod "https://localhost:3001/api/symbols/search?q=NIFTY%2024500"
+
+and:
+
+Invoke-RestMethod "https://localhost:3001/api/symbols/search?q=BANKNIFTY%2052000"
+13. Build verification
+npm run build
+
+Expected:
+
+tsc -b
+vite build
+
+with no new TypeScript/build errors.
+
+Phase 4 boundary
+
+At this point the architecture is:
+
+Zerodha
+    â†“
+InstrumentSynchronizer
+    â†“
+SQLite
+    â†“
+/api/symbols/search
+    â†“
+future SymbolSelector
+
+Do not modify SymbolSelector yet. Phase 5 can replace its SYMBOL_MASTER discovery with this API once the endpoint has been verified against real SQLite data.
+=======================================================================================
+
+Phase 5 â€” Replace dropdown with search UI
+
+Objective: remove the manual dropdown and replace it with the actual symbol-search experience.
+
+Next prompt:
+
+PHASE 5 â€” REPLACE SYMBOL DROPDOWN WITH SEARCH
+
+Replace the current manual SymbolSelector dropdown with a symbol-search component.
+
+UI requirements:
+
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ ðŸ” Search symbol...                â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+NIFTY
+NIFTY 27 AUG 25000 CE
+NIFTY 27 AUG 25000 PE
+NIFTY 03 SEP 25000 CE
+
+Requirements:
+
+Remove the old manual symbol dropdown UI.
+Do not manually maintain symbols in frontend code.
+Search backend SQLite through /api/symbols/search.
+Debounce search requests.
+Show matching results.
+User clicks a result â†’ that exact instrument becomes the selected chart symbol.
+Preserve the existing chart state/change flow.
+Preserve Yahoo feed behavior for Yahoo-supported instruments.
+Preserve Zerodha identity separately for future Zerodha feed usage.
+Numeric searches must work:
+24500
+
+and produce option results based on the actual SQLite instrument master.
+
+Support:
+NIFTY 24500
+BANKNIFTY 24500
+Do not break layout 2/4/6/8.
+Do not modify indicator-menu functionality.
+Do not modify chart rendering unnecessarily.
+Remove SymbolMaster only after verifying that nothing else depends on it.
+Run:
+npm run build
+
+and resolve only errors directly related to this migration.
+
+Provide surgical block-to-block replacements, not a full unrelated rewrite.
+
+Final architecture after Phase 5
+
+The intended architecture becomes:
+
+                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                         â”‚   Symbol Search UI  â”‚
+                         â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                    â”‚
+                                    â–¼
+                         /api/symbols/search
+                                    â”‚
+                                    â–¼
+                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                         â”‚      SQLite         â”‚
+                         â”‚ Instrument Master   â”‚
+                         â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                    â”‚
+                 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                 â”‚                                     â”‚
+                 â–¼                                     â–¼
+          Yahoo identity                         Zerodha identity
+                 â”‚                                     â”‚
+                 â–¼                                     â–¼
+          YahooFeed/API                       ZerodhaFeed/API
+
+And separately:
+
+Zerodha instrument source
+          â”‚
+          â–¼
+   30-minute sync
+          â”‚
+          â–¼
+       SQLite
+
+So the important architectural change is:
+
+SymbolMaster.ts stops being the authority for available instruments.
+
+Instead:
+
+SQLite instrument master = source of truth.
+
+The frontend does not need to know tomorrow's option symbols, next week's expiries, or newly listed instruments. It simply asks the backend what currently exists.
+
+One important distinction
+
+I would not make the SQLite record itself equal to the Yahoo symbol.
+
+For example, an option can have:
+
+underlying       = NIFTY
+expiry           = 2026-08-27
+strike           = 25000
+option_type      = CE
+zerodha_symbol   = ...
+zerodha_token    = ...
+
+while Yahoo availability/mapping is handled separately.
+
+That keeps us from designing the system around Yahoo's current limitations and makes the later Zerodha â†’ Yahoo â†’ Dhan â†’ Upstox expansion much cleaner.
+
+For the next turn, use the Phase 1 prompt above. Do not change code yet.
+
+(Get-Content .\src\indicators\AJIndicator\AJRuntimeContextBuilder.ts -Raw) `
+  -replace "new Map\r?\n\s*string,", "new Map<`r`n			string," `
+  | Set-Content .\src\indicators\AJIndicator\AJRuntimeContextBuilder.ts
+
+Select-String -Path .\src\indicators\AJIndicator\AJRuntimeContextBuilder.ts -Pattern "new Map"
+
+search and replace
+=========================================
+db cleanup
+========================================
+@'
+import { getInstrumentDatabase } from "./instruments/InstrumentDatabase.js";
+
+const db = getInstrumentDatabase();
+
+console.log("\nOPTION COUNT");
+console.log(
+    db.prepare(`
+        SELECT COUNT(*) AS count
+        FROM instruments
+        WHERE active_status = 1
+          AND option_type IN ('CE','PE')
+    `).get()
+);
+
+console.log("\nNIFTY/BANKNIFTY OPTIONS");
+console.log(
+    db.prepare(`
+        SELECT
+            exchange,
+            feed_source,
+            underlying,
+            expiry,
+            strike,
+            option_type,
+            trading_symbol
+        FROM instruments
+        WHERE active_status = 1
+          AND underlying IN ('NIFTY','BANKNIFTY')
+          AND option_type IN ('CE','PE')
+        ORDER BY expiry DESC, strike DESC
+        LIMIT 20
+    `).all()
+);
+
+console.log("\nSTRIKE 24300");
+console.log(
+    db.prepare(`
+        SELECT
+            exchange,
+            feed_source,
+            underlying,
+            expiry,
+            strike,
+            option_type,
+            trading_symbol,
+            token_identifier
+        FROM instruments
+        WHERE active_status = 1
+          AND strike = 24300
+    `).all()
+);
+
+console.log("\nSOURCE COUNTS");
+console.log(
+    db.prepare(`
+        SELECT
+            feed_source,
+            exchange,
+            segment,
+            COUNT(*) AS count
+        FROM instruments
+        GROUP BY feed_source, exchange, segment
+        ORDER BY feed_source, exchange, segment
+    `).all()
+);
+'@ | Set-Content .\server\diagnose-options.mjs
+
+node .\server\diagnose-options.mjs
+
+Remove-Item .\server\diagnose-options.mjs
+======================================
+environments without api keys
+Get-Content .\.env |
+    ForEach-Object {
+        if ($_ -match '^\s*#' -or $_ -notmatch '=') {
+            $_
+        }
+        else {
+            $name = ($_ -split '=',2)[0]
+            "$name=[REDACTED]"
+        }
+    }
+=====================================================
+Remove-Item .\server\fyers\session.json -Force -ErrorAction SilentlyContinue
+Remove-Item .\server\aliceblue\session.json -Force -ErrorAction SilentlyContinue
+=====================================
+
+$root="C:\AI-Institutional"; $out="$root\auth-patch-input.txt"; Remove-Item $out -Force -ErrorAction SilentlyContinue; function A($f,$s,$e){Add-Content $out "`r`n============================================================`r`nFILE: $f | LINES: $s-$e`r`n============================================================"; $x=Get-Content -LiteralPath $f; $e=[Math]::Min($e,$x.Count); for($i=$s;$i -le $e;$i++){Add-Content $out ("{0,6}: {1}" -f $i,$x[$i-1])}}; A "$root\server\index.js" 1150 1455; A "$root\server\index.js" 1455 1510; A "$root\src\components\ChartWindow.tsx" 1470 1590; A "$root\src\components\ChartWindow.tsx" 760 880; A "$root\src\components\ChartWindow.tsx" 990 1060; A "$root\server\feeds\FeedManager.js" 1 500; Write-Host "CREATED:" $out; Write-Host "SIZE:" ((Get-Item $out).Length)

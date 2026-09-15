@@ -1,0 +1,65 @@
+# Dependencies / builds
+node_modules/
+dist/
+.vite/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Certificates / private keys
+certs/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime sessions / credentials
+**/session.json
+**/token.json
+**/*token*.json
+**/*secret*.json
+**/*credentials*.json
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Generated market data
+**/data/candle-cache/
+**/data/contract-master.json
+server/fyers/data/
+
+# Logs
+*.log
+
+# Temporary phase/build/test artifacts
+phase4-ob-build/
+phase4-ob-build-esm/
+R1_*.test.ts
+R2_*.test.ts
+R3_*.test.ts
+R4_*.test.ts
+R5_*.test.ts
+*.bak
+*.before_*.bak
+*.phase4.bak
+*.phase4c.bak
+
+# Local archives
+*.zip
+
+# Local Git helper scripts
+gitupdate.ps1
+
+# Windows / OS / editor metadata
+desktop.ini
+**/desktop.ini
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+
+git-logs/

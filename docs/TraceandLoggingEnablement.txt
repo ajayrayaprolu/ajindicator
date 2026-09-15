@@ -1,0 +1,2089 @@
+Next Validation Prompt
+Step 14A — AJDecisionEngine Consumer Synchronization
+
+Provide the current file:
+
+src/indicators/AJIndicator/AJDecisionEngine.ts
+Objective
+
+Validate only:
+
+Identify every field written into AJRuntimeContext.
+Classify each field as:
+Canonical runtime state
+ConfidenceEngine-owned
+AIConfidenceEngine-owned
+ExecutionAuthority-owned
+ExecutionEngine-owned
+Legacy compatibility (candidate for future removal)
+Verify that AJDecisionEngine does not duplicate calculations already owned by downstream engines.
+Verify that AJDecisionEngine acts only as the orchestration layer between validated engines.
+Rules
+Validate against the frozen AJ v2 architecture.
+Provide only block-to-block replacements where required.
+Never regenerate the complete file.
+Do not remove compatibility fields yet; first identify their correct ownership and whether they should be retained, migrated, or eventually removed.
+Freeze Step 14A only after AJDecisionEngine aligns with the engine ownership model established in AJ v2.
+======================================================================================
+Next Validation Prompt
+Step 14B — AJPayloadBuilder Consumer Synchronization
+
+Provide the current file:
+
+src/indicators/AJIndicator/AJPayloadBuilder.ts
+Objective
+
+Validate only:
+
+Verify that AJPayloadBuilder consumes AJRuntimeContext without recalculating engine-owned values.
+Identify every compatibility field consumed from AJRuntimeContext.
+Classify each consumed field as:
+Canonical runtime state
+ContextEngine-owned
+AIEngine-owned
+ExecutionAuthority-owned
+StateMachine-owned
+Temporary compatibility field
+Verify that payload construction performs no business logic and only maps runtime data into engine-specific input contracts.
+Ensure payload ownership aligns with the frozen AJ v2 architecture.
+Rules
+Validate against the frozen AJ v2 architecture.
+Provide only block-to-block replacements if required.
+Never regenerate the complete file.
+Do not remove compatibility fields yet; identify whether each should be retained, migrated to an engine result, or scheduled for removal after all consumers have been synchronized.
+Freeze Step 14B only after AJPayloadBuilder is confirmed to be a pure payload assembly layer
+
+============================
+Remaining sequence I'd recommend
+✅ AJRuntimeContextBuilder
+✅ AJDecisionEngine
+✅ AJPayloadBuilder
+✅ AIConfidenceEngine
+✅ ExecutionAuthority
+AJRuntimeContext (final contract cleanup)
+AJTypes / shared interfaces (remove obsolete compatibility fields only if no consumers remain)
+Repository-wide compile verification
+Integration validation
+Final architecture freeze
+
+Phase 16 (Recommended)
+Repository-wide TypeScript compile validation
+Fix any compile-time type mismatches introduced during synchronization.
+Verify all producers/consumers satisfy the frozen contracts.
+Consumer migration audit
+Identify every remaining use of compatibility fields (tradeScore, contextConfidence, executionConfidence, etc.).
+Classify each as:
+still required,
+replaceable with canonical fields,
+removable after migration.
+End-to-end runtime validation
+
+Validate the full execution pipeline:
+
+RuntimeContextBuilder
+    ↓
+ContextEngine
+    ↓
+MarketStructureEngine
+    ↓
+LiquidityEngine
+    ↓
+OrderFlowEngine
+    ↓
+RiskQualificationEngine
+    ↓
+AIConfidenceEngine
+    ↓
+ExecutionAuthority
+    ↓
+ExecutionEngine
+Confirm outputs are propagated without ownership violations.
+Compatibility retirement (future phase)
+Only after the repository audit confirms there are no remaining consumers.
+
+At this stage, I would consider the AJ v2 architecture frozen. The remaining effort is ensuring the implementation across the repository conforms to that architecture rather than continuing to redesign engines.
+==============================================================
+Phase 16 — Repository-Wide AJ v2 Conformance Validation
+Objective
+
+The AJ v2 architecture has been frozen.
+
+The objective is NOT to redesign engines or contracts.
+
+The objective is to verify that the entire repository conforms to the frozen architecture and to eliminate remaining implementation inconsistencies.
+
+Frozen Architecture (Reference)
+
+Ownership is fixed and MUST NOT change.
+
+RuntimeContextBuilder
+        │
+        ▼
+ContextEngine
+        │
+        ▼
+MarketStructureEngine
+        │
+        ▼
+LiquidityEngine
+        │
+        ▼
+OrderFlowEngine
+        │
+        ▼
+RiskQualificationEngine
+        │
+        ▼
+AIConfidenceEngine
+        │
+        ▼
+ExecutionAuthority
+        │
+        ▼
+ExecutionEngine
+        │
+        ▼
+LifecycleEngine
+        │
+        ▼
+Trade Management
+
+Ownership is frozen.
+
+Do NOT move responsibilities between engines.
+
+Repository Validation Scope
+
+Perform a repository-wide validation.
+
+Do not validate individual files in isolation.
+
+Treat the entire project as one integrated AJ v2 system.
+
+Validation 1 — TypeScript Compile Validation
+
+Verify that every producer and consumer satisfies the frozen contracts.
+
+Identify:
+
+missing properties
+obsolete interface members
+invalid imports
+circular dependencies
+duplicate interface definitions
+incompatible generic types
+incompatible optional/required fields
+runtime contract mismatches
+
+For every issue:
+
+Provide
+
+File
+
+Problem
+
+Reason
+
+Minimal Fix
+
+Never regenerate files.
+
+Validation 2 — Runtime Contract Conformance
+
+Verify every producer writes only fields it owns.
+
+Verify every consumer reads only canonical fields.
+
+Detect
+
+duplicate ownership
+illegal writes
+runtime mutation
+duplicated calculations
+
+Classify each finding as
+
+Critical
+
+Recommended
+
+Compatibility Only
+Validation 3 — Compatibility Field Audit
+
+Search the entire repository for every remaining compatibility field.
+
+Examples
+
+tradeScore
+
+executionConfidence
+
+contextConfidence
+
+trendConfidence
+
+structureConfidence
+
+liquidityConfidence
+
+institutionalScore
+
+marketRegime
+
+mtfAlignment
+
+scoreLong
+
+scoreShort
+
+orderFlowBull
+
+orderFlowBear
+
+riskQualificationApproved
+
+...
+
+For every field provide
+
+Field
+
+Current Consumers
+
+Current Producers
+
+Status
+
+Still Required
+
+Replaceable
+
+Ready For Removal
+
+Blocked By
+
+Do not remove compatibility fields.
+
+Validation 4 — End-to-End Pipeline Validation
+
+Validate the complete runtime flow.
+
+RuntimeContextBuilder
+
+↓
+
+ContextEngine
+
+↓
+
+MarketStructureEngine
+
+↓
+
+LiquidityEngine
+
+↓
+
+OrderFlowEngine
+
+↓
+
+RiskQualificationEngine
+
+↓
+
+AIConfidenceEngine
+
+↓
+
+ExecutionAuthority
+
+↓
+
+ExecutionEngine
+
+↓
+
+LifecycleEngine
+
+Verify
+
+ownership
+payload propagation
+runtime propagation
+immutable outputs
+no duplicated calculations
+no skipped stages
+
+Report any broken pipeline.
+
+Validation 5 — Consumer Synchronization
+
+Verify every consumer uses
+
+AJRuntimeContext
+ConfidenceResult
+ExecutionAuthorityResult
+Runtime contracts
+
+instead of legacy duplicated values.
+
+Report
+
+Consumer
+
+Uses Canonical
+
+Uses Compatibility
+
+Migration Needed
+
+No Action Required
+Validation 6 — Dependency Validation
+
+Verify
+
+engine dependency direction
+no circular references
+no downstream engine called from upstream engine
+no payload builder performs engine work
+no runtime builder performs calculations
+Validation 7 — Final AJ v2 Compliance Report
+
+Produce
+
+Repository Health
+Architecture Compliance
+
+Compile Compliance
+
+Contract Compliance
+
+Ownership Compliance
+
+Pipeline Compliance
+
+Compatibility Status
+Remaining Issues
+
+Categorize
+
+Critical
+
+High
+
+Medium
+
+Low
+
+Cosmetic
+Compatibility Retirement Readiness
+
+For every compatibility field classify
+
+Retain
+
+Retain Until Migration
+
+Ready For Removal
+
+Blocked
+Final Recommendation
+
+Choose exactly one.
+
+READY FOR PRODUCTION
+
+READY AFTER COMPILE FIXES
+
+READY AFTER CONSUMER MIGRATION
+
+NOT READY
+Rules
+The AJ v2 architecture is FROZEN.
+Do NOT redesign any engine.
+Do NOT move ownership.
+Do NOT regenerate complete files.
+Provide only minimal block-level fixes where necessary.
+Validate the entire repository, not isolated files.
+Preserve backward compatibility until repository-wide migration is complete.
+Recommend compatibility field removal only after confirming there are no remaining producers or consumers.
+End the report with an AJ v2 Repository Conformance Score (0–100%) and a clear statement of production readiness.
+
+
+Export the document as sequential parts:
+PART 1
+PART 2
+PART 3
+=================================
+
+type src/indicators/CVD.ts
+type src/indicators/AJIndicator/AJRuntimeContextBuilder.ts
+type src/indicators/AJIndicator/AJRuntimeContext.ts
+type src/indicators/AJIndicator/AJPayloadBuilder.ts
+type src/indicators/AJIndicator/context/ContextEngine.ts
+type src/indicators/AJIndicator/engines/Confidence/ConfidenceEngine.ts
+type src/indicators/AJIndicator/ai/AIConfidenceEngine.ts
+type src/indicators/AJIndicator/engines/Authority/ExecutionAuthority*.ts
+type src/indicators/AJIndicator/AJDecisionEngine.ts
+
+type src/indicators/AJIndicator/AJIndicator.ts
+type src/runtime/RuntimeEngine.ts
+type src/runtime/signals/SignalEngine.ts
+type src/runtime/signals/normalize.ts
+
+
+Correct execution order
+
+The execution order does not change.
+
+What changes is when the payload is normalized.
+Only the normalization point changes.
+
+RuntimeEngine
+    ↓
+AJRuntimeContextBuilder
+    ↓
+AJPayloadBuilder
+    ↓
+AJDecisionEngine
+        │
+        ├── AJContextEngine
+        │      ↓
+        │   ContextResult
+        │
+        ├── Normalize payload.scoreInputs
+        │      ↓
+        ├── Confidence
+        ├── Authority
+        ├── State
+        └── Execution
+	==============
+	Final Execution Order
+
+The execution order remains unchanged:
+
+RuntimeEngine
+    │
+    ▼
+AJRuntimeContextBuilder
+    │
+    ▼
+AJPayloadBuilder
+    │
+    ▼
+AJDecisionEngine
+        │
+        ▼
+AJContextEngine
+        │
+        ▼
+ContextEngine
+        │
+        ▼
+ContextResult
+        │
+        ▼
+AJDecisionEngine
+        │
+        │  (normalize payload.scoreInputs once)
+        ▼
+ConfidenceEngine
+        ▼
+AuthorityEngine
+        ▼
+StateEngine
+        ▼
+ExecutionEngine
+
+================================
+Runtime
+    │
+    ▼
+AJRuntimeContextBuilder
+    │
+    ▼
+AJPayloadBuilder
+    │
+    ▼
+AJDecisionEngine
+        │
+        ├── ContextEngine
+        │        │
+        │        ▼
+        │   ContextResult
+        │
+        ├── payload.scoreInputs.tradeDirection =
+        │        contextResult.tradeDirectionFinal
+        │
+        ▼
+AJContextEngine
+        │
+        ▼
+ConfidenceEngine
+At that point, the compile-time contract will match the intended architecture:
+
+✅ ContextEngine is the sole producer of tradeDirectionFinal
+✅ AJPayloadBuilder remains a transport builder
+✅ AJDecisionEngine performs the one-time canonical normalization
+✅ AJContextEngine consumes the normalized ConfidenceInput without mutating it
+✅ ConfidenceInput remains a clean, strongly typed contract without leaking context-only fields
+
+===============
+for testing score threshold changed at these files 
+src/indicators/AJIndicator/config/AJRuntimeParameters.ts
+
+.\src\indicators\AJIndicator\engines\Authority\ExecutionAuthority.ts
+\src\indicators\AJIndicator\engines\Confidence\ConfidenceEngine.ts
+.\src\indicators\AJIndicator\engines\Execution\ExecutionEngine.ts
+
+3. Phase 16 A–F architecture I recommend
+
+I would implement Phase 16 as:
+
+Phase	Responsibility
+16A	Lifecycle state normalization + deterministic transition
+16B	Execution planning / confirmation
+16C	Execution acknowledgement → EXECUTED
+16D	Position management
+16E	Exit / TP / SL evaluation
+16F	Close + re-entry reset
+
+                 AJDecisionEngine
+                       │
+                       ▼
+                 Context / AI / SMC
+                       │
+                       ▼
+                  Authority
+                       │
+                       ▼
+                  StateMachine
+                       │
+              ┌────────┴────────┐
+              │                 │
+           ARMED          CONFIRMED
+                                │
+                                ▼
+                         ExecutionEngine
+                                │
+                         ┌──────┴──────┐
+                         │             │
+                       BLOCKED       APPROVED
+                         │             │
+                         ▼             ▼
+                    CONFIRMED       EXECUTED
+                                       │
+                                       ▼
+                                    MANAGE
+                                       │
+                                       ▼
+                                     EXIT
+                                       │
+                                       ▼
+                                    CLOSED
+                                       │
+                                       ▼
+                                    RE-ENTRY
+| Phase | Owner                                             | Responsibility                                                                                                   |
+| ----- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| 16A   | LifecycleEngine / StateMachine                    | Normalize lifecycle states and deterministic transitions (SCAN → ARMED → CONFIRMED → EXECUTED → MANAGE → CLOSED) |
+| 16B   | ExecutionEngine                                   | Execution planning, validation, and approval only. No runtime state changes.                                     |
+| 16C   | LifecycleEngine (using execution acknowledgement) | Transition from CONFIRMED to EXECUTED only after actual execution acknowledgement.                               |
+| 16D   | TradeManagement                                   | Position sizing, TP progression, break-even, scale in/out, trailing eligibility, live risk, portfolio exposure.  |
+| 16E   | ExitEngine / TradeManagement                      | TP, SL, timeout, emergency, exit evaluation. Lifecycle consumes the result rather than recalculating it.         |
+| 16F   | LifecycleEngine + ReEntryEngine                   | Close trade, reset lifecycle, activate re-entry when eligible, return to ARMED/SCAN as appropriate.              |
+
+=================================================================
+
+Phase 1 — Make the runtime observable (highest priority)
+
+Right now we know only one thing:
+
+LIFECYCLE = SCAN
+
+That is not enough. We need to know why.
+
+For every candle processed, we should log a single trace that follows the decision pipeline:
+
+Candle
+   ↓
+Indicators
+   ↓
+Context
+   ↓
+SMC
+   ↓
+Authority
+   ↓
+Lifecycle
+   ↓
+Execution
+   ↓
+Trade Management
+   ↓
+Exit
+
+No engine should behave like a black box.
+
+Phase 2 — Add stage-by-stage tracing
+
+Each engine should emit one structured trace.
+
+Example:
+
+[AUTHORITY]
+
+Trend Score           = 22
+Momentum Score        = 14
+SMC Score             = 18
+Liquidity             = PASS
+Confidence            = 71
+Threshold             = 75
+
+Decision              = REJECT
+Reason                = Confidence below threshold
+
+Lifecycle:
+
+[LIFECYCLE]
+
+Current State         = SCAN
+Authority Decision    = REJECT
+
+Eligible for ARMED    = false
+
+Rejected Because:
+- confidence < threshold
+
+Execution:
+
+[EXECUTION]
+
+Lifecycle State = CONFIRMED
+
+Execution Approved = false
+
+Reason
+Spread too high
+
+Trade Management:
+
+[TRADE MANAGEMENT]
+
+Position Open = true
+TP1=false
+TP2=false
+SL=false
+
+Exit:
+
+[EXIT]
+
+Exit Trigger
+
+NONE
+
+Then one candle tells the entire story.
+
+Phase 3 — Decision tree tracing
+
+Instead of logging only outputs, log every gate.
+
+For example, Authority may require:
+
+Trend
+Momentum
+Structure
+Liquidity
+Volume
+OrderBlock
+FVG
+Confidence
+
+The trace should show:
+
+Trend         PASS
+Momentum      FAIL
+Liquidity     PASS
+Volume        FAIL
+OrderBlock    PASS
+
+Decision = REJECT
+
+Now we immediately know which condition blocks trades.
+
+Phase 4 — Threshold sensitivity testing
+
+Once the traces exist, we do controlled experiments.
+
+Example:
+
+Run 1
+
+Confidence Threshold = 80
+
+Trades:
+
+0
+
+Run 2
+
+Confidence Threshold = 70
+
+Trades:
+
+8
+
+Run 3
+
+Confidence Threshold = 60
+
+Trades:
+
+42
+
+This tells us whether the engine is too strict or whether it is failing for another reason.
+
+Phase 5 — State transition audit
+
+For every lifecycle change, log both the current and next state.
+
+Example:
+
+SCAN
+↓
+
+Authority PASS
+
+↓
+
+ARMED
+
+or
+
+SCAN
+
+↓
+
+Authority FAIL
+
+↓
+
+Remain SCAN
+
+Reason:
+
+Trend failed
+Momentum failed
+
+No silent transitions.
+
+Phase 6 — Execution acknowledgement audit
+
+Execution should log:
+
+Lifecycle State
+
+CONFIRMED
+
+↓
+
+Execution Approval
+
+YES
+
+↓
+
+Broker Ack
+
+YES
+
+↓
+
+EXECUTED
+
+If execution approval is true but the lifecycle never moves to EXECUTED, we know exactly where the state machine is broken.
+
+Phase 7 — Runtime timeline
+
+At the end of each candle, produce one compact timeline:
+
+09:31
+
+SCAN
+
+Authority PASS
+
+↓
+
+ARMED
+
+↓
+
+CONFIRMED
+
+↓
+
+Execution APPROVED
+
+↓
+
+EXECUTED
+
+↓
+
+Trade Management ACTIVE
+
+↓
+
+Waiting TP
+
+Or:
+
+09:32
+
+SCAN
+
+Authority FAIL
+
+Reason
+
+Momentum
+
+Volume
+
+This gives you a complete narrative without digging through dozens of log statements.
+
+Phase 8 — Backtest statistics
+
+After 1,000 candles, summarize why trades were rejected.
+
+For example:
+
+Authority Evaluations        1000
+
+Passed                        27
+Rejected                     973
+
+Top Rejection Reasons
+
+Trend                412
+Momentum             281
+Liquidity            144
+Confidence            98
+Volume                38
+
+This tells us whether one filter is overly restrictive.
+
+Phase 9 — Build an engine audit matrix
+
+Once instrumentation is in place, we'll validate every phase against expected behavior.
+
+Engine	Expected	Verified
+Context	Produces context	☐
+SMC	Produces SMC signals	☐
+Authority	Makes decision	☐
+Lifecycle	SCAN→ARMED	☐
+Lifecycle	ARMED→CONFIRMED	☐
+Execution	Approves execution	☐
+Execution Ack	CONFIRMED→EXECUTED	☐
+Trade Management	Position opens	☐
+Exit	TP/SL works	☐
+ReEntry	Reset works	☐
+
+We don't proceed to the next engine until the previous one is verified.
+
+What I would ask you for next
+
+To debug this efficiently, I would not start by changing thresholds blindly. I would first collect evidence.
+
+Please provide:
+
+Authority engine source (the file that computes the authority decision and confidence).
+Lifecycle engine source (the state transition logic).
+One full runtime log from application start through at least 20–50 candles, with debug logging enabled.
+The current logging utility (e.g., AJLoggingGate.ts) if it controls what is emitted.
+
+With those, I'll:
+
+Trace the execution path end to end.
+Identify the exact engine and function where progress stops.
+Determine whether the issue is:
+no valid signal,
+overly restrictive thresholds,
+lifecycle transition logic,
+execution gating,
+or a missing runtime input.
+Provide surgical, block-by-block replacements only where needed, without speculative changes. This turns the investigation into an evidence-driven debugging exercise rather than guessing.
+===========================================================================
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.ts,*.tsx |
+>> Select-String "DebugEngine\.update\(" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\charts\ChartEngine.tsx:381
+C:\AI-Institutional\src\components\ChartWindow.tsx:887
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.ts,*.tsx |
+>> Select-String "AJDebugBuilder\.build\(" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.ts,*.tsx |
+>> Select-String "debug:" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\indicators\AJIndicator\hosts\AJHost.ts:192
+C:\AI-Institutional\src\indicators\AJIndicator\store\AJIndicatorSettingsStore.ts:103
+C:\AI-Institutional\src\indicators\AJIndicator\store\AJIndicatorSettingsStore.ts:162
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts:1104
+C:\AI-Institutional\src\runtime\RuntimeTypes.ts:429
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.ts,*.tsx |
+>> Select-String "runtime\.debug" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\debug\DebugEngine.ts:184
+C:\AI-Institutional\src\debug\DebugEngine.ts:188
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.ts,*.tsx |
+>> Select-String "buildDebugText" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\debug\DebugEngine.ts:665
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugOverlay.tsx:10
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugOverlay.tsx:237
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.ts,*.tsx |
+>> Select-String "\.lines" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\debug\DebugEngine.ts:377
+C:\AI-Institutional\src\debug\DebugEngine.ts:674
+C:\AI-Institutional\src\debug\DebugEngine.ts:675
+C:\AI-Institutional\src\debug\DebugEngine.ts:677
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugBuilder.ts:633
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.tsx |
+>> Select-String "<pre" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugOverlay.tsx:220
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.tsx |
+>> Select-String "AJDebugOverlay" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugOverlay.tsx:18
+C:\AI-Institutional\src\layouts\Workspace8.tsx:108
+C:\AI-Institutional\src\layouts\Workspace8.tsx:734
+PS C:\AI-Institutional> Get-ChildItem .\src -Recurse -Include *.tsx |
+>> Select-String "DebugPanel" |
+>> ForEach-Object {
+>>     "{0}:{1}" -f $_.Path,$_.LineNumber
+>> }
+C:\AI-Institutional\src\components\DebugPanel.tsx:1
+PS C:\AI-Institutional>
+==============================================================================
+Option 3 – AJDebugBuilder Consumer Audit
+
+This shows everything AJDebugBuilder currently reads.
+
+Get-Content .\src\indicators\AJIndicator\debug\AJDebugBuilder.ts |
+Select-String -Pattern '\b(context|state|authority|execution|option|risk|trace)\.[A-Za-z0-9_]+' -AllMatches |
+ForEach-Object {
+    $_.Matches.Value
+} |
+Sort-Object -Unique
+=======================================================
+Option 1 (Recommended) – Property Audit (All Variables)
+
+Run this from your project root:
+$patterns = @(
+'tradeDirectionFinal',
+'engineState',
+'contextScore',
+'tradeScore',
+'longScore',
+'shortScore',
+'ctxLong',
+'ctxShort',
+'confidence',
+'contextConfidence',
+'executionConfidence',
+'institutionalScore',
+'aiBestScore',
+'aiBestDir',
+'aiModeText',
+'aiReasonText',
+'aiScoreLong',
+'aiScoreShort',
+'aiCorePass',
+'smcCorePass',
+'smcReason',
+'executionAllowed',
+'authorityText',
+'authorityDecision',
+'readyForExecution',
+'enteredExecuted',
+'enteredConfirmed',
+'enteredArmed',
+'marketRegime',
+'positionOpen',
+'inPosition',
+'optionSymbol',
+'atmStrike',
+'itmStrike',
+'otmStrike',
+'runtimeIntelligence',
+'pipelineDiagnostics',
+'AJPipelineTrace'
+)
+
+Get-ChildItem . -Recurse -Include *.ts |
+Select-String -Pattern $patterns |
+Sort-Object Path,LineNumber |
+Format-Table Path,LineNumber,Line -AutoSize
+=================================================================
+Option 2 – Object Producer Audit (Even More Useful)
+
+This tells us which file actually produces the AJ v2 outputs.
+$objects = @(
+'contextResult',
+'confidenceResult',
+'aiResult',
+'smcResult',
+'authorityResult',
+'stateResult',
+'pipelineDiagnostics',
+'payload.ajRuntime',
+'AJPipelineTrace.update',
+'AJPipelineTrace.stage',
+'AJPipelineTrace.begin'
+)
+
+Get-ChildItem . -Recurse -Include *.ts |
+Select-String -Pattern $objects |
+Sort-Object Path,LineNumber |
+Format-Table Path,LineNumber,Line -AutoSize
+========================================================
+Option 4 – Producer → Consumer Cross Reference (Best Audit)
+
+This searches only the canonical AJ v2 producers:
+$patterns = @(
+'contextResult\.',
+'confidenceResult\.',
+'aiResult\.',
+'smcResult\.',
+'authorityResult\.',
+'stateResult\.',
+'payload\.ajRuntime\.',
+'pipelineDiagnostics',
+'AJPipelineTrace\.'
+)
+
+Get-ChildItem . -Recurse -Include *.ts |
+Select-String -Pattern $patterns |
+Sort-Object Path,LineNumber |
+Format-Table Path,LineNumber,Line -Wrap
+===========================================
+Updated AJ v2 Dependency Classification
+| Debug Property          | AJ v2 Canonical Source                        | Status        | Recommendation           |
+| ----------------------- | --------------------------------------------- | ------------- | ------------------------ |
+| state                   | `stateResult.engineState`                     | ✅ Relocated   | use StateMachine output  |
+| stateText               | `EngineState[stateResult.engineState]`        | ✅ Enhanced    | don't stringify manually |
+| direction               | `contextResult.tradeDirectionFinal`           | ✅ Relocated   | canonical                |
+| bias                    | `payload.tradeDirectionFinal`                 | ✅ Relocated   | runtime sync             |
+| scoreReady              | `contextResult.tradeScore>0`                  | ✅ Unchanged   | keep                     |
+| contextReady            | `contextResult.contextScore>0`                | ✅ Unchanged   | keep                     |
+| breakoutReady           | `contextResult.ctxLong/ctxShort`              | ✅ Unchanged   | keep                     |
+| executionReady          | `stateResult.readyForExecution`               | ✅ Renamed     | not Execution.canEnter   |
+| confidence              | `confidenceResult.confidence`                 | ✅ Renamed     | canonical confidence     |
+| aiConfidence            | `aiResult.aiBestScore`                        | ✅ Renamed     | direct engine output     |
+| institutionalConfidence | `payload.ajRuntime.institutionalScore`        | ✅ Relocated   | runtime                  |
+| tradeActive             | future execution engine                       | ⚠ Placeholder | keep optional            |
+| blockReason             | `authorityResult.authorityText` + diagnostics | ✅ Renamed     | authority owns reason    |
+| regime                  | `payload.ajRuntime.marketRegime`              | ✅ Relocated   | runtime                  |
+| optionSymbol            | future OptionEngine                           | ⚠ Placeholder | leave nullable           |
+| strikes                 | future OptionEngine                           | ⚠ Placeholder | leave nullable           |
+| aiStatus                | `aiResult.aiModeText`                         | ✅ Renamed     | AI owns status           |
+| smcStatus               | `smcResult.smcReason`                         | ✅ Renamed     | SMC owns status          |
+| authorityStatus         | `authorityResult.authorityText`               | ✅ Canonical   | keep                     |
+| lifecycle               | `stateResult.engineState`                     | ✅ New         |                          |
+| runtime                 | `payload.ajRuntime`                           | ✅ New         |                          |
+| pipeline trace          | `AJPipelineTrace`                             | ✅ New         |                          |
+| diagnostics             | `pipelineDiagnostics`                         | ✅ New         |                          |
+PS C:\AI-Institutional> $patterns = @(
+>> 'contextResult\.',
+>> 'confidenceResult\.',
+>> 'aiResult\.',
+>> 'smcResult\.',
+>> 'authorityResult\.',
+>> 'stateResult\.',
+>> 'payload\.ajRuntime\.',
+>> 'pipelineDiagnostics',
+>> 'AJPipelineTrace\.'
+>> )
+PS C:\AI-Institutional>
+PS C:\AI-Institutional> Get-ChildItem . -Recurse -Include *.ts |
+>> Select-String -Pattern $patterns |
+>> Sort-Object Path,LineNumber |
+>> Format-Table Path,LineNumber,Line -Wrap
+
+Path                                                                                         LineNumber Line
+----                                                                                         ---------- ----
+C:\AI-Institutional\src\indicators\AJIndicator\ai\AIConfidenceEngine.ts                              37  * • Produce
+                                                                                                        normalized AICo
+                                                                                                        nfidenceResult.
+C:\AI-Institutional\src\indicators\AJIndicator\AJContextEngine.ts                                    28  * • Produce
+                                                                                                        the canonical
+                                                                                                        ContextResult.
+C:\AI-Institutional\src\indicators\AJIndicator\AJContextEngine.ts                                   235                confidence
+                                                                                                        Result.confiden
+                                                                                                        ce,
+C:\AI-Institutional\src\indicators\AJIndicator\AJContextEngine.ts                                   238                confidence
+                                                                                                        Result.confiden
+                                                                                                        ceGrade,
+C:\AI-Institutional\src\indicators\AJIndicator\AJContextEngine.ts                                   241                confidence
+                                                                                                        Result.recommen
+                                                                                                        dation,
+C:\AI-Institutional\src\indicators\AJIndicator\AJContextEngine.ts                                   244                confidence
+                                                                                                        Result.tradeQua
+                                                                                                        lified,
+C:\AI-Institutional\src\indicators\AJIndicator\AJContextEngine.ts                                   247                confidence
+                                                                                                        Result.evidence
+                                                                                                        .length
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  125                payload.ajRun
+                                                                                                        time.symbol,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  126                payload.ajRun
+                                                                                                        time.barIndex
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  133             pay
+                                                                                                        load.ajRuntime.
+                                                                                                        chartId ??
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  134             pay
+                                                                                                        load.ajRuntime.
+                                                                                                        symbol ??
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  137         AJPipel
+                                                                                                        ineTrace.begin(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  140
+                                                                                                         symbol: payloa
+                                                                                                        d.ajRuntime.sym
+                                                                                                        bol,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  141
+                                                                                                         timeframe: pay
+                                                                                                        load.ajRuntime.
+                                                                                                        timeframe,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  142
+                                                                                                         chartId: paylo
+                                                                                                        ad.ajRuntime.ch
+                                                                                                        artId,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  144
+                                                                                                             payload.aj
+                                                                                                        Runtime.tradeEn
+                                                                                                        gineMode ??
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  175                contextResul
+                                                                                                        t.tradeDirectio
+                                                                                                        nFinal;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  190                contextResul
+                                                                                                        t.tradeDirectio
+                                                                                                        nFinal;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  196                payload.ajRun
+                                                                                                        time.ctxLong =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  197                contextResul
+                                                                                                        t.ctxLong;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  199                payload.ajRun
+                                                                                                        time.ctxShort =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  200                contextResul
+                                                                                                        t.ctxShort;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  202                payload.ajRun
+                                                                                                        time.scoreLong
+                                                                                                        =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  203                contextResul
+                                                                                                        t.longScore;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  205                payload.ajRun
+                                                                                                        time.scoreShort
+                                                                                                         =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  206                contextResul
+                                                                                                        t.shortScore;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  212                payload.ajRun
+                                                                                                        time.tradeDirec
+                                                                                                        tionFinal =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  213                contextResul
+                                                                                                        t.tradeDirectio
+                                                                                                        nFinal;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  215                payload.ajRun
+                                                                                                        time.tradeScore
+                                                                                                         =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  216                contextResul
+                                                                                                        t.tradeScore;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  238                payload.ajRun
+                                                                                                        time.confidence
+                                                                                                         =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  241                payload.ajRun
+                                                                                                        time.contextCon
+                                                                                                        fidence =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  242                confidenceRe
+                                                                                                        sult.confidence
+                                                                                                        ;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  244                payload.ajRun
+                                                                                                        time.executionC
+                                                                                                        onfidence =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  245                confidenceRe
+                                                                                                        sult.confidence
+                                                                                                        ;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  247                payload.ajRun
+                                                                                                        time.institutio
+                                                                                                        nalScore =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  248                confidenceRe
+                                                                                                        sult.confidence
+                                                                                                        ;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  254         AJPipel
+                                                                                                        ineTrace.stage(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  260
+                                                                                                             contextRes
+                                                                                                        ult.ctxLong ||
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  261
+                                                                                                             contextRes
+                                                                                                        ult.ctxShort,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  263
+                                                                                                             contextRes
+                                                                                                        ult.tradeScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  265                contextRes
+                                                                                                        ult.tradeDirect
+                                                                                                        ionFinal > 0
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  267                : context
+                                                                                                        Result.tradeDir
+                                                                                                        ectionFinal < 0
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  271                tradeDirec
+                                                                                                        tion:   contextRe
+                                                                                                        sult.tradeDirec
+                                                                                                        tionFinal,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  272                 
+                                                                                                        longScore: cont
+                                                                                                        extResult.longS
+                                                                                                        core,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  273                 
+                                                                                                        shortScore:    con
+                                                                                                        textResult.shor
+                                                                                                        tScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  274                 
+                                                                                                        tradeScore:    con
+                                                                                                        textResult.trad
+                                                                                                        eScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  275
+
+                                                                                                        confidence: pay
+                                                                                                        load.ajRuntime.
+                                                                                                        contextConfiden
+                                                                                                        ce
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  287             pay
+                                                                                                        load.ajRuntime.
+                                                                                                        tradeEngineMode
+                                                                                                         !== "SCORE";
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  337         payload
+                                                                                                        .ajRuntime.aiSc
+                                                                                                        oreLong =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  338             aiR
+                                                                                                        esult.aiScoreLo
+                                                                                                        ng;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  340         payload
+                                                                                                        .ajRuntime.aiSc
+                                                                                                        oreShort =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  341             aiR
+                                                                                                        esult.aiScoreSh
+                                                                                                        ort;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  343         payload
+                                                                                                        .ajRuntime.aiBe
+                                                                                                        stScore =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  344             aiR
+                                                                                                        esult.aiBestSco
+                                                                                                        re;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  346         payload
+                                                                                                        .ajRuntime.aiBe
+                                                                                                        stDir =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  347             aiR
+                                                                                                        esult.aiBestDir
+                                                                                                        ;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  349         payload
+                                                                                                        .ajRuntime.aiSa
+                                                                                                        feEntry =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  350             aiR
+                                                                                                        esult.aiSafeEnt
+                                                                                                        ry;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  352         payload
+                                                                                                        .ajRuntime.aiFa
+                                                                                                        stScalp =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  353             aiR
+                                                                                                        esult.aiFastSca
+                                                                                                        lp;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  355         payload
+                                                                                                        .ajRuntime.aiCo
+                                                                                                        rePass =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  356             aiR
+                                                                                                        esult.aiCorePas
+                                                                                                        s;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  362         payload
+                                                                                                        .ajRuntime.runt
+                                                                                                        imeIntelligence
+                                                                                                         = {
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  364             ...
+                                                                                                        payload.ajRunti
+                                                                                                        me.runtimeIntel
+                                                                                                        ligence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  367
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiConfidenc
+                                                                                                        e,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  370
+                                                                                                         payload.ajRunt
+                                                                                                        ime.executionCo
+                                                                                                        nfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  373
+                                                                                                         payload.ajRunt
+                                                                                                        ime.institution
+                                                                                                        alScore
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  381         AJPipel
+                                                                                                        ineTrace.stage(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  390
+                                                                                                             aiResult.a
+                                                                                                        iCorePass,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  393
+                                                                                                             aiResult.a
+                                                                                                        iBestScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  396
+                                                                                                             aiResult.a
+                                                                                                        iModeText,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  401
+                                                                                                                 aiResu
+                                                                                                        lt.aiBestDir,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  404
+                                                                                                                 aiResu
+                                                                                                        lt.aiScoreLong,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  407
+                                                                                                                 aiResu
+                                                                                                        lt.aiScoreShort
+                                                                                                        ,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  410
+                                                                                                                 aiResu
+                                                                                                        lt.aiSafeEntry,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  413
+                                                                                                                 aiResu
+                                                                                                        lt.aiFastScalp,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  416
+                                                                                                                 payloa
+                                                                                                        d.ajRuntime.aiC
+                                                                                                        onfidence ??
+                                                                                                        false
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  428             pay
+                                                                                                        load.ajRuntime.
+                                                                                                        tradeEngineMode
+                                                                                                         === "AI_SMC"
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  488         AJPipel
+                                                                                                        ineTrace.stage(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  493
+                                                                                                             payload.aj
+                                                                                                        Runtime.tradeEn
+                                                                                                        gineMode ===
+                                                                                                        "AI_SMC",
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  496
+                                                                                                             smcResult.
+                                                                                                        smcCorePass,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  499
+                                                                                                             smcResult.
+                                                                                                        smcReason
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  540         payload
+                                                                                                        .ajRuntime.auth
+                                                                                                        orityResult =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  543         payload
+                                                                                                        .ajRuntime.exec
+                                                                                                        utionReady =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  544             aut
+                                                                                                        horityResult.ex
+                                                                                                        ecutionAllowed;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  550         AJPipel
+                                                                                                        ineTrace.stage(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  558
+                                                                                                             authorityR
+                                                                                                        esult.execution
+                                                                                                        Allowed,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  561
+                                                                                                             payload.aj
+                                                                                                        Runtime.executi
+                                                                                                        onConfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  564
+                                                                                                             authorityR
+                                                                                                        esult.authority
+                                                                                                        Text,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  569
+                                                                                                                 author
+                                                                                                        ityResult.execu
+                                                                                                        tionAllowed,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  572
+                                                                                                                 payloa
+                                                                                                        d.ajRuntime.exe
+                                                                                                        cutionConfidenc
+                                                                                                        e,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  575
+                                                                                                                 payloa
+                                                                                                        d.ajRuntime.ins
+                                                                                                        titutionalScore
+                                                                                                        ,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  581
+                                                                                                                 contex
+                                                                                                        tResult.tradeSc
+                                                                                                        ore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  584
+                                                                                                                 payloa
+                                                                                                        d.ajRuntime.tra
+                                                                                                        deEngineMode
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  610                contextResu
+                                                                                                        lt.longScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  613                contextResu
+                                                                                                        lt.shortScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  616                contextResu
+                                                                                                        lt.tradeScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  619                contextResu
+                                                                                                        lt.tradeDirecti
+                                                                                                        onFinal,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  626
+                                                                                                         payload.ajRunt
+                                                                                                        ime.contextConf
+                                                                                                        idence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  629
+                                                                                                         payload.ajRunt
+                                                                                                        ime.executionCo
+                                                                                                        nfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  632
+                                                                                                         payload.ajRunt
+                                                                                                        ime.institution
+                                                                                                        alScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  639
+                                                                                                         authorityResul
+                                                                                                        t.executionAllo
+                                                                                                        wed,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  656
+                                                                                                         payload.ajRunt
+                                                                                                        ime.tradeEngine
+                                                                                                        Mode ===
+                                                                                                        "AI_SMC"
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  658
+                                                                                                             : payload.
+                                                                                                        ajRuntime.trade
+                                                                                                        EngineMode ===
+                                                                                                        "AI"
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  681
+                                                                                                         contextResult.
+                                                                                                        ctxLong ||
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  682
+                                                                                                         contextResult.
+                                                                                                        ctxShort,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  685
+                                                                                                         aiResult.aiCor
+                                                                                                        ePass,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  688
+                                                                                                         smcResult.smcC
+                                                                                                        orePass,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  695
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiTrendLong
+                                                                                                        ,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  698
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiTrendShor
+                                                                                                        t,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  701
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiInstituti
+                                                                                                        onalLong,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  704
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiInstituti
+                                                                                                        onalShort,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  707
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiMarketStr
+                                                                                                        uctureBull,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  710
+                                                                                                         payload.ajRunt
+                                                                                                        ime.aiMarketStr
+                                                                                                        uctureBear,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  720
+                                                                                                         payload.ajRunt
+                                                                                                        ime.barIndex,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  743                authorityRes
+                                                                                                        ult.executionAl
+                                                                                                        lowed;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  749         payload
+                                                                                                        .ajRuntime.engi
+                                                                                                        neState =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  750             sta
+                                                                                                        teResult.engine
+                                                                                                        State;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  752                payload.ajRun
+                                                                                                        time.executionR
+                                                                                                        eady =
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  753                stateResult.
+                                                                                                        readyForExecuti
+                                                                                                        on;
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  759                AJPipelineTra
+                                                                                                        ce.stage(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  767
+                                                                                                             stateResul
+                                                                                                        t.readyForExecu
+                                                                                                        tion,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  770
+                                                                                                             contextRes
+                                                                                                        ult.tradeScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  774
+                                                                                                                 stateR
+                                                                                                        esult.engineSta
+                                                                                                        te
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  780
+                                                                                                                 stateR
+                                                                                                        esult.stateScan
+                                                                                                        Ready,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  783
+                                                                                                                 stateR
+                                                                                                        esult.stateConf
+                                                                                                        irmReady,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  786
+                                                                                                                 stateR
+                                                                                                        esult.genericRe
+                                                                                                        ady,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  789
+                                                                                                                 stateR
+                                                                                                        esult.readyForE
+                                                                                                        xecution,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  792
+                                                                                                                 stateR
+                                                                                                        esult.enteredAr
+                                                                                                        med,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  795
+                                                                                                                 stateR
+                                                                                                        esult.enteredCo
+                                                                                                        nfirmed,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  798
+                                                                                                                 stateR
+                                                                                                        esult.enteredEx
+                                                                                                        ecuted,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  801
+                                                                                                                 stateR
+                                                                                                        esult.enteredMa
+                                                                                                        nage,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  807
+                                                                                                                 author
+                                                                                                        ityResult.execu
+                                                                                                        tionAllowed,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  810
+                                                                                                                 payloa
+                                                                                                        d.ajRuntime.con
+                                                                                                        textConfidence
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  826                // to their
+                                                                                                        defaults,
+                                                                                                        inside AJPipeli
+                                                                                                        neTrace.begin()
+                                                                                                         — and
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  832                AJPipelineTra
+                                                                                                        ce.update(
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  839                contextRes
+                                                                                                        ult.longScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  842                contextRes
+                                                                                                        ult.shortScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  845                contextRes
+                                                                                                        ult.tradeScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  848                stateResul
+                                                                                                        t.engineState,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  851                payload.aj
+                                                                                                        Runtime.tradeEn
+                                                                                                        gineMode,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  854                aiResult.a
+                                                                                                        iScoreLong,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  857                aiResult.a
+                                                                                                        iScoreShort,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  860                aiResult.a
+                                                                                                        iBestScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  863                aiResult.a
+                                                                                                        iBestDir,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  866                smcResult.
+                                                                                                        smcCorePass,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  869                authorityR
+                                                                                                        esult.authority
+                                                                                                        Approved
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  877         const p
+                                                                                                        ipelineDiagnost
+                                                                                                        ics = {
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  925                pipelineDiag
+                                                                                                        nostics:
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  926                pipelineDia
+                                                                                                        gnostics,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  956
+                                                                                                         stateResult.en
+                                                                                                        teredExecuted
+                                                                                                        &&
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  961
+                                                                                                         stateResult.en
+                                                                                                        teredExecuted
+                                                                                                        &&
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  971
+                                                                                                         stateResult.en
+                                                                                                        gineState,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  974
+                                                                                                         payload.ajRunt
+                                                                                                        ime.tradeEngine
+                                                                                                        Mode ??
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  975
+                                                                                                         authorityResul
+                                                                                                        t.authorityDeci
+                                                                                                        sion,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  982
+                                                                                                         contextResult.
+                                                                                                        tradeScore,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                  985
+                                                                                                         payload.ajRunt
+                                                                                                        ime.executionCo
+                                                                                                        nfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1024
+                                                                                                         payload.ajRunt
+                                                                                                        ime.demandZones
+                                                                                                         ?? [],
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1027
+                                                                                                         payload.ajRunt
+                                                                                                        ime.supplyZones
+                                                                                                         ?? [],
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1030
+                                                                                                         payload.ajRunt
+                                                                                                        ime.fvgZones
+                                                                                                        ?? [],
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1033
+                                                                                                         payload.ajRunt
+                                                                                                        ime.liquidityZo
+                                                                                                        nes ?? [],
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1071
+                                                                                                             payload.aj
+                                                                                                        Runtime.marketR
+                                                                                                        egime,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1074
+                                                                                                             payload.aj
+                                                                                                        Runtime.trendCo
+                                                                                                        nfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1077
+                                                                                                             payload.aj
+                                                                                                        Runtime.structu
+                                                                                                        reConfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1080
+                                                                                                             payload.aj
+                                                                                                        Runtime.liquidi
+                                                                                                        tyConfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1083
+                                                                                                             payload.aj
+                                                                                                        Runtime.context
+                                                                                                        Confidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1086
+                                                                                                             payload.aj
+                                                                                                        Runtime.executi
+                                                                                                        onConfidence,
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1089
+                                                                                                             payload.aj
+                                                                                                        Runtime.institu
+                                                                                                        tionalScore
+C:\AI-Institutional\src\indicators\AJIndicator\AJDecisionEngine.ts                                 1096
+                                                                                                             payload.aj
+                                                                                                        Runtime.runtime
+                                                                                                        Intelligence
+C:\AI-Institutional\src\indicators\AJIndicator\AJRuntimeContextBuilder.ts                           343                AJPipelineTra
+                                                                                                        ce.begin(
+C:\AI-Institutional\src\indicators\AJIndicator\AJRuntimeContextBuilder.ts                           894                AJPipelineTra
+                                                                                                        ce.stage(
+C:\AI-Institutional\src\indicators\AJIndicator\AJTypes.ts                                           270         pipelineDiagno
+                                                                                                        stics?: {
+C:\AI-Institutional\src\indicators\AJIndicator\context\AJContextResult.ts                             3  * ContextResul
+                                                                                                        t.ts
+C:\AI-Institutional\src\indicators\AJIndicator\context\AJContextResult.ts                             6  * src/indicato
+                                                                                                        rs/AJIndicator/
+                                                                                                        context/AJConte
+                                                                                                        xtResult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\core\StateMachine.ts                                 285         //
+                                                                                                        anything. AJPip
+                                                                                                        elineTrace.stag
+                                                                                                        e() receives
+                                                                                                        this exact
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugBuilder.ts                               95  * pipelineDiag
+                                                                                                        nostics
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugBuilder.ts                              231             AJP
+                                                                                                        ipelineTrace.ge
+                                                                                                        t(chartId)
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJDebugBuilder.ts                              233             AJP
+                                                                                                        ipelineTrace.ge
+                                                                                                        t("GLOBAL");
+C:\AI-Institutional\src\indicators\AJIndicator\debug\AJPipelineTrace.ts                              72 // src/indicato
+                                                                                                        rs/AJIndicator/
+                                                                                                        debug/AJPipelin
+                                                                                                        eTrace.ts
+C:\AI-Institutional\src\indicators\AJIndicator\engines\Authority\ExecutionAuthorityResult.ts          3  * ExecutionAut
+                                                                                                        horityResult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\engines\Authority\ExecutionAuthorityResult.ts          6  * src/indicato
+                                                                                                        rs/AJIndicator/
+                                                                                                        engines/Authori
+                                                                                                        ty/ExecutionAut
+                                                                                                        horityResult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\engines\Confidence\ConfidenceResult.ts                 3  * ConfidenceRe
+                                                                                                        sult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\engines\Confidence\ConfidenceResult.ts                 6  * src/indicato
+                                                                                                        rs/AJIndicator/
+                                                                                                        engines/Confide
+                                                                                                        nce/ConfidenceR
+                                                                                                        esult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\engines\MarketState\MarketStateResult.ts               3  * MarketStateR
+                                                                                                        esult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\engines\MarketState\MarketStateResult.ts               6  * src/indicato
+                                                                                                        rs/AJIndicator/
+                                                                                                        engines/MarketS
+                                                                                                        tate/MarketStat
+                                                                                                        eResult.ts
+C:\AI-Institutional\src\indicators\AJIndicator\smc\SMCResult.ts                                       2 // src/indicato
+                                                                                                        rs/AJIndicator/
+                                                                                                        smc/SMCResult.t
+                                                                                                        s
+
+
+PS C:\AI-Institutional>
+===================================================================================================================
+Priority 3
+3. Execution Authority Result
+
+Already found here
+
+src/indicators/AJIndicator/engines/Authority/ExecutionAuthorityResult.ts
+
+Need full file.
+
+Reason:
+
+Need exact fields
+
+authorityText
+
+authorityDecision
+
+executionAllowed
+
+authorityApproved
+
+...
+
+This determines
+
+authorityStatus
+blockReason
+executionReady
+Priority 4
+4. Confidence Result
+
+Already found
+
+src/indicators/AJIndicator/engines/Confidence/ConfidenceResult.ts
+
+Need full file.
+
+Need to verify
+
+confidence
+
+confidenceGrade
+
+recommendation
+
+tradeQualified
+
+...
+Priority 5
+5. Market State Result
+
+Already found
+
+src/indicators/AJIndicator/engines/MarketState/MarketStateResult.ts
+
+Need full file.
+
+Reason
+
+Need
+
+engineState
+
+readyForExecution
+
+enteredExecuted
+
+enteredManage
+
+...
+Priority 6
+6. SMC Result
+
+Already found
+
+src/indicators/AJIndicator/smc/SMCResult.ts
+
+Need full file.
+
+Need
+
+smcReason
+
+smcCorePass
+
+...
+Priority 7
+7. AI Confidence Result
+
+The search proves this exists.
+
+Please provide the file defining
+
+AIConfidenceResult
+
+Likely somewhere around
+
+src/indicators/AJIndicator/ai/
+
+Need
+
+aiBestScore
+
+aiModeText
+
+aiBestDir
+
+...
+I do NOT need these
+
+I do not need
+
+Execution.ts
+
+unless it owns additional debug fields.
+
+The current audit already proves every debug property is produced before execution.
+
+I also recommend one architecture improvement
+
+After reviewing AJTypes.ts, I recommend adding a single canonical contract instead of allowing AJDebugBuilder to read dozens of scattered engine results.
+
+For example:
+===========================================================================================
+export interface AJDebugContract {
+
+    runtime: AJRuntimeContext;
+
+    context: AJContextResult;
+
+    confidence: ConfidenceResult;
+
+    ai: AIConfidenceResult;
+
+    smc: SMCResult;
+
+    authority: ExecutionAuthorityResult;
+
+    marketState: MarketStateResult;
+
+    pipelineDiagnostics?: AJIndicatorResult["pipelineDiagnostics"];
+
+    trace?: AJPipelineTrace;
+
+}
+
+Then AJDecisionEngine would assemble this once:
+
+const debugContract: AJDebugContract = {
+    runtime: payload.ajRuntime,
+    context: contextResult,
+    confidence: confidenceResult,
+    ai: aiResult,
+    smc: smcResult,
+    authority: authorityResult,
+    marketState: stateResult,
+    pipelineDiagnostics
+};
+
+and AJDebugBuilder becomes simply:
+
+build(debugContract)
+
+instead of depending on six independent engine outputs. This keeps the builder completely decoupled from pipeline internals. If AJ v3 changes where a value originates, only AJDecisionEngine needs updating while the builder continues consuming the same canonical debug contract.
+
+I also agree with your requirement that there should be no placeholders in the implementation plan. Fields such as tradeActive, optionSymbol, and strike information should remain part of the debug contract even if they are currently null or populated later by the execution/option engines. That preserves the debug schema and avoids future breaking changes when options trading is enabled.
+===================================================================
+ExecutionAuthorityResult.ts — to confirm authority-related fields such as approval state, execution readiness, decision text, and block reasons.
+ConfidenceResult.ts — to verify confidence score, grade, recommendation, and qualification fields.
+MarketStateResult.ts — to inspect execution state transitions and market state outputs.
+SMCResult.ts — to confirm SMC pass/fail reasons and core validation fields.
+AIConfidenceResult.ts — to verify AI scoring, direction, mode, and related outputs.
+=====================================
+Confirmed engine output contracts
+
+From the files you've shared, the canonical outputs are now:
+| Engine             | Result Contract                                       | Status |
+| ------------------ | ----------------------------------------------------- | ------ |
+| MarketStateEngine  | `MarketStateResult`                                   | ✅      |
+| ConfidenceEngine   | `ConfidenceResult`                                    | ✅      |
+| ExecutionAuthority | `ExecutionAuthorityResult`                            | ✅      |
+| SMC                | `SMCResult`                                           | ✅      |
+| AIConfidenceEngine | `AIConfidenceResult` *(inside AIConfidenceEngine.ts)* | ✅      |
+| Runtime            | `AJRuntimeContext`                                    | ✅      |
+| Pipeline Telemetry | `AJPipelineTrace`                                     | ✅      |
+| Engine Diagnostics | `EngineDiagnostic`                                    | ✅      |
+============================================================================
+After those files I can generate
+
+I will generate production-ready code, not pseudocode.
+
+1
+AJDebugContract.ts
+2
+
+Refactored
+
+AJDecisionEngine.ts
+
+showing exactly where
+
+const debugContract: AJDebugContract = {
+
+    runtime,
+
+    context,
+
+    confidence,
+
+    ai,
+
+    smc,
+
+    authority,
+
+    marketState,
+
+    pipelineDiagnostics,
+
+    trace
+
+};
+
+is built.
+
+3
+
+Refactored
+
+AJDebugBuilder.ts
+
+from
+
+build(
+    runtime,
+    confidence,
+    authority,
+    ai,
+    smc,
+    ...
+)
+
+to
+
+build(
+    contract: AJDebugContract
+)
+4
+
+Migration patch
+
+Exactly which lines change.
+
+No placeholders.
+
+5
+
+Ownership matrix
+
+Something like:
+
+Debug Field	Owner	Transport	Final Consumer
+confidence	ConfidenceEngine	ConfidenceResult	AJDebugBuilder
+authorityApproved	ExecutionAuthority	ExecutionAuthorityResult	AJDebugBuilder
+smcCorePass	SMCEngine	SMCResult	AJDebugBuilder
+marketState	MarketStateEngine	MarketStateResult	AJDebugBuilder
+tradeDirectionFinal	ContextEngine	AJRuntimeContext	AJDebugBuilder
+diagnostics	EngineDiagnostic	AJPipelineTrace	AJDebugBuilder
+6
+
+Final architecture diagram
+
+MarketStateEngine
+        │
+OrderFlowEngine
+        │
+LiquidityEngine
+        │
+ContextEngine
+        │
+ConfidenceEngine
+        │
+AIConfidenceEngine
+        │
+ExecutionAuthority
+        │
+AJDecisionEngine
+        │
+        ▼
++-------------------------+
+|     AJDebugContract     |
++-------------------------+
+        │
+        ├──────────────► AJDebugBuilder
+        ├──────────────► Dashboard
+        ├──────────────► Debug Panel
+        ├──────────────► Runtime Telemetry
+        └──────────────► AJPipelineTrace
+The files I need next (in order)
+AJDecisionEngine.ts (highest priority)
+AJDebugBuilder.ts
+AJIndicatorResult.ts
+AJContextResult.ts
+ContextEngine.ts (or at least its return type and the section where it constructs AJContextResult)
+
+Once I have those, I can provide a minimal, non-breaking refactor that introduces AJDebugContract while keeping all existing engine contracts intact and preserving AJ v2 compatibility.
+===================Step 3
+
+Modify
+
+AJDebugBuilder.ts
+
+to consume only
+
+build(snapshot)
+
+instead of many scattered objects.
+
+Step 4
+
+Simplify
+
+DebugEngine.ts
+
+to read only the snapshot.
+
+Step 5
+
+Remove duplicated runtime synchronization from AJDecisionEngine.
+
+Step 6
+
+Remove duplicate AJContextResult by making it extend or alias ContextResult.
+
+✅ Patch AJDebugBuilder.ts (consume snapshot)
+✅ Patch DebugEngine.ts (consume snapshot)
+✅ Patch AJTypes.ts (remove duplicate context contract if possible)

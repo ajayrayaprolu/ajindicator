@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AJ v2 — Intelligent Trading Mode Architecture & Implementation Plan</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;line-height:1.55;background:#f5f6f8;color:#20242a;margin:0}
+main{max-width:1100px;margin:30px auto;background:#fff;padding:38px;border-radius:14px;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+h1{margin-top:0;font-size:30px} h2{margin-top:36px;border-bottom:1px solid #ddd;padding-bottom:7px}
+h3{margin-top:25px} pre{background:#111827;color:#f9fafb;padding:18px;border-radius:8px;overflow:auto}
+table{width:100%;border-collapse:collapse;margin:16px 0} th,td{border:1px solid #d1d5db;padding:9px;text-align:left;vertical-align:top} th{background:#f3f4f6}
+.note{padding:15px;background:#f3f4f6;border-left:4px solid #6b7280;border-radius:5px}
+.good{padding:15px;background:#ecfdf5;border-left:4px solid #10b981;border-radius:5px}
+.warn{padding:15px;background:#fffbeb;border-left:4px solid #f59e0b;border-radius:5px}
+code{font-family:Consolas,monospace}
+.small{font-size:13px;color:#6b7280}
+</style>
+</head>
+<body><main>
+
+<h1>AJ v2 — Intelligent Trading Mode Architecture & Implementation Plan</h1>
+<p class="small">Reference document — 11 September 2026</p>
+
+<div class="good">
+<strong>Core decision:</strong> Keep SCORE, AI, and AI+SMC. Keep Advanced Crypto, Safe/Swing/Scalper, OB/FVG/BOS/CHOCH/liquidity analysis, and market synchronization. Do not make all of these independent mandatory gates. Calculation modes calculate/adapt confidence; one canonical authorization layer decides TRADE/NO_TRADE.
+</div>
+
+<h2>1. Actual problem</h2>
+<p>The main problem is not merely that two parameter files exist. The real problem is that the platform does not yet make the complete decision path sufficiently visible:</p>
+<blockquote>Which calculation mode produced the score, which conditions contributed, which threshold applied, and exactly why did the trade pass or fail?</blockquote>
+<p>The current practical workflow has become SCORE + development/reduced thresholds because production often gives NO_TRADE and AI/AI+SMC can become too restrictive. The new design must remove that uncertainty.</p>
+
+<h2>2. Desired operating model</h2>
+<pre>
+MARKET DATA
+    ↓
+CONDITION ENGINES
+    ↓
+MARKET REGIME / CONTEXT
+    ↓
+CALCULATION MODE
+    ├── SCORE
+    ├── AI
+    └── AI + SMC
+    ↓
+CALCULATED CONFIDENCE + EVIDENCE + RISK
+    ↓
+ONE CANONICAL AUTHORIZATION GATE
+    ↓
+TRADE / NO_TRADE
+</pre>
+<p>The system should support two ways to choose calculation mode:</p>
+<ul>
+<li><strong>AUTO / INTELLIGENT (default):</strong> the system observes market conditions and selects the appropriate calculation behavior.</li>
+<li><strong>EXPLICIT MANUAL:</strong> the user can force SCORE, AI, or AI+SMC from Indicator Settings.</li>
+</ul>
+
+<h2>3. Mode semantics</h2>
+<h3>SCORE — normal/default market operation</h3>
+<p>SCORE is the normal opportunity engine. It should use weighted evidence from trend, momentum, volume, price action, structure, order flow, VWAP/CVD, liquidity, synchronization, and risk rather than requiring every institutional condition simultaneously.</p>
+<pre>market evidence
+→ weighted score
+→ score/risk validation
+→ authorization</pre>
+
+<h3>AI — adaptive protection</h3>
+<p>AI should not mean SCORE plus many mandatory conditions. It should adapt confidence and risk based on volatility, conflicting signals, abnormal conditions, and trap-like behavior.</p>
+<pre>base score
+→ AI contextual adjustment
+→ risk/trap adjustment
+→ final confidence
+→ authorization</pre>
+
+<h3>AI + SMC — institutional/trap/reversal protection</h3>
+<p>AI+SMC adds contextual interpretation of OB, FVG, BOS, CHOCH, liquidity sweep and related institutional evidence. These should generally be evidence and modifiers, not a requirement that every engine returns YES.</p>
+<pre>base score
+→ AI adjustment
+→ SMC structural/liquidity adjustment
+→ reversal/trap adjustment
+→ final confidence
+→ authorization</pre>
+
+<h2>4. Intelligent automatic mode selection</h2>
+<p>This is the key clarification: the normal/default system should not require the user to watch the market and manually change modes.</p>
+<table>
+<tr><th>Detected regime</th><th>Preferred behavior</th><th>Purpose</th></tr>
+<tr><td>Clean/normal trend</td><td>SCORE</td><td>More valid opportunities without unnecessary institutional over-gating.</td></tr>
+<tr><td>Elevated volatility / conflicting conditions</td><td>AI</td><td>Adaptive confidence and risk protection.</td></tr>
+<tr><td>Reversal / manipulation / institutional-risk conditions</td><td>AI+SMC</td><td>Use OB/FVG/BOS/CHOCH/liquidity context to avoid traps and analyze structured reversals.</td></tr>
+</table>
+<p>Debug output should show both <strong>Requested Mode</strong> (AUTO or explicit) and <strong>Effective Mode</strong> (SCORE, AI, or AI_SMC).</p>
+<div class="note"><strong>Manual override:</strong> if the user explicitly selects SCORE, AI, or AI_SMC, AUTO must not silently replace that selection.</div>
+
+<h2>5. Advanced Crypto</h2>
+<p>Advanced Crypto is a market-profile/calculation modifier, not a fourth trading mode.</p>
+<pre>
+Environment:       DEVELOPMENT / PRODUCTION
+Mode:              AUTO / SCORE / AI / AI_SMC
+Market Profile:    NORMAL / ADVANCED_CRYPTO
+Strategy Profile:  SAFE / SWING / SCALPER
+</pre>
+<p>Advanced Crypto can alter calculation weighting/behavior for the supported crypto/gold/forex-style markets without duplicating authorization logic.</p>
+
+<h2>6. Safe / Swing / Scalper</h2>
+<table>
+<tr><th>Profile</th><th>Intent</th></tr>
+<tr><td>SAFE</td><td>Highest quality requirement, stronger risk/trap protection, fewer but safer trades.</td></tr>
+<tr><td>SWING</td><td>Balanced confidence and risk requirements.</td></tr>
+<tr><td>SCALPER</td><td>More opportunity-oriented; momentum, volume, spread and fast price action receive greater importance.</td></tr>
+</table>
+<p>Profiles should modify weights/thresholds/aggressiveness, not create separate calculation engines or duplicate authorization gates.</p>
+
+<h2>7. Market synchronization — NIFTY/BANKNIFTY and BTC/SPX500</h2>
+<p>The synchronization feature must be inspected in the existing code before its exact semantics are changed. It exists as Indicator Settings toggles, but its runtime behavior and debug visibility have not yet been established.</p>
+<p>Do <strong>not</strong> assume synchronization is mandatory or merely a confidence modifier until the current implementation is traced.</p>
+<ol>
+<li>Locate the sync toggle definitions and runtime consumers.</li>
+<li>Verify that attach/detach state reaches runtime calculations.</li>
+<li>Verify NIFTY/BANKNIFTY and BTC/SPX500 behavior separately where applicable.</li>
+<li>Expose sync status, direction, mismatch, attached/detached state and contribution in diagnostics.</li>
+<li>Preserve the existing intended behavior unless inspection proves it is incorrect.</li>
+</ol>
+<p>Only after this audit should the exact role be classified as a modifier, filter, or hard safety gate.</p>
+
+<h2>8. OB / FVG / BOS / CHOCH / Liquidity</h2>
+<ul>
+<li><strong>OB:</strong> institutional evidence; repeated reactions can strengthen confidence.</li>
+<li><strong>FVG:</strong> contextual imbalance/evidence, not automatically mandatory on every trade.</li>
+<li><strong>BOS:</strong> continuation confirmation.</li>
+<li><strong>CHOCH:</strong> potential regime/reversal warning; contextual rather than a simple checkbox.</li>
+<li><strong>Liquidity Sweep:</strong> contextual. A sweep followed by rejection/CHOCH/OB/FVG is different from a sweep followed by continuation.</li>
+<li><strong>Repeated OB/FVG reactions:</strong> useful evidence; three respects can be stronger than one without becoming a universal mandatory gate.</li>
+</ul>
+
+<h2>9. Synchronization must be observable</h2>
+<pre>
+MARKET SYNC
+Requested:       ENABLED
+Effective:       ATTACHED
+Primary:         NIFTY
+Secondary:       BANKNIFTY
+Primary Bias:    BULLISH
+Secondary Bias:  BULLISH
+Sync State:      ALIGNED
+Contribution:    +X
+</pre>
+<p>For mismatch:</p>
+<pre>
+Primary Bias:    BULLISH
+Secondary Bias:  BEARISH
+Sync State:      MISMATCH
+Contribution:    -X / FILTERED / BLOCKED
+</pre>
+<p>The actual contribution and blocking behavior must be taken from the current implementation after inspection, not invented during consolidation.</p>
+
+<h2>10. DEV vs PROD</h2>
+<p>Development remains available but is not the normal trading mode.</p>
+<p><strong>DEV purpose:</strong> test whether the same calculation pipeline can produce a candidate trade when authorization thresholds are relaxed.</p>
+<pre>
+PRODUCTION:
+same calculation
+→ normal threshold
+→ TRADE / NO_TRADE
+
+DEVELOPMENT:
+same calculation
+→ relaxed test threshold
+→ TRADE / NO_TRADE
+</pre>
+<div class="warn"><strong>DEV must never be the default.</strong> It is a validation/diagnostic/testing facility, not the normal production strategy.</div>
+
+<h2>11. Why current 25/60 and 36/60 results matter</h2>
+<p>A result such as 25/60 or 36/60 does not prove that 60 is simply too high. It means the calculation is producing a low result and/or another gate is contributing to the rejection.</p>
+<ul>
+<li>Inspect score component weights.</li>
+<li>Inspect conditions that zero or heavily penalize scores.</li>
+<li>Inspect structure and institutional-confluence behavior.</li>
+<li>Inspect risk qualification.</li>
+<li>Inspect order-flow interpretation.</li>
+<li>Inspect FVG/OB availability.</li>
+<li>Inspect synchronization behavior.</li>
+<li>Inspect downstream authority/execution gates.</li>
+<li>Verify that DEV thresholds are actually applied where expected.</li>
+</ul>
+
+<h2>12. Canonical configuration</h2>
+<p>Use <code>src/runtime/config/RuntimeParameters.ts</code> as the canonical runtime configuration surface, while initially retaining <code>src/indicators/AJIndicator/config/AJRuntimeParameters.ts</code> during migration.</p>
+<p>Do not immediately delete the second file. First identify every consumer and migrate safely.</p>
+
+<h2>13. Two-file migration strategy</h2>
+<table>
+<tr><th>File</th><th>Temporary role</th></tr>
+<tr><td><code>RuntimeParameters.ts</code></td><td>Canonical environment/mode/profile/threshold configuration and eventual single source of truth.</td></tr>
+<tr><td><code>AJRuntimeParameters.ts</code></td><td>Compatibility bridge during migration. No new independent decision logic should be added here.</td></tr>
+</table>
+<p>The target is one source of truth. The compatibility file can then become a forwarding/deprecation layer or be removed once all imports are migrated.</p>
+
+<h2>14. One authorization result</h2>
+<p>The final authorization should expose a structured result rather than only a boolean:</p>
+<pre>{
+  approved,
+  requestedMode,
+  effectiveMode,
+  environment,
+  marketProfile,
+  strategyProfile,
+  baseScore,
+  aiAdjustment,
+  smcAdjustment,
+  finalConfidence,
+  requiredConfidence,
+  riskScore,
+  requiredRisk,
+  executionScore,
+  requiredExecution,
+  conditions,
+  blockers,
+  warnings,
+  marketRegime,
+  syncState
+}</pre>
+<p>This should wrap the existing calculations rather than duplicate them.</p>
+
+<h2>15. Debug output requirement</h2>
+<p>Every final decision must answer:</p>
+<ol>
+<li>Which mode was requested?</li>
+<li>Which mode was actually used?</li>
+<li>What was the calculated score/confidence?</li>
+<li>Which threshold(s) applied?</li>
+<li>Exactly why did the decision pass or fail?</li>
+</ol>
+
+<h3>Example TRADE</h3>
+<pre>
+ENVIRONMENT       PRODUCTION
+REQUESTED MODE    AUTO
+EFFECTIVE MODE    SCORE
+MARKET PROFILE    NORMAL
+STRATEGY          SAFE
+MARKET REGIME     CLEAN TREND
+
+BASE SCORE        72
+AI ADJUSTMENT      0
+SMC ADJUSTMENT     0
+FINAL CONFIDENCE  72
+
+REQUIRED          65
+RISK              PASS
+EXECUTION         PASS
+SYNC              ALIGNED
+
+RESULT            TRADE
+</pre>
+
+<h3>Example AI rejection</h3>
+<pre>
+ENVIRONMENT       PRODUCTION
+REQUESTED MODE    AUTO
+EFFECTIVE MODE    AI
+MARKET REGIME     HIGH VOLATILITY
+
+BASE SCORE        74
+AI ADJUSTMENT     -9
+FINAL CONFIDENCE  65
+REQUIRED          68
+
+RESULT            NO_TRADE
+
+BLOCKERS
+- Confidence below required threshold
+- Volatility risk elevated
+</pre>
+
+<h3>Example AI+SMC rejection</h3>
+<pre>
+REQUESTED MODE    AUTO
+EFFECTIVE MODE    AI_SMC
+MARKET REGIME     REVERSAL / TRAP RISK
+
+BASE SCORE        72
+AI ADJUSTMENT     -4
+SMC ADJUSTMENT    -10
+FINAL CONFIDENCE  58
+REQUIRED          70
+
+SMC
+OB                PASS
+FVG               PASS
+BOS               PASS
+CHOCH             WARNING
+LIQUIDITY SWEEP   PASS
+OB REACTIONS      3
+
+RESULT            NO_TRADE
+PRIMARY REASON    REVERSAL/TRAP RISK
+</pre>
+
+<h2>16. Automatic mode-selection safeguards</h2>
+<p>AUTO is a calculation-path selector, not another giant mandatory gate.</p>
+<pre>
+REGIME EVIDENCE
+    ↓
+Normal / Elevated Volatility / Reversal-Trap Risk
+    ↓
+select effective calculation mode
+    ↓
+calculate confidence
+    ↓
+one final authorization gate
+</pre>
+<p>Mode selection and trade authorization remain separate decisions.</p>
+
+<h2>17. Recommended production behavior</h2>
+<p>The desired default is:</p>
+<pre>
+AUTO
++
+PRODUCTION
++
+appropriate strategy profile
++
+market-specific profile
+=
+intelligent calculation selection
++
+safe final authorization
+</pre>
+<p>Normal conditions should generally use SCORE. Elevated volatility/conflict should use AI. Reversal/trap/institutional-risk conditions should use AI+SMC. The user can still explicitly force a mode from Indicator Settings.</p>
+
+<h2>18. Final architecture to freeze</h2>
+<pre>
+┌─────────────────────────────────────────────┐
+│              ENVIRONMENT                    │
+│        DEVELOPMENT / PRODUCTION             │
+│ DEV = validation/testing only               │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│            MODE SELECTION                   │
+│ AUTO / SCORE / AI / AI_SMC                  │
+│ AUTO intelligently chooses effective mode   │
+│ Explicit mode overrides AUTO                │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│              MARKET PROFILE                 │
+│ NORMAL / ADVANCED_CRYPTO                    │
+│ Changes calculation behavior/weights        │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│             STRATEGY PROFILE                │
+│ SAFE / SWING / SCALPER                      │
+│ Controls aggressiveness                     │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│          CALCULATION ENGINES                │
+│ SCORE → base weighted confidence             │
+│ AI → adaptive confidence/risk               │
+│ AI_SMC → AI + institutional context         │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│           ONE AUTHORIZATION GATE            │
+│ confidence / risk / execution / hard safety │
+└─────────────────────┬───────────────────────┘
+                      │
+                TRADE / NO_TRADE
+</pre>
+
+<h2>19. Next implementation plan — exact sequence</h2>
+<h3>Step 1 — Freeze current behavior</h3>
+<ul><li>Do not change the main calculation engines yet.</li><li>Do not lower production thresholds yet.</li><li>Do not delete either parameter file.</li><li>Keep current behavior as the baseline.</li></ul>
+
+<h3>Step 2 — Audit both parameter files</h3>
+<ul><li>Compare every field in both files.</li><li>Classify each field as calculation parameter, threshold, risk parameter, mode flag, market profile, strategy profile, or UI/runtime state.</li><li>Identify duplicate and conflicting values.</li></ul>
+
+<h3>Step 3 — Find every AJRuntimeParameters consumer</h3>
+<p>Search the source tree and create a complete migration list. Do not replace imports blindly.</p>
+
+<h3>Step 4 — Verify current mode flow</h3>
+<pre>Indicator Settings
+→ selected mode
+→ RuntimeParameters
+→ AJRuntimeContext
+→ calculation engine
+→ decision engine
+→ execution
+→ dashboard/debug</pre>
+<p>Confirm SCORE, AI and AI_SMC toggles actually change runtime behavior.</p>
+
+<h3>Step 5 — Verify synchronization</h3>
+<p>Trace the NIFTY/BANKNIFTY and BTC/SPX500 synchronization toggles from Indicator Settings into runtime. Determine whether attach/detach is operational and where its result is consumed.</p>
+
+<h3>Step 6 — Add explicit configuration dimensions to RuntimeParameters</h3>
+<pre>
+environment
+requestedMode
+effectiveMode
+marketProfile
+strategyProfile
+</pre>
+<p>Keep compatibility fields during migration.</p>
+
+<h3>Step 7 — Add AUTO mode</h3>
+<p>Implement a selector that produces an effective mode from observable market context. Explicit SCORE/AI/AI_SMC selection bypasses AUTO.</p>
+
+<h3>Step 8 — Add profile-based parameter selection</h3>
+<p>Move threshold/profile selection into the canonical parameter layer. Strategy and market profile may select different values while existing calculation logic remains intact.</p>
+
+<h3>Step 9 — Add one structured authorization result</h3>
+<p>Centralize the final authorization around the normalized calculated result. Do not duplicate calculations in the gate.</p>
+
+<h3>Step 10 — Preserve hard safety blockers</h3>
+<p>Conditions such as invalid execution/risk states may remain hard blockers. Their classification must be based on the existing implementation during inspection.</p>
+
+<h3>Step 11 — Add decision diagnostics</h3>
+<p>Expose requested/effective mode, environment, market profile, strategy profile, regime, base score, AI/SMC adjustments, final confidence, thresholds, sync state, OB/FVG/BOS/CHOCH/liquidity evidence, risk/execution results and primary blockers.</p>
+
+<h3>Step 12 — Test DEV correctly</h3>
+<p>Use DEVELOPMENT only to establish whether candidate trades exist below production thresholds. The same calculation path must be used. Record calculated score versus applied threshold.</p>
+
+<h3>Step 13 — Test AUTO in production simulation</h3>
+<p>Run AUTO diagnostically across clean trend, high volatility, low volume, trend/momentum conflict, reversal, liquidity sweep, OB/FVG reaction, BOS, CHOCH, sync aligned and sync mismatched conditions.</p>
+
+<h3>Step 14 — Tune production thresholds from evidence</h3>
+<p>Only after diagnostics are reliable should thresholds be tuned. The objective is controlled improvement in valid opportunities while preserving safety and avoiding obvious traps.</p>
+
+<h3>Step 15 — Migrate AJRuntimeParameters</h3>
+<p>After all consumers are migrated and tests are clean, reduce it to a compatibility/deprecation layer or remove it.</p>
+
+<h3>Step 16 — Final validation</h3>
+<pre>
+TypeScript/build clean
++
+mode selection verified
++
+AUTO verified
++
+manual override verified
++
+sync verified
++
+threshold diagnostics verified
++
+DEV isolated
++
+PROD decisions explain themselves
+=
+ready for production tuning
+</pre>
+
+<h2>20. What we should NOT do</h2>
+<ul>
+<li>Do not blindly reduce every threshold to make trades appear.</li>
+<li>Do not make FVG + OB + BOS + CHOCH + liquidity sweep mandatory for every trade.</li>
+<li>Do not make AI a duplicate SCORE engine with extra hard gates.</li>
+<li>Do not make Advanced Crypto a fourth trading mode.</li>
+<li>Do not create separate authorization systems for SCORE, AI and AI+SMC.</li>
+<li>Do not remove existing engines merely to simplify configuration.</li>
+<li>Do not change main calculation files until the current flow is mapped.</li>
+<li>Do not delete AJRuntimeParameters until all consumers are migrated.</li>
+</ul>
+
+<h2>21. Final operating philosophy</h2>
+<div class="good">
+<p><strong>The system should become intelligent by selecting the calculation depth, not by randomly lowering thresholds.</strong></p>
+<p>Normal market → SCORE gives efficient opportunities.</p>
+<p>Unstable/high-volatility market → AI becomes more protective.</p>
+<p>Reversal/trap/institutional-risk market → AI+SMC becomes more protective and context-aware.</p>
+<p>All three ultimately pass through one transparent authorization decision.</p>
+</div>
+
+<h2>22. Immediate next coding action</h2>
+<p>Before modifying thresholds, the first coding task is an <strong>audit of the two parameter files and all consumers</strong>. Then make the smallest possible changes inside the two requested files, while leaving existing calculation engines untouched unless an import/compatibility redirect is required.</p>
+
+<p><strong>Target:</strong> one canonical runtime configuration, intelligent AUTO mode by default, explicit manual override when requested, DEVELOPMENT only for testing, and complete decision diagnostics.</p>
+
+<hr>
+<p class="small">This document is an implementation reference. It intentionally separates architecture from code changes so existing AJ v2 calculation engines can be preserved during migration.</p>
+
+</main></body></html>

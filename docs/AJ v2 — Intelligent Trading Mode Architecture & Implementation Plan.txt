@@ -1,0 +1,951 @@
+now I understand the actual requirement, and I think the previous idea of simply “consolidating thresholds” needs one important correction.
+
+Your problem is not really that you have too many threshold files. The real problem is that the application currently doesn't give you a clear answer to:
+
+“Why did this trade pass or fail, which calculation mode produced the score, which conditions contributed, and which threshold blocked it?”
+
+And without that visibility, you end up doing exactly what you described: Score mode + DEV/reduced thresholds, because AI/AI+SMC becomes so restrictive that you cannot tell whether the engine is intelligent or simply over-gated.
+
+What I recommend
+
+Keep the 3 calculation modes, but make them fundamentally different in how they calculate confidence, not three independent collections of gates.
+
+The final architecture should be
+                    MARKET
+                       │
+                       ▼
+             ┌───────────────────┐
+             │ MARKET REGIME      │
+             │                   │
+             │ Normal            │
+             │ High Volatility   │
+             │ Trap/Risk          │
+             │ Reversal           │
+             └─────────┬─────────┘
+                       │
+                       ▼
+             ┌───────────────────┐
+             │ CALCULATION MODE  │
+             │                   │
+             │ SCORE             │
+             │ AI                │
+             │ AI + SMC          │
+             └─────────┬─────────┘
+                       │
+                       ▼
+              CALCULATED SCORE
+              + CONDITIONS
+              + RISK
+              + MARKET CONTEXT
+                       │
+                       ▼
+             ┌───────────────────┐
+             │ ONE AUTHORIZATION │
+             │      GATE         │
+             └─────────┬─────────┘
+                       │
+                ┌──────┴──────┐
+                ▼             ▼
+             TRADE          NO TRADE
+
+The critical point is:
+
+Mode calculates. Gate authorizes.
+
+1. SCORE mode should be your normal/default mode
+
+This is where I agree with your original intention.
+
+When the market is behaving normally:
+
+volume is healthy
+momentum is healthy
+price action is clean
+trend is reasonably aligned
+spread/risk is acceptable
+structure isn't obviously broken
+
+you shouldn't require every institutional condition simultaneously.
+
+So Score mode should answer:
+
+“Is there enough evidence from the market to take this trade?”
+
+For example:
+
+Component	Weight
+Trend	15
+Momentum	15
+Volume	10
+Price Action	15
+Structure	10
+Order Flow	10
+VWAP/CVD	10
+Liquidity	5
+Market Sync	5
+Risk	5
+Total	100
+
+Then:
+
+Score = 78
+Required = 65
+
+→ TRADE
+
+You don't need:
+
+FVG = YES
+Liquidity Sweep = YES
+OB = YES
+BOS = YES
+CHOCH = YES
+AI = YES
+CVD = YES
+VWAP = YES
+
+all at once.
+
+That is exactly why your current AI/SMC configuration is starving the system.
+
+2. AI mode should NOT mean “Score + 20 more mandatory conditions”
+
+This is the biggest change I recommend.
+
+AI mode should be:
+
+Score mode + adaptive weighting/risk intelligence
+
+For example:
+
+Score calculation
+        ↓
+AI evaluates market conditions
+        ↓
+adjust confidence
+        ↓
+adjust risk
+        ↓
+reject obvious trap conditions
+        ↓
+final confidence
+
+So if Score gives:
+
+Base Score = 74
+
+AI might determine:
+
+High volatility
+Weak volume confirmation
+Opposing order flow
+Large spread
+
+and reduce it:
+
+AI-adjusted confidence = 63
+
+Threshold:
+
+AI required = 68
+
+→ NO TRADE.
+
+But another situation:
+
+Base Score = 76
+Strong momentum
+Strong volume
+Good trend
+Good market sync
+Normal spread
+
+AI could produce:
+
+AI confidence = 81
+
+→ TRADE.
+
+AI is therefore making the decision more selective, not impossible.
+
+3. AI + SMC should be your trap/reversal protection mode
+
+This is where your OB/FVG/BOS/CHOCH/liquidity work becomes valuable.
+
+I would not make SMC require every SMC condition.
+
+Instead:
+
+Base Score
+   +
+AI confidence adjustment
+   +
+SMC confirmation / risk penalty
+   =
+Final confidence
+
+SMC should especially become important when the market looks dangerous.
+
+For example:
+
+Normal trend
+Trend       YES
+Momentum    YES
+Volume      YES
+PriceAction YES
+
+Score:
+
+78
+
+AI:
+
+80
+
+SMC:
+
+No major reversal
+No liquidity trap
+OB respected
+
+Final:
+
+82
+
+→ TRADE
+
+Potential reversal
+Trend       YES
+Momentum    weakening
+Volume      abnormal
+PriceAction suspicious
+
+Score:
+
+72
+
+AI:
+
+68
+
+SMC sees:
+
+Liquidity sweep
+CHOCH
+OB reaction
+FVG
+
+Now SMC can determine:
+
+“This isn't a clean continuation trade.”
+
+So:
+
+Final confidence = 55
+
+→ NO TRADE.
+
+That is far more useful than simply saying:
+
+No Liquidity Sweep
+No FVG
+No OB
+No BOS
+NO TRADE
+
+for every market condition.
+
+4. Your “3 times OB/FVG respect” idea is actually useful
+
+This part of your thinking is good.
+
+But it should be treated as evidence, not necessarily a mandatory gate.
+
+For example:
+
+OB reaction count = 1
+
+Weak evidence.
+
+OB reaction count = 2
+
+Moderate evidence.
+
+OB reaction count = 3
+
+Strong institutional evidence.
+
+Then SMC can add something like:
+
+SMC confirmation +15
+
+rather than:
+
+OB respected 3 times?
+YES → continue
+NO → NO TRADE
+
+Same for FVG.
+
+5. BOS and CHOCH should have different meanings
+
+I would structure them like this:
+
+BOS
+
+Continuation confirmation.
+
+Bullish BOS
+    ↓
+supports long continuation
+CHOCH
+
+Potential reversal warning.
+
+Bullish trend
+    ↓
+bearish CHOCH
+    ↓
+confidence penalty / reversal detection
+
+So CHOCH shouldn't simply be another checkbox.
+
+It can tell the system:
+
+“The existing trend may no longer be trustworthy.”
+
+That's much more valuable.
+
+6. Liquidity Sweep should also be contextual
+
+A liquidity sweep isn't automatically bullish or bearish.
+
+For example:
+
+Price takes previous low
+        ↓
+Liquidity sweep
+        ↓
+strong rejection
+        ↓
+bullish CHOCH
+        ↓
+bullish OB
+        ↓
+bullish FVG
+
+That's potentially an excellent reversal setup.
+
+But:
+
+Price takes previous low
+        ↓
+continues lower
+        ↓
+no rejection
+        ↓
+no CHOCH
+
+That's not the same setup.
+
+Therefore:
+
+SMC should evaluate relationships between events, not merely whether individual events exist.
+
+7. Your NIFTY + BANKNIFTY synchronization idea should stay
+
+I actually like this.
+
+Likewise:
+
+BTC
++
+SPX500
+
+for crypto context can be useful.
+
+But again:
+
+Don't make synchronization a mandatory gate.
+
+Make it a confidence modifier.
+
+Example:
+
+NIFTY bullish      +5
+BANKNIFTY bullish  +5
+Both aligned       +8
+
+or:
+
+NIFTY bullish
+BANKNIFTY bearish
+
+→ confidence penalty.
+
+That prevents the synchronization feature from killing otherwise valid trades.
+
+8. Advanced Crypto should NOT be another trading mode
+
+This is important.
+
+Your original concept is correct.
+
+You really have four dimensions, not one giant mode:
+
+ENVIRONMENT
+    DEV / PROD
+
+CALCULATION
+    SCORE / AI / AI_SMC
+
+MARKET PROFILE
+    NORMAL / ADVANCED_CRYPTO
+
+STRATEGY
+    SAFE / SWING / SCALPER
+
+So:
+
+PRODUCTION
+   +
+SCORE
+   +
+ADVANCED_CRYPTO
+   +
+SAFE
+
+is perfectly valid.
+
+And:
+
+PRODUCTION
+   +
+AI_SMC
+   +
+ADVANCED_CRYPTO
+   +
+SWING
+
+is also valid.
+
+This is much cleaner than creating:
+
+CRYPTO_SCORE
+CRYPTO_AI
+CRYPTO_AI_SMC
+SAFE_SCORE
+SAFE_AI
+SAFE_AI_SMC
+...
+
+which will eventually become unmanageable.
+
+9. Safe / Swing / Scalper should modify aggressiveness
+
+I'd define them approximately like this.
+
+SAFE
+
+Highest quality requirement.
+
+Required confidence: 72–75
+Risk tolerance: low
+Trap protection: high
+SMC confirmation: preferred
+Market sync: preferred
+SWING
+
+Middle ground.
+
+Required confidence: 65–68
+Risk tolerance: medium
+Structure: important
+Trend: important
+SMC: useful
+SCALPER
+
+More opportunities.
+
+Required confidence: 58–62
+Risk tolerance: controlled
+Momentum: high weight
+Volume: high weight
+Spread: very important
+Fast price action: important
+
+These aren't values I'd blindly hard-code yet; they're the profile concept I'd implement and then validate against actual trade statistics.
+
+10. And now your DEV/PROD question becomes very clear
+
+This is the part you were asking about.
+
+You are absolutely right:
+
+Why did we create DEV mode with reduced thresholds?
+
+The answer should be:
+
+DEV is NOT supposed to create a different calculation system.
+
+It is supposed to answer:
+
+“Does the pipeline actually produce trades when the authorization threshold is relaxed?”
+
+For example:
+
+Market
+ ↓
+Score calculation
+ ↓
+Score = 48
+ ↓
+PROD threshold = 65
+ ↓
+NO TRADE
+
+DEV:
+
+Market
+ ↓
+Same Score calculation
+ ↓
+Score = 48
+ ↓
+DEV threshold = 40
+ ↓
+TRADE
+
+That tells us:
+
+The calculation engine works, but production rejected the trade because confidence wasn't high enough.
+
+That is a valid development test.
+
+11. But DEV must tell you WHY
+
+This is where your current system is weak.
+
+I want the dashboard/debug output to become something like:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRADE DECISION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Environment
+PRODUCTION
+
+Calculation Mode
+SCORE
+
+Market Profile
+NORMAL
+
+Strategy
+SAFE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CALCULATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Base Score             72
+AI Adjustment            0
+SMC Adjustment           0
+Market Sync             +5
+
+Final Confidence        77
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THRESHOLDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Required Confidence     70
+Execution Threshold     60
+Risk Threshold          65
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONDITIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Trend                   PASS
+Momentum                PASS
+Volume                  PASS
+Price Action            PASS
+Structure               PASS
+Order Flow              PASS
+Market Sync             PASS
+Risk                    PASS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESULT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TRADE
+
+Reason:
+Final confidence 77 >= required 70
+
+Now you can actually operate the platform.
+
+12. And when it fails
+
+You should see:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TRADE DECISION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Environment
+PRODUCTION
+
+Calculation Mode
+AI_SMC
+
+Market Profile
+ADVANCED_CRYPTO
+
+Strategy
+SAFE
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CALCULATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Base Score              71
+AI Adjustment            -4
+SMC Adjustment           -8
+
+Final Confidence         59
+
+Required Confidence      72
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SMC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OB                       PASS
+FVG                      PASS
+BOS                      PASS
+CHOCH                    WARNING
+Liquidity Sweep          PASS
+OB Reaction Count        3
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RISK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Spread                   PASS
+Volume                   PASS
+Volatility               FAIL
+Risk Qualification       FAIL
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RESULT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NO TRADE
+
+Primary blockers:
+1. Risk Qualification
+2. Final Confidence < threshold
+
+This is the missing piece.
+
+13. Then you can make an intelligent manual mode decision
+
+You said:
+
+“when I see the market I change the mode manually”
+
+That's fine.
+
+We don't need to automate mode selection right now.
+
+Instead, the system should tell you which mode is appropriate based on the observed market regime.
+
+For example:
+
+Clean market
+Market Regime:
+NORMAL TREND
+
+Recommended:
+SCORE
+
+Reason:
+Strong volume + momentum + price action
+No significant reversal/trap signals
+Volatile market
+Market Regime:
+HIGH VOLATILITY
+
+Recommended:
+AI
+
+Reason:
+High volatility + unstable momentum
+AI risk adjustment recommended
+Manipulation/reversal environment
+Market Regime:
+SMC / REVERSAL RISK
+
+Recommended:
+AI_SMC
+
+Reason:
+Liquidity sweep
+CHOCH
+OB reaction
+FVG
+Abnormal order flow
+
+But it doesn't automatically change your mode yet.
+
+You can still manually select it.
+
+14. This solves your biggest problem
+
+Right now you're effectively doing:
+
+SCORE
++
+DEV
++
+LOW THRESHOLD
+=
+I can finally see trades
+
+That's not what we want.
+
+We want:
+
+SCORE
++
+PRODUCTION
++
+NORMAL MARKET
+=
+normal safe opportunities
+
+and:
+
+AI
++
+PRODUCTION
++
+HIGH VOLATILITY
+=
+fewer, better trades
+
+and:
+
+AI_SMC
++
+PRODUCTION
++
+REVERSAL/TRAP CONDITIONS
+=
+high-selectivity institutional setups
+15. My recommended final threshold architecture
+
+I would not have separate arbitrary thresholds scattered throughout the application.
+
+One canonical configuration should expose something conceptually like:
+
+environment:
+    DEVELOPMENT | PRODUCTION
+
+calculationMode:
+    SCORE | AI | AI_SMC
+
+marketProfile:
+    NORMAL | ADVANCED_CRYPTO
+
+strategyProfile:
+    SAFE | SWING | SCALPER
+
+Then:
+
+confidenceThreshold
+riskThreshold
+executionThreshold
+
+trendWeight
+momentumWeight
+volumeWeight
+structureWeight
+liquidityWeight
+orderFlowWeight
+priceActionWeight
+marketSyncWeight
+
+aiAdjustmentLimit
+smcAdjustmentLimit
+
+obReactionRequired
+fvgWeight
+bosWeight
+chochPenalty
+liquiditySweepWeight
+
+The calculation engines produce values.
+
+The profile determines weights/thresholds.
+
+The single authorization gate decides.
+
+16. Most importantly: don't delete your AI/SMC engines
+
+I would not simplify this by saying:
+
+“Just use Score mode and remove AI/SMC.”
+
+Your original architecture has a good idea.
+
+You just implemented the modes too much like independent mandatory gates.
+
+Instead:
+
+SCORE
+Market evidence
+→ weighted score
+→ threshold
+AI
+Market evidence
+→ weighted score
+→ AI adjustment
+→ risk/trap adjustment
+→ threshold
+AI + SMC
+Market evidence
+→ weighted score
+→ AI adjustment
+→ SMC structure/liquidity adjustment
+→ trap/reversal adjustment
+→ threshold
+
+That's the architecture I'd choose.
+
+17. One more important thing: don't lower production thresholds blindly
+
+Your current:
+
+25 / 60
+36 / 60
+
+is telling us something valuable.
+
+The problem isn't simply:
+
+60 is too high
+
+because those scores are far below 60.
+
+Instead we need to find out why a normal-looking market is producing:
+
+25
+
+or:
+
+36
+
+when you believe the market should be tradable.
+
+That could mean:
+
+score weights are wrong
+some components are unnecessarily zeroing the score
+structure calculation is too strict
+institutional confluence is being treated as mandatory
+risk qualification is over-restrictive
+order-flow interpretation is wrong
+FVG/OB detection isn't producing expected evidence
+market synchronization isn't contributing correctly
+multiple downstream gates are independently rejecting
+DEV isn't actually using the DEV thresholds everywhere
+
+That is the actual debugging target.
+
+18. So I would freeze the architecture before changing code
+
+I recommend we now make the system follow this exact hierarchy:
+
+┌─────────────────────────────────────────────┐
+│              ENVIRONMENT                    │
+│        DEV / PRODUCTION                     │
+│                                             │
+│  Only controls validation/authorization     │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│            CALCULATION MODE                 │
+│                                             │
+│ SCORE → base weighted confidence            │
+│ AI → base + adaptive intelligence           │
+│ AI_SMC → AI + institutional/SMC context     │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│              MARKET PROFILE                 │
+│                                             │
+│ NORMAL / ADVANCED_CRYPTO                    │
+│                                             │
+│ Changes calculation weights/model behavior  │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│             STRATEGY PROFILE                │
+│                                             │
+│ SAFE / SWING / SCALPER                     │
+│                                             │
+│ Changes aggressiveness/thresholds           │
+└─────────────────────┬───────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────┐
+│          ONE AUTHORIZATION GATE             │
+│                                             │
+│ confidence                                  │
+│ risk                                        │
+│ execution                                   │
+│ hard safety blockers                        │
+└─────────────────────┬───────────────────────┘
+                      │
+                 TRADE / NO TRADE
+And the UI/debugger must expose all of it.
+
+That is how you will know:
+
+“I'm in SCORE + SAFE + PRODUCTION, score is 71, threshold is 65, risk passed, so this trade came from normal score calculation.”
+
+Or:
+
+“I'm in AI_SMC + SAFE + PRODUCTION, base score was 73 but SMC detected reversal risk and reduced it to 61, so the trade was correctly rejected.”
+
+That is the transparency you are currently missing.
+
+My recommendation for your application
+
+Keep all 3 modes. Keep Advanced Crypto. Keep Safe/Swing/Scalper. Keep OB/FVG/BOS/CHOCH/liquidity/sync.
+
+But change their roles:
+
+Component	Role
+SCORE	Base market-quality calculation
+AI	Adaptive confidence/risk adjustment
+AI + SMC	AI + institutional/trap/reversal analysis
+Advanced Crypto	Market-specific calculation/weights
+SAFE	Conservative authorization
+SWING	Balanced authorization
+SCALPER	More opportunity-oriented authorization
+DEV	Testing/diagnostics only
+PROD	Real authorization
+OB/FVG	Evidence
+BOS	Continuation evidence
+CHOCH	Reversal warning/evidence
+Liquidity Sweep	Liquidity/reversal evidence
+Market Sync	Confidence modifier
+One Gate	Final TRADE/NO_TRADE decision
+
+And before we change thresholds, I would fix the visibility/decision pipeline first. Once we can see exactly which calculation produced the score and which gate rejected it, we can tune the production thresholds scientifically instead of guessing.
+
+That will also tell us whether the current AJRuntimeParameters.ts can be safely retired and everything moved into RuntimeParameters.ts, or whether one or two of its parameters are actually calculation-specific and should remain in the calculation engine.
