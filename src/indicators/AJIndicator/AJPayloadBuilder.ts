@@ -1,7 +1,6 @@
 /****************************************************************************************
- * File:
- * AJPayloadBuilder.ts
- *
+ * File: AJPayloadBuilder.ts
+ * Path : src\indicators\AJIndicator\AJPayloadBuilder.ts
  * Purpose:
  * Converts AJRuntimeContext into the transport payload consumed by the
  * AJ engine pipeline. This builder performs only data mapping and keeps
@@ -30,8 +29,8 @@
 import type { RuntimeContext } from "../../runtime/RuntimeContext";
 import type { AJRuntimeContext } from "./AJRuntimeContext";
 import type { AJIndicatorPayload } from "./AJTypes";
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
-import { AJRuntimeParameters } from "@/indicators/AJIndicator/config/AJRuntimeParameters";
+import { AJLoggingGate } from "./debug/AJLoggingGate";
+import { AJRuntimeParameters } from "./config/AJRuntimeParameters";
 import { EngineDiagnosticBuilder } from "./debug/EngineDiagnostic";
 //============================================================================
 

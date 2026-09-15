@@ -1,9 +1,7 @@
 ﻿/****************************************************************************************
- * File:
- * ExecutionAuthority.ts
+ * File: ExecutionAuthority.ts
  *
- * Path:
- * src/indicators/AJIndicator/engines/Authority/ExecutionAuthority.ts
+ * Path: src/indicators/AJIndicator/engines/Authority/ExecutionAuthority.ts
  *
  * Purpose:
  * Canonical Institutional Execution Authority.
@@ -36,19 +34,19 @@
  * Multi-Timeframe
  * Risk Qualification
  * Confidence
- *          â”‚
- *          â–¼
+ *          │ 
+ *          ▼ 
  *   ExecutionAuthority
- *          â”‚
- *          â–¼
+ *          │ 
+ *          ▼ 
  *   Execution Engine
  ****************************************************************************************/
 
 import type { ExecutionAuthorityInputs } from "./ExecutionAuthorityTypes";
 import type { ExecutionAuthorityResult } from "./ExecutionAuthorityResult";
-import { AJRuntimeParameters } from "@/indicators/AJIndicator/config/AJRuntimeParameters";
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
-import { EngineDiagnosticBuilder } from "@/indicators/AJIndicator/debug/EngineDiagnostic";
+import { AJRuntimeParameters } from "../../config/AJRuntimeParameters";
+import { AJLoggingGate } from "../../debug/AJLoggingGate";
+import { EngineDiagnosticBuilder } from "../../debug/EngineDiagnostic";
 
 //======================================================
 // EXECUTION AUTHORITY
