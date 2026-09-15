@@ -3,6 +3,7 @@ node_modules/
 dist/
 .vite/
 
+
 # Environment / secrets
 .env
 .env.*
@@ -50,7 +51,7 @@ R5_*.test.ts
 
 # Local archives
 *.zip
-
+customind
 # Local Git helper scripts
 gitupdate.ps1
 
