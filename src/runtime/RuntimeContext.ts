@@ -100,6 +100,7 @@ export interface RuntimeContext {
     isMirrorOptionChart: boolean;
 
     underlying: string;
+	expiry: string;
     strike: number;
     strikeStep: number;
 

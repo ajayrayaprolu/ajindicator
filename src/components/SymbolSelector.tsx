@@ -52,11 +52,19 @@ interface Props {
     value: string;
     displayName?: string;
 
-    onChange: (
-        symbol: string,
-        yahooSymbol?: string,
-        displayName?: string
-    ) => void;
+	onChange: (
+		symbol: string,
+		yahooSymbol?: string,
+		displayName?: string,
+		optionMetadata?: {
+			exchange?: string;
+			feedSource?: string;
+			underlying?: string;
+			expiry?: string;
+			strike?: number;
+			optionType?: string;
+		}
+	) => void;
 
     // tabIndex identifies which of the 4 watchlists (0-3) the
     // symbol should be added to. Parent owns actual persistence.
@@ -444,16 +452,56 @@ export default function SymbolSelector({
     // Select symbol
     //==================================================
 
-    function selectSymbol(result: SymbolSearchResult) {
-        lastSelectedRef.current = {
-            symbol: result.symbol,
-            displayName: result.displayName || result.symbol
-        };
-        onChange(result.symbol, result.yahooSymbol || undefined, result.displayName || result.symbol);
-        setQuery(result.displayName || result.symbol);
-        setOpen(false);
-        setResults([]);
-    }
+	function selectSymbol(result: SymbolSearchResult) {
+		const isOption =
+			String(result.type ?? "").toUpperCase() === "OPTION" ||
+			String(result.optionType ?? "").toUpperCase() === "CE" ||
+			String(result.optionType ?? "").toUpperCase() === "PE";
+	
+		if (isOption) {
+			const canonicalSymbol =
+				`${String(result.underlying ?? "").trim().toUpperCase()} ${Number(result.strike)} ${String(result.optionType ?? "").trim().toUpperCase()}`;
+	
+			lastSelectedRef.current = {
+				symbol: canonicalSymbol,
+				displayName: canonicalSymbol
+			};
+	
+			onChange(
+				canonicalSymbol,
+				undefined,
+				canonicalSymbol,
+				{
+					exchange: result.exchange,
+					feedSource: result.feedSource,
+					underlying: result.underlying,
+					expiry: result.expiry,
+					strike: result.strike,
+					optionType: result.optionType
+				}
+			);
+		} else {
+			lastSelectedRef.current = {
+				symbol: result.symbol,
+				displayName: result.displayName || result.symbol
+			};
+	
+			onChange(
+				result.symbol,
+				result.yahooSymbol || undefined,
+				result.displayName || result.symbol
+			);
+		}
+	
+		setQuery(
+			isOption
+				? `${String(result.underlying ?? "").trim().toUpperCase()} ${Number(result.strike)} ${String(result.optionType ?? "").trim().toUpperCase()}`
+				: result.displayName || result.symbol
+		);
+	
+		setOpen(false);
+		setResults([]);
+	}
 	
     function resultKey(result: SymbolSearchResult) {
         return `${result.exchange}:${result.symbol}:${result.expiry ?? ""}:${result.strike ?? ""}:${result.optionType ?? ""}`;

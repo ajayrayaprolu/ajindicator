@@ -1,4 +1,4 @@
-﻿/****************************************************************************************
+/****************************************************************************************
  * File:
  * AJRuntimeContext.ts
  *
@@ -11,55 +11,55 @@
  * without containing any calculation logic.
  *
  * Responsibility:
- * â€¢ Runtime data contract only
- * â€¢ Shared by all AJ engines
- * â€¢ No business logic
- * â€¢ No calculations
+ * • Runtime data contract only
+ * • Shared by all AJ engines
+ * • No business logic
+ * • No calculations
  *
  * AJ v2 Frozen Architecture
  *
  * Raw Market Data
- *        │
- *        ▼
+ *        �
+ *        ?
  * Market State Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Order Flow Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Market Structure Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Liquidity Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Order Block Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Trend Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Price Action Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Momentum Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Volatility Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Multi-Timeframe Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Risk Qualification Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Confidence Engine
- *        │
- *        ▼
+ *        �
+ *        ?
  * Trade Authority
- *        │
- *        ▼
+ *        �
+ *        ?
  * Execution Engine
  *
  * Notes
@@ -73,6 +73,12 @@ import type { ConfidenceResult } from "./engines/Confidence/ConfidenceResult";
 
 export interface AJRuntimeContext
 extends RuntimeContext {
+
+    //--------------------------------------------------
+    // OPTION CONTRACT IDENTITY
+    //--------------------------------------------------
+
+    expiry: string;
 
     //--------------------------------------------------
     // CORE INDICATORS
@@ -708,9 +714,9 @@ extends RuntimeContext {
 	//
 	// Canonical ownership now belongs to:
 	//
-	// â€¢ ContextEngine
-	// â€¢ AIConfidenceEngine
-	// â€¢ ExecutionAuthority
+	// • ContextEngine
+	// • AIConfidenceEngine
+	// • ExecutionAuthority
 	//
 	// Remove only after every consumer has migrated.
 	//--------------------------------------------------
@@ -906,8 +912,8 @@ extends RuntimeContext {
             boolean;
 
         mode:
-            | "NSE ↔ BN"
-            | "SPX ↔ BTC"
+            | "NSE ? BN"
+            | "SPX ? BTC"
             | "NSE + SPX (ALL)"
             | "Sync OFF";
 
@@ -1094,3 +1100,4 @@ extends RuntimeContext {
     //--------------------------------------------------
 
 }
+

@@ -459,12 +459,19 @@ const defaultCharts: ChartConfig[] = [
               symbol,
               yahooSymbol,
               displayName,
-              ...(optionMetadata ?? {})
+  
+              exchange: optionMetadata?.exchange,
+              feedSource: optionMetadata?.feedSource,
+  
+              underlying: optionMetadata?.underlying,
+              expiry: optionMetadata?.expiry,
+              strike: optionMetadata?.strike,
+              optionType: optionMetadata?.optionType
             }
           : chart
       )
     );
-  }
+ }
 
   function updateTimeframe(
     id: number,
@@ -480,7 +487,7 @@ const defaultCharts: ChartConfig[] = [
           : chart
       )
     );
-  }
+ }
 
   function updateDatasource(
     id: number,
@@ -496,52 +503,52 @@ const defaultCharts: ChartConfig[] = [
           : chart
       )
     );
-  }
+ }
  
 
 //======================================
 // UPDATE CHART STYLE
 //======================================
 
-function updateChartStyle(
-  id: number,
-  chartStyle: ChartStyle
-) {
-
-  setCharts(prev =>
-    prev.map(chart =>
-      chart.id === id
-        ? {
-            ...chart,
-            chartStyle
-          }
-        : chart
-    )
-  );
-
-}
+  function updateChartStyle(
+    id: number,
+    chartStyle: ChartStyle
+  ) {
+  
+    setCharts(prev =>
+      prev.map(chart =>
+        chart.id === id
+          ? {
+              ...chart,
+              chartStyle
+            }
+          : chart
+      )
+    );
+  
+ }
 
 //======================================
 // UPDATE CANDLE COLORS
 //======================================
 
-function updateCandleColors(
-  id: number,
-  candleColors: NonNullable<ChartConfig["candleColors"]>
-) {
-
-  setCharts(prev =>
-    prev.map(chart =>
-      chart.id === id
-        ? {
-            ...chart,
-            candleColors
-          }
-        : chart
-    )
-  );
-
-}
+  function updateCandleColors(
+    id: number,
+    candleColors: NonNullable<ChartConfig["candleColors"]>
+  ) {
+  
+    setCharts(prev =>
+      prev.map(chart =>
+        chart.id === id
+          ? {
+              ...chart,
+              candleColors
+            }
+          : chart
+      )
+    );
+  
+ }
 
   function scannerOpenSymbol(symbol: string) {
     if (!activeChart) {
@@ -552,7 +559,7 @@ function updateCandleColors(
       activeChart.id,
       symbol
     );
-  }
+ }
 
   function watchlistOpenSymbol(
     item: WatchlistItem | string
@@ -585,33 +592,36 @@ function updateCandleColors(
         optionType: item.optionType
       }
     );
-  }
+ }
 
   function optionFocusOpenSymbol(metadata: {
-    optionSymbol: string;
-    underlying: string;
-    expiry: string;
-    strike: number;
-    optionType: "CE" | "PE" | "";
+  optionSymbol: string;
+  underlying: string;
+  expiry: string;
+  strike: number;
+  optionType: "CE" | "PE" | "";
   }) {
-    if (!activeChart) {
-      return;
-    }
-
-    updateSymbol(
-      activeChart.id,
-      metadata.optionSymbol,
-      undefined,
-      metadata.optionSymbol,
-      {
-        underlying: metadata.underlying,
-        expiry: metadata.expiry,
-        strike: metadata.strike,
-        optionType: metadata.optionType
-      }
-    );
+  if (!activeChart) {
+	  return;
   }
-
+  
+  const canonicalSymbol =
+	  `${metadata.underlying} ${metadata.strike} ${metadata.optionType}`.trim();
+  
+    updateSymbol(
+  	  activeChart.id,
+  	  canonicalSymbol,
+  	  undefined,
+  	  canonicalSymbol,
+  	  {
+  	  underlying: metadata.underlying,
+  	  expiry: metadata.expiry,
+  	  strike: metadata.strike,
+  	  optionType: metadata.optionType
+  	  }
+   );
+ }
+  
   function toggleExpand(id: number) {
     setExpandedChartId(
       previous =>
@@ -720,43 +730,45 @@ function updateCandleColors(
         >
           {activeChart && (
             <>
-              <SymbolSelector
-                value={activeChart.symbol}
-                displayName={activeChart.displayName}
-                datasource={activeChart.datasource}
-                onChange={(
-                  symbol,
-                  yahooSymbol,
-                  displayName
-                ) =>
-                  updateSymbol(
-                    activeChart.id,
-                    symbol,
-                    yahooSymbol,
-                    displayName
-                  )
-                }
-                onAddToWatchlist={(
-                  result,
-                  tabIndex
-                ) =>
-                  addToWatchlist(
-                    result,
-                    tabIndex
-                  )
-                }
-              />
+			<SymbolSelector 
+				value={activeChart.symbol} 
+				displayName={activeChart.displayName} 
+				datasource={activeChart.datasource} 
+				onChange={(
+					symbol,
+					yahooSymbol,
+					displayName,
+					optionMetadata
+				) =>
+					updateSymbol(
+					activeChart.id,
+					symbol,
+					yahooSymbol,
+					displayName,
+					optionMetadata
+					)
+				} 
+				onAddToWatchlist={( 
+					result, 
+					tabIndex 
+				) => 
+					addToWatchlist( 
+					result, 
+					tabIndex 
+					) 
+				} 
+			/>
 
-              <span
+             <span
                 title={`${activeChart.datasource} feed`}
                 style={{
                   fontSize: 12,
                   lineHeight: 1,
                   flexShrink: 0
                 }}
-              >
+            >
                 🟢
-              </span>
+            </span>
 
               <DataSourceSelector
                 datasource={

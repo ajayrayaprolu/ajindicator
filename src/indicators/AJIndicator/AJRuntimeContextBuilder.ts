@@ -1372,6 +1372,7 @@ const hObCandle =
 			timeframe: runtime.timeframe,
 			datasource: runtime.datasource,
 			chartId: runtime.symbol,
+			expiry: runtime.expiry ?? "",
 			candles,
 			current,
 			previous,

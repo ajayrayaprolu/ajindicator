@@ -991,101 +991,107 @@ export default function ChartWindow({
 
             return {
 
-                chartId,
-                symbol,
-                timeframe,
-                datasource,
-                candles,
-                current,
-                previous,
-                barIndex:
-                    candles.length - 1,
-                timestamp:
-                    current.time,
-                open:
-                    current.open,
-                high:
-                    current.high,
-                low:
-                    current.low,
-                close:
-                    current.close,
-                volume:
-                    current.volume ?? 0,
-                tradeDirection: 0,
-                entryPrice: current.close,
-                stopLoss: current.close,
-                slPrice: current.close,
-                takeProfit1: current.close,
-                takeProfit2: current.close,
-                takeProfit3: current.close,
-                tp1: current.close,
-                tp2: current.close,
-                tp3: current.close,
-                currentPrice:
-                    current.close,
-                positionSize: 0,
-                positionOpen: false,
-                inPosition: false,
-                atr: 0,
-                riskATR: 0,
-                slBuffer: 0,
-                tp1RR: 1,
-                tp2RR: 2,
-                tp3RR: 3,
-                isOptionsMode: false,
-                isOptionChart: false,
-                isMirrorOptionChart: false,
-                underlying:
-                    underlying || symbol,
-
-                strike:
-                    typeof strike === "number" &&
-                    Number.isFinite(strike)
-                        ? strike
-                        : 0,
-
-                strikeStep: 50,
-                currentOptionType:
-                    optionType || "",
-                greekExecOk: false,
-                greekOptionMode: false,
-                enableAITradeSafety: true,
-                enableAISMCMode: true,
-                tradeLifecycleLocked: false,
+				chartId,
+				symbol,
+				timeframe,
+				datasource,
+				candles,
+				current,
+				previous,
+				barIndex:
+					candles.length - 1,
+				timestamp:
+					current.time,
+				open:
+					current.open,
+				high:
+					current.high,
+				low:
+					current.low,
+				close:
+					current.close,
+				volume:
+					current.volume ?? 0,
+				tradeDirection: 0,
+				entryPrice: current.close,
+				stopLoss: current.close,
+				slPrice: current.close,
+				takeProfit1: current.close,
+				takeProfit2: current.close,
+				takeProfit3: current.close,
+				tp1: current.close,
+				tp2: current.close,
+				tp3: current.close,
+				currentPrice:
+					current.close,
+				positionSize: 0,
+				positionOpen: false,
+				inPosition: false,
+				atr: 0,
+				riskATR: 0,
+				slBuffer: 0,
+				tp1RR: 1,
+				tp2RR: 2,
+				tp3RR: 3,
+				isOptionsMode: false,
+				isOptionChart: false,
+				isMirrorOptionChart: false,
 				
-                useVWAP: true,
-                useCVD: true,
-                sessionName: "",
-                sessionOpen: true,
-                sessionHigh: current.high,
-                sessionLow: current.low,
-                dayHigh: current.high,
-                dayLow: current.low,
-                marketOpen: true,
-                marketClose: false,
-                exchange:
-                    exchange || "",
-                broker:
-                    feedSource || datasource || "",
-                accountId: "",
-                currency: "INR",
-                tickSize: 0.05,
-                lotSize: 1,
-                pointValue: 1,
-                pricePrecision: 2,
-                quantityPrecision: 0,
-                orderId: "",
-                orderActive: false,
-                orderFilled: false,
-                orderCancelled: false,
-                positionSide: 0,
-                unrealizedPnL: 0,
-                realizedPnL: 0,
-                state: 0 as any,
-                engineState: 0 as any,
-                metadata: {},
-                tags: []
+				underlying:
+					underlying || symbol,
+				
+				expiry:
+					expiry || "",
+				
+				strike:
+					typeof strike === "number" &&
+					Number.isFinite(strike)
+						? strike
+						: 0,
+				
+				strikeStep: 50,
+				
+				currentOptionType:
+					optionType || "",
+					
+				greekExecOk: false,
+				greekOptionMode: false,
+				enableAITradeSafety: true,
+				enableAISMCMode: true,
+				tradeLifecycleLocked: false,
+				
+				useVWAP: true,
+				useCVD: true,
+				sessionName: "",
+				sessionOpen: true,
+				sessionHigh: current.high,
+				sessionLow: current.low,
+				dayHigh: current.high,
+				dayLow: current.low,
+				marketOpen: true,
+				marketClose: false,
+				exchange:
+					exchange || "",
+				broker:
+					feedSource || datasource || "",
+				accountId: "",
+				currency: "INR",
+				tickSize: 0.05,
+				lotSize: 1,
+				pointValue: 1,
+				pricePrecision: 2,
+				quantityPrecision: 0,
+				orderId: "",
+				orderActive: false,
+				orderFilled: false,
+				orderCancelled: false,
+				positionSide: 0,
+				unrealizedPnL: 0,
+				realizedPnL: 0,
+				state: 0 as any,
+				engineState: 0 as any,
+				metadata: {},
+				tags: []
 
             };
 
@@ -1539,6 +1545,8 @@ useEffect(() => {
 			const nativeSymbol =
 				resolved?.symbolTicker ??
 				resolved?.symbol ??
+				resolved?.result?.symbolTicker ??
+				resolved?.result?.symbol ??
 				resolved?.contract?.symbolTicker ??
 				resolved?.contract?.symbol;
 

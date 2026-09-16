@@ -1726,22 +1726,93 @@ export class AJDecisionEngine {
         // through it produced strings like
         // "NSE:NIFTY26AUG24150CE 25AUG 150CE".
         //--------------------------------------------------
-
-        const chartSymbol =
-            payload.ajRuntime.symbol ??
-            "";
-
-        const isOptionChart =
-            /(CE|PE)$/i.test(chartSymbol);
-
-        const baseOptionResult =
-            OptionRecommendation.evaluate(
-                payload.optionInputs.underlying,
-                payload.optionInputs.spotPrice,
-                payload.tradeDirectionFinal
-            );
-
-        const optionResult = baseOptionResult;
+		// specifically makes an already-selected option chart authoritative 
+		// for Option Focus instead of allowing a fresh recommendation to replace it.
+		//--------------------------------------------------
+		
+		const chartSymbol =
+			payload.ajRuntime.symbol ??
+			"";
+		
+		const chartUnderlying =
+			String(payload.ajRuntime.underlying ?? "")
+				.trim()
+				.toUpperCase();
+		
+		const chartExpiry =
+			String(payload.ajRuntime.expiry ?? "")
+				.trim();
+		
+		const chartStrike =
+			Number(payload.ajRuntime.strike);
+		
+		const chartOptionType =
+			String(
+				payload.ajRuntime.currentOptionType ?? ""
+			)
+				.trim()
+				.toUpperCase();
+		
+		const isOptionChart =
+			Boolean(
+				chartUnderlying &&
+				chartExpiry &&
+				Number.isFinite(chartStrike) &&
+				/^(CE|PE)$/.test(chartOptionType)
+			);
+		
+		const baseOptionResult =
+			OptionRecommendation.evaluate(
+				payload.optionInputs.underlying,
+				payload.optionInputs.spotPrice,
+				payload.tradeDirectionFinal
+			);
+		
+		const optionResult =
+			isOptionChart
+				? {
+			...baseOptionResult,
+			
+			optionSymbol:
+				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+			
+			recommendedOption:
+				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+			
+			underlying:
+				chartUnderlying,
+			
+			expiry:
+				chartExpiry,
+			
+			strike:
+				chartStrike,
+			
+			optionType:
+				chartOptionType as "CE" | "PE",
+			
+			atmStrike:
+				chartStrike,
+			
+			itmStrike:
+				chartStrike,
+			
+			otmStrike:
+				chartStrike,
+			
+			atmSymbol:
+				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+			
+			itmSymbol:
+				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+			
+			otmSymbol:
+				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+			
+			isRecommended:
+				true
+		}
+		: baseOptionResult;
 
         //--------------------------------------------------
         // INDEX BIAS PUBLISH / READ
