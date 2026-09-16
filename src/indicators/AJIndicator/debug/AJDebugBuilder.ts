@@ -102,8 +102,8 @@
  *
  ************************************************************************************************/
 
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
-import { AJRuntimeParameters } from "@/indicators/AJIndicator/config/AJRuntimeParameters";
+import { AJLoggingGate } from "./AJLoggingGate";
+import { AJRuntimeParameters } from "../config/AJRuntimeParameters";
 import type { AJDecisionSnapshot } from "./AJDecisionSnapshot";
 
 //======================================================

@@ -55,7 +55,7 @@ import {
     confidenceToGrade,
     confidenceToClass
 } from "./ConfidenceFactors";
-import { AJRuntimeParameters } from "@/indicators/AJIndicator/config/AJRuntimeParameters";
+import { AJRuntimeParameters } from "../../config/AJRuntimeParameters";
 import { AJLoggingGate } from "../../debug/AJLoggingGate";
 
 //======================================================

@@ -75,7 +75,7 @@ import type {
 } from "./ExecutionTypes";
 
 import type {ExecutionResult} from "./ExecutionResult";
-import { AJRuntimeParameters } from "@/indicators/AJIndicator/config/AJRuntimeParameters";
+import { AJRuntimeParameters } from "../../config/AJRuntimeParameters";
 //======================================================
 // EXECUTION ENGINE
 //======================================================

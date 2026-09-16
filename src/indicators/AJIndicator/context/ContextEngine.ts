@@ -212,12 +212,8 @@
  ****************************************************************************************/
 
 import type { ContextInputs } from "./AJContextTypes";
-import type {
-    ContextResult,
-    ContextValidation
-} from "./AJContextResult";
-
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
+import type { ContextResult, ContextValidation } from "./AJContextResult";
+import { AJLoggingGate } from "../debug/AJLoggingGate";
 //==============================================================
 
 export class ContextEngine {

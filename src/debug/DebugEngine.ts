@@ -55,7 +55,7 @@
 //  Debug Overlay     Console Log      Pipeline Viewer
 //==============================================================================
  
-import type {AJDebugResult} from "@/indicators/AJIndicator/debug/AJDebugBuilder";
+import type {AJDebugResult} from "../indicators/AJIndicator/debug/AJDebugBuilder";
 
 //======================================================
 // DEBUG MODEL
