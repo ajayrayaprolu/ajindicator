@@ -1,4 +1,4 @@
-﻿/******************************************************************************
+/******************************************************************************
 *  File:
 *  Workspace8.tsx
 * 
@@ -10,98 +10,98 @@
 *  
 *  It is responsible for:
 *  
-* â€¢ chart layout management
-* â€¢ chart configuration
-* â€¢ scanner UI activation
-* â€¢ debug UI activation
-* â€¢ global logging UI activation
-* â€¢ connecting the Logging checkbox to AJLoggingGate
-* â€¢ rendering the chart workspace
-* â€¢ rendering optional right-side diagnostic panels
-* â€¢ 
-* â€¢ It is not responsible for:
-* â€¢ 
-* â€¢ pipeline scoring
-* â€¢ context calculation
-* â€¢ AI/SMC logic
-* â€¢ execution authority
-* â€¢ state-machine logic
-* â€¢ pipeline telemetry generation
-* â€¢ deciding whether individual engines should log
-* â€¢ modifying AJPipelineTrace
-* â€¢ 
-* â€¢ The architectural boundary is:
+* • chart layout management
+* • chart configuration
+* • scanner UI activation
+* • debug UI activation
+* • global logging UI activation
+* • connecting the Logging checkbox to AJLoggingGate
+* • rendering the chart workspace
+* • rendering optional right-side diagnostic panels
+* • 
+* • It is not responsible for:
+* • 
+* • pipeline scoring
+* • context calculation
+* • AI/SMC logic
+* • execution authority
+* • state-machine logic
+* • pipeline telemetry generation
+* • deciding whether individual engines should log
+* • modifying AJPipelineTrace
+* • 
+* • The architectural boundary is:
 *
 * Workspace8
-*      â”‚
-*      â–¼
+*      │
+*      ▼
 * hartWindow
-*     â”‚
-*     â”œâ”€â”€â”€â”€â”€â”€â”€â”€ RuntimeEngine
-*     â””â”€â”€â”€â”€â”€â”€â”€â”€ AJHost
-*                 â”‚
-*                 â–¼
+*     │
+*     ├──────── RuntimeEngine
+*     └──────── AJHost
+*                 │
+*                 ▼
 *           AJIndicator
-*                 â”‚
-*                 â–¼
+*                 │
+*                 ▼
 *        AJDecisionEngine
-*                 â”‚
-*                 â–¼
+*                 │
+*                 ▼
 *       AJIndicatorResult
-*                 â”‚
-*                 â–¼
+*                 │
+*                 ▼
 * hartEngine (renderer only)
 * 
 *                   Workspace8
-*                       â”‚
-*         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-*         â”‚             â”‚             â”‚
-*         â–¼             â–¼             â–¼
+*                       │
+*         ┌─────────────┼─────────────┐
+*         │             │             │
+*         ▼             ▼             ▼
 *      Scanner        Debug         Logging 
 *    checkbox        checkbox      checkbox
-*         â”‚             â”‚             â”‚
-*         â–¼             â–¼             â–¼
+*         │             │             │
+*         ▼             ▼             ▼
 *  ScannerPanel    DebugEngine   AJLoggingGate
-*                                     â”‚
-*                                     â–¼
-*                            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”
-*                            â”‚                 â”‚
+*                                     │
+*                                     ▼
+*                            ┌────────┴────────┐
+*                            │                 │
 *                           OFF               ON
-*                            â”‚                 â”‚
+*                            │                 │
 *                         no-op             Console
 * ==============================================================							  
 * 
 *                        AJ Runtime
-*                            â”‚
-*                            â–¼
-*                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-*                   â”‚  ContextEngine  â”‚
-*                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-*                            â”‚
-*                            â”‚ AJPipelineTrace.stage()
-*                            â–¼
-*                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-*                   â”‚   ScoreEngine   â”‚
-*                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-*                            â”‚
-*                            â”‚ AJPipelineTrace.update()
-*                            â–¼
-*                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-*                   â”‚    AI / SMC     â”‚
-*                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-*                            â”‚
-*                            â–¼
-*                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-*                   â”‚  AJPipelineTrace   â”‚
-*                   â”‚                    â”‚
-*                   â”‚ CURRENT CACHE      â”‚
-*                   â”‚        +           â”‚
-*                   â”‚ HISTORY            â”‚
-*                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-*                             â”‚
-*               â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-*               â”‚             â”‚             â”‚
-*               â–¼             â–¼             â–¼
+*                            │
+*                            ▼
+*                   ┌─────────────────┐
+*                   │  ContextEngine  │
+*                   └────────┬────────┘
+*                            │
+*                            │ AJPipelineTrace.stage()
+*                            ▼
+*                   ┌─────────────────┐
+*                   │   ScoreEngine   │
+*                   └────────┬────────┘
+*                            │
+*                            │ AJPipelineTrace.update()
+*                            ▼
+*                   ┌─────────────────┐
+*                   │    AI / SMC     │
+*                   └────────┬────────┘
+*                            │
+*                            ▼
+*                   ┌────────────────────┐
+*                   │  AJPipelineTrace   │
+*                   │                    │
+*                   │ CURRENT CACHE      │
+*                   │        +           │
+*                   │ HISTORY            │
+*                   └─────────┬──────────┘
+*                             │
+*               ┌─────────────┼─────────────┐
+*               │             │             │
+*               ▼             ▼             ▼
 *            Debug        Dashboard       Chart
 *            Panel
 *****************************************************************************/
@@ -120,12 +120,12 @@ import ChartWindow from "../components/ChartWindow";
 import ScannerPanel from "../components/ScannerPanel";
 import WatchlistPanel from "../components/WatchlistPanel";
 import { WatchlistStore } from "../store/WatchlistStore";
-import AJDebugOverlay from "@/indicators/AJIndicator/debug/AJDebugOverlay";
-import AJAdvisoryPanel from "@/indicators/AJIndicator/debug/AJAdvisoryPanel";
+import AJDebugOverlay from "../indicators/AJIndicator/debug/AJDebugOverlay";
+import AJAdvisoryPanel from "../indicators/AJIndicator/debug/AJAdvisoryPanel";
 import { DebugEngine } from "../debug/DebugEngine";
 import { WorkspaceStore } from "../store/WorkspaceStore";
 import type { ChartConfig, ChartIndicators } from "../types/ChartConfig";
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
+import { AJLoggingGate } from "../indicators/AJIndicator/debug/AJLoggingGate";
 
 //============================================================================
 
@@ -587,6 +587,31 @@ function updateCandleColors(
     );
   }
 
+  function optionFocusOpenSymbol(metadata: {
+    optionSymbol: string;
+    underlying: string;
+    expiry: string;
+    strike: number;
+    optionType: "CE" | "PE" | "";
+  }) {
+    if (!activeChart) {
+      return;
+    }
+
+    updateSymbol(
+      activeChart.id,
+      metadata.optionSymbol,
+      undefined,
+      metadata.optionSymbol,
+      {
+        underlying: metadata.underlying,
+        expiry: metadata.expiry,
+        strike: metadata.strike,
+        optionType: metadata.optionType
+      }
+    );
+  }
+
   function toggleExpand(id: number) {
     setExpandedChartId(
       previous =>
@@ -730,7 +755,7 @@ function updateCandleColors(
                   flexShrink: 0
                 }}
               >
-                ðŸŸ¢
+                🟢
               </span>
 
               <DataSourceSelector
@@ -867,8 +892,8 @@ function updateCandleColors(
                 {
                   expandedChartId ===
                   activeChart.id
-                    ? "ðŸ——"
-                    : "â›¶"
+                    ? "🗗"
+                    : "⛶"
                 }
               </button>
 			  <AIActionsMenu />
@@ -896,7 +921,7 @@ function updateCandleColors(
           ----------------------------------------------*/}
 
           <IconButton
-            icon="â–¦"
+            icon="▦"
             title={`Chart layout: ${layout}`}
             active={true}
             onClick={() => {
@@ -928,7 +953,7 @@ function updateCandleColors(
           ----------------------------------------------*/}
 
           <IconButton
-            icon="âŒ•"
+            icon="⌕"
             title={
               scannerEnabled
                 ? "Disable scanner"
@@ -950,7 +975,7 @@ function updateCandleColors(
           ----------------------------------------------*/}
 
           <IconButton
-            icon="ðŸž"
+            icon="🐞"
             title={
               debugEnabled
                 ? "Disable debug"
@@ -980,7 +1005,7 @@ function updateCandleColors(
           ----------------------------------------------*/}
 
           <IconButton
-            icon="â‰‹"
+            icon="≋"
             title={
               loggingEnabled
                 ? "Disable logging"
@@ -1006,7 +1031,7 @@ function updateCandleColors(
           ----------------------------------------------*/}
 
           <IconButton
-            icon="â˜…"
+            icon="★"
             title={
               watchlistEnabled
                 ? "Hide watchlist"
@@ -1153,8 +1178,8 @@ function updateCandleColors(
               <>
                 <AJDebugOverlay />
                 <AJAdvisoryPanel
-				 onOptionFocus={watchlistOpenSymbol}
-				/>
+                  onOptionFocus={optionFocusOpenSymbol}
+                />
               </>
             )}
 
@@ -1179,5 +1204,7 @@ function updateCandleColors(
     </div>
   );
 }
+
+
 
 

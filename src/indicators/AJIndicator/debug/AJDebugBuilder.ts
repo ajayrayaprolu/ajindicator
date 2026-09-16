@@ -190,6 +190,11 @@ export interface AJDebugResult {
     //--------------------------------------------------
 
     optionSymbol:string;
+    optionUnderlying?:string;
+    optionExpiry?:string;
+    optionType?:string;
+    optionStrike?:number;
+
     atmStrike:string;
     itmStrike:string;
     otmStrike:string;
@@ -499,11 +504,30 @@ export class AJDebugBuilder {
             regime:
                 "-",
 
-			optionSymbol:
-				(option as any)?.optionSymbol
-				?? "-",
+            optionSymbol:
+                    (option as any)?.optionSymbol
+                    ?? "-",
 
-			atmStrike:
+            optionUnderlying:
+                    (option as any)?.underlying
+                    ?? "",
+
+            optionExpiry:
+                    (option as any)?.expiry
+                    ?? "",
+
+            optionType:
+                    (option as any)?.optionType
+                    ?? "",
+
+            optionStrike:
+                    Number.isFinite(
+                        Number((option as any)?.strike)
+                    )
+                        ? Number((option as any)?.strike)
+                        : undefined,
+
+            atmStrike:
 				(option as any)?.atmStrike
 				?? "-",
 

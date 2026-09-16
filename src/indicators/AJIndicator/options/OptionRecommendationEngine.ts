@@ -34,18 +34,46 @@ export class OptionRecommendationEngine {
         return {
             optionSymbol: contract.symbol,
             recommendedOption: contract.symbol,
-            optionType: contract.optionType,
+
+            underlying,
+
+            optionType:
+				contract.optionType === "CE" ||
+				contract.optionType === "PE"
+					? contract.optionType
+					: "",
             strike: contract.strike,
+
+            direction,
+
+            expiry: contract.expiry.toISOString().slice(0, 10),
+
+            expiryMode: "CUSTOM",
+            strikeMode: "CUSTOM",
+            strikeDistance: 0,
+
+            premium: 0,
+            impliedVolatility: 0,
+            delta: 0,
+            gamma: 0,
+            theta: 0,
+            vega: 0,
+
+            liquidityScore: 0,
+
+            isRecommended: true,
+            confidenceScore: 0,
+
+            recommendationReason:
+                "Canonical option contract resolved.",
+
             atmStrike: contract.atmStrike,
             itmStrike: contract.itmStrike,
             otmStrike: contract.otmStrike,
-            direction,
-            ...( {
-                atmSymbol: contract.atmSymbol,
-                itmSymbol: contract.itmSymbol,
-                otmSymbol: contract.otmSymbol,
-                expiry: contract.expiry
-            } as any )
+
+            atmSymbol: contract.atmSymbol,
+            itmSymbol: contract.itmSymbol,
+            otmSymbol: contract.otmSymbol,
         };
     }
 }

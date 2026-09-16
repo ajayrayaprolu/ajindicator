@@ -1,4 +1,4 @@
-﻿//======================================================
+//======================================================
 // src/indicators/AJIndicator/debug/AJAdvisoryPanel.tsx
 // AJ Advisory Panel
 //
@@ -93,7 +93,13 @@ function readinessText(debug: DebugData): string {
 //======================================================
 
 interface AJAdvisoryPanelProps {
-    onOptionFocus?: (symbol: string) => void;
+    onOptionFocus?: (metadata: {
+        optionSymbol: string;
+        underlying: string;
+        expiry: string;
+        strike: number;
+        optionType: "CE" | "PE" | "";
+    }) => void;
 }
 
 export default function AJAdvisoryPanel({
@@ -166,7 +172,7 @@ export default function AJAdvisoryPanel({
                     borderBottom: "1px solid var(--border-primary)"
                 }}
             >
-                🧭 AJ Advisory
+                ?? AJ Advisory
             </div>
 
             {/* ROWS */}
@@ -227,11 +233,33 @@ export default function AJAdvisoryPanel({
 
                             <button
                                 type="button"
-                                onClick={() =>
-                                    onOptionFocus?.(
-                                        debug.optionSymbol as string
-                                    )
-                                }
+								onClick={() => {
+									const strike = debug.optionStrike;
+								
+									if (
+										!debug.optionSymbol ||
+										debug.optionSymbol === "-" ||
+										!debug.optionUnderlying ||
+										!debug.optionExpiry ||
+										typeof strike !== "number" ||
+											!Number.isFinite(strike) ||
+										!debug.optionType
+									) {
+										return;
+									}
+								
+									onOptionFocus?.({
+										optionSymbol: debug.optionSymbol,
+										underlying: debug.optionUnderlying,
+										expiry: debug.optionExpiry,
+										strike,
+										optionType:
+											debug.optionType === "CE" ||
+											debug.optionType === "PE"
+												? debug.optionType
+												: ""
+									});
+								}}
                                 title="Open this option on the active chart"
                                 style={{
                                     border: "none",
@@ -404,7 +432,7 @@ function ReasonRow({
                                     {
                                         reasons.negativeFactors.map(f => (
                                             <div key={f} style={{ color: "var(--danger-text)" }}>
-                                                â€¢ {f}
+                                                • {f}
                                             </div>
                                         ))
                                     }
@@ -476,3 +504,4 @@ function Row({
     );
 
 }
+

@@ -114,15 +114,23 @@ export interface DebugData
     //--------------------------------------------------
     // OPTION
     //--------------------------------------------------
-    
-    optionSymbol?:string;
-    
-    atmStrike?:string;
-    
-    itmStrike?:string;
-    
-    otmStrike?:string;
 
+    optionSymbol?:string;
+
+    optionUnderlying?:string;
+
+    optionExpiry?:string;
+
+    optionType?:string;
+
+    optionStrike?:number;
+
+    atmStrike?:string;
+
+    itmStrike?:string;
+
+    otmStrike?:string;
+	
     //--------------------------------------------------
     // MODE ROUTER
     //--------------------------------------------------
@@ -389,6 +397,26 @@ export class DebugEngine {
                         ??
                         existing.optionSymbol,
 
+                    optionUnderlying:
+                        debug.optionUnderlying
+                        ??
+                        existing.optionUnderlying,
+
+                    optionExpiry:
+                        debug.optionExpiry
+                        ??
+                        existing.optionExpiry,
+
+                    optionType:
+                        debug.optionType
+                        ??
+                        existing.optionType,
+
+                    optionStrike:
+                        debug.optionStrike
+                        ??
+                        existing.optionStrike,
+
                     atmStrike:
                         debug.atmStrike
                         ??
@@ -581,6 +609,21 @@ export class DebugEngine {
                     existing.optionSymbol
                     ??
                     "-",
+
+                optionUnderlying:
+                    existing.optionUnderlying
+                    ?? "",
+
+                optionExpiry:
+                    existing.optionExpiry
+                    ?? "",
+
+                optionType:
+                    existing.optionType
+                    ?? "",
+
+                optionStrike:
+                    existing.optionStrike,
 
                 atmStrike:
                     runtime.atmStrike

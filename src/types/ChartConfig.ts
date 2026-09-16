@@ -40,6 +40,7 @@ export interface CandleColors {
   wickDownColor: string;
 }
 
+
 export interface ChartConfig {
   id: number;
   symbol: string;
@@ -50,4 +51,10 @@ export interface ChartConfig {
   chartStyle: ChartStyle;
   indicators: ChartIndicators;
   candleColors?: CandleColors;
+  exchange?: string;
+  feedSource?: string;
+  underlying?: string;
+  expiry?: string;
+  strike?: number;
+  optionType?: string;
 }

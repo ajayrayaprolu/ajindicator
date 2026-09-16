@@ -1741,7 +1741,18 @@ export class AJDecisionEngine {
                 payload.tradeDirectionFinal
             );
 
-        const optionResult = baseOptionResult;
+        const optionResult =
+            isOptionChart
+                ? {
+                    ...baseOptionResult,
+                    optionSymbol: chartSymbol,
+                    recommendedOption: chartSymbol,
+                    optionType:
+                        /CE$/i.test(chartSymbol)
+                            ? "CE"
+                            : "PE"
+                }
+                : baseOptionResult;
 
         //--------------------------------------------------
         // INDEX BIAS PUBLISH / READ
@@ -2590,7 +2601,6 @@ export class AJDecisionEngine {
         };
     }
 }
-
 
 
 
