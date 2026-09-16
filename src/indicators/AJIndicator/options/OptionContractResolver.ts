@@ -65,7 +65,9 @@ export class OptionContractResolver {
             symbol.toUpperCase();
 
         if(
-            s.includes("BANKNIFTY")
+            s.includes("BANKNIFTY") ||
+            s.includes("SENSEX") ||
+            s.includes("BANKEX")
         ){
             return 100;
         }
@@ -176,31 +178,31 @@ export class OptionContractResolver {
     }
 
         //--------------------------------------------------
-        // MONTHLY EXPIRY
+        // NSE EQUITY MONTHLY EXPIRY
         //--------------------------------------------------
-	    
+
         private static monthlyExpiry(
             _symbol:string
         ):Date{
-	    
+
             const expiry =
                 new Date();
-	    
+
             expiry.setMonth(
                 expiry.getMonth()+1,
                 0
             );
-	    
+
             while(
-                expiry.getDay()!==4
+                expiry.getDay()!==2
             ){
                 expiry.setDate(
                     expiry.getDate()-1
                 );
             }
-	    
+
             return expiry;
-	    
+
         }
 	
     //--------------------------------------------------
@@ -257,19 +259,33 @@ export class OptionContractResolver {
                     ? otm
                     : atm;
 
+        const normalizedUnderlying =
+            String(underlying ?? "")
+                .trim()
+                .toUpperCase();
+
+        const isIndexOption =
+            normalizedUnderlying === "NIFTY" ||
+            normalizedUnderlying === "BANKNIFTY" ||
+            normalizedUnderlying === "FINNIFTY" ||
+            normalizedUnderlying === "MIDCPNIFTY" ||
+            normalizedUnderlying === "SENSEX" ||
+            normalizedUnderlying === "BANKEX";
+
         const expiry =
 
             config?.expiry ??
 
             (
-                config?.expiryMode === "MONTHLY"
+                config?.expiryMode === "MONTHLY" ||
+                !isIndexOption
 
                     ? this.monthlyExpiry(
-                        underlying
+                        normalizedUnderlying
                     )
 
                     : this.weeklyExpiry(
-                        underlying
+                        normalizedUnderlying
                     )
             );
 

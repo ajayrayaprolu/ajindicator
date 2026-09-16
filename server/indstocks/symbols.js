@@ -627,6 +627,12 @@ export function getIndstocksContractBySymbol(symbol, exchange = "") {
         return securityIdIndex.get(`${directMatch[1]}_${directMatch[2]}`) ?? null;
     }
 
+    // IndStocks contract master uses "NIFTY 50" for the
+    // canonical NIFTY index. The application symbol is "NIFTY".
+    if (wanted === "NIFTY") {
+        wanted = "NIFTY 50";
+    }
+
     const candidates = symbolIndex.get(wanted) ?? [];
 
     for (const c of candidates) {

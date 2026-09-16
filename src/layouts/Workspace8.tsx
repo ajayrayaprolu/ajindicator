@@ -595,33 +595,33 @@ const defaultCharts: ChartConfig[] = [
  }
 
   function optionFocusOpenSymbol(metadata: {
-  optionSymbol: string;
-  underlying: string;
-  expiry: string;
-  strike: number;
-  optionType: "CE" | "PE" | "";
+    optionSymbol: string;
+    underlying: string;
+    expiry: string;
+    strike: number;
+    optionType: "CE" | "PE" | "";
   }) {
-  if (!activeChart) {
-	  return;
-  }
-  
-  const canonicalSymbol =
-	  `${metadata.underlying} ${metadata.strike} ${metadata.optionType}`.trim();
-  
+    if (!activeChart) {
+      return;
+    }
+
+    const canonicalSymbol =
+      `${metadata.underlying} ${metadata.strike} ${metadata.optionType}`.trim();
+
     updateSymbol(
-  	  activeChart.id,
-  	  canonicalSymbol,
-  	  undefined,
-  	  canonicalSymbol,
-  	  {
-  	  underlying: metadata.underlying,
-  	  expiry: metadata.expiry,
-  	  strike: metadata.strike,
-  	  optionType: metadata.optionType
-  	  }
-   );
- }
-  
+      activeChart.id,
+      canonicalSymbol,
+      undefined,
+      canonicalSymbol,
+      {
+        underlying: metadata.underlying,
+        expiry: metadata.expiry,
+        strike: metadata.strike,
+        optionType: metadata.optionType
+      }
+    );
+  }
+//============================================  
   function toggleExpand(id: number) {
     setExpandedChartId(
       previous =>

@@ -1265,9 +1265,8 @@ export class AJPayloadBuilder {
 				ajRuntime.enableAdvancedCrypto,
 			
 			isOptionsMode:
-				/(CE|PE)$/i.test(
-					String(ajRuntime.symbol ?? "")
-				)
+				ajRuntime.isOptionsMode ||
+				ajRuntime.isOptionChart,
 	
 		};
 	
@@ -1302,7 +1301,8 @@ export class AJPayloadBuilder {
 			//--------------------------------------------------
 	
 			isOptionsMode: true,
-			isOptionChart: false,
+			isOptionChart:
+				ajRuntime.isOptionChart,
 			greekOptionMode: false,
 			greekExecOk: true,
 	
@@ -1325,15 +1325,26 @@ export class AJPayloadBuilder {
 	
 			smartStrike: atmStrike,
 			strikeFromSymbol: atmStrike,
-			strike: atmStrike,
-			strikeStep: strikeStep,
-			currentOptionType: optionType,
+			
+			strike:
+				ajRuntime.isOptionChart
+					? ajRuntime.strike
+					: atmStrike,
+			
+			strikeStep:
+				strikeStep,
+			
+			currentOptionType:
+				ajRuntime.isOptionChart
+					? ajRuntime.currentOptionType
+					: optionType,
 	
 			//--------------------------------------------------
 			// SYMBOL
 			//--------------------------------------------------
 	
-			underlying: ajRuntime.symbol,
+			underlying:
+				ajRuntime.underlying,
 	
 			//--------------------------------------------------
 			// ENGINE STATE

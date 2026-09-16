@@ -1773,11 +1773,45 @@ export class AJDecisionEngine {
 				? {
 			...baseOptionResult,
 			
-			optionSymbol:
-				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
-			
-			recommendedOption:
-				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+		optionSymbol:
+			`${chartUnderlying} ${
+				(() => {
+					const match = chartExpiry.match(
+						/^(\d{4})-(\d{2})-(\d{2})$/
+					);
+		
+					if (!match) {
+						return chartExpiry.toUpperCase();
+					}
+		
+					const months = [
+						"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+						"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+					];
+		
+					return `${match[3]}${months[Number(match[2]) - 1]}`;
+				})()
+			} ${chartStrike}${chartOptionType}`,
+		
+		recommendedOption:
+			`${chartUnderlying} ${
+				(() => {
+					const match = chartExpiry.match(
+						/^(\d{4})-(\d{2})-(\d{2})$/
+					);
+		
+					if (!match) {
+						return chartExpiry.toUpperCase();
+					}
+		
+					const months = [
+						"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+						"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+					];
+		
+					return `${match[3]}${months[Number(match[2]) - 1]}`;
+				})()
+			} ${chartStrike}${chartOptionType}`,
 			
 			underlying:
 				chartUnderlying,
