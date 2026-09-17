@@ -21,7 +21,11 @@ import { getAccessToken } from "./token.js";
 const WS_URL =
     "wss://ws-prices.indstocks.com/api/v1/ws/prices";
 
-const RECONNECT_DELAY_MS = 5000;
+const RECONNECT_BASE_MS = 5000;
+const RECONNECT_MAX_MS  = 5 * 60 * 1000;
+
+let reconnectAttempts = 0;
+let reconnectTimer = null;
 
 //======================================================
 // STATE
@@ -94,6 +98,7 @@ export async function connectIndstocksWebSocket() {
 
             console.log("[INDSTOCKS WS] Connected.");
             connecting = false;
+            reconnectAttempts = 0;
 
             // Re-subscribe everything that was requested before/
             // during a reconnect.
@@ -151,19 +156,41 @@ export async function connectIndstocksWebSocket() {
 
         connecting = false;
         console.error("[INDSTOCKS WS] Connection failed:", error?.message ?? error);
-        scheduleReconnect();
+
+        // Bad credentials will never fix themselves by retrying.
+        if (error?.indstocksReason === "BAD_CREDENTIALS") {
+            console.error("[INDSTOCKS WS] Halting reconnects - fix .env credentials, then restart.");
+            return;
+        }
+
+        scheduleReconnect(error?.retryAfterMs);
 
     }
 
 }
 
-function scheduleReconnect() {
+function scheduleReconnect(retryAfterMs) {
 
-    setTimeout(() => {
-        if (!intentionalClose) {
-            connectIndstocksWebSocket();
-        }
-    }, RECONNECT_DELAY_MS);
+    if (intentionalClose) return;
+    if (reconnectTimer) return; // never stack timers
+
+    reconnectAttempts += 1;
+
+    const backoff = Math.min(
+        RECONNECT_BASE_MS * 2 ** (reconnectAttempts - 1),
+        RECONNECT_MAX_MS
+    );
+
+    const delay = Math.max(backoff, (retryAfterMs ?? 0) + 1000);
+
+    console.log(
+        `[INDSTOCKS WS] Reconnect attempt ${reconnectAttempts} in ${Math.round(delay / 1000)}s.`
+    );
+
+    reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        if (!intentionalClose) connectIndstocksWebSocket();
+    }, delay);
 
 }
 
@@ -174,6 +201,11 @@ function scheduleReconnect() {
 export function disconnectIndstocksWebSocket() {
 
     intentionalClose = true;
+
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
 
     if (socket) {
         try {
