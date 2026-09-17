@@ -252,6 +252,7 @@
  *   downstream confidence, decision, and execution modules.
  *
  ****************************************************************************************/
+import { AJLoggingGate } from "../debug/AJLoggingGate";
 
 export interface AIEngineInputs {
 
@@ -646,21 +647,23 @@ export class AIEngine {
         // both are equally visible with logging/tracing on.
         //--------------------------------------------------
 
-        console.log(
-            "[AI ENGINE]",
-            {
-                aiScoreLong,
-                aiScoreShort,
-                aiBestScore,
-                aiBestDir,
-                aiScalperEnabled: !!input.aiScalperEnabled,
-                aiCorePassThreshold,
-                aiCorePass,
-                aiFastScalp,
-                aiSafeEntry,
-                aiModeText
-            }
-        );
+		if (AJLoggingGate.isEnabled()) {
+			console.log(
+				"[AI ENGINE]",
+				{
+					aiScoreLong,
+					aiScoreShort,
+					aiBestScore,
+					aiBestDir,
+					aiScalperEnabled: !!input.aiScalperEnabled,
+					aiCorePassThreshold,
+					aiCorePass,
+					aiFastScalp,
+					aiSafeEntry,
+					aiModeText
+				}
+			);
+		}
 
         //--------------------------------------------------
         // RESULT

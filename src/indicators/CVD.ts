@@ -194,7 +194,7 @@
  *
  ****************************************************************************************/
 import type { Candle } from "../types/Candle";
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
+import { AJLoggingGate } from "./AJIndicator/debug/AJLoggingGate";
 //===============================================================
 
 export interface CVDResult {

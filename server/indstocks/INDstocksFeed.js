@@ -5,7 +5,15 @@
 //======================================================
 
 import { getIndstocksHistory } from "./history.js";
-import { getIndstocksContractBySymbol } from "./symbols.js";
+import {
+    getIndstocksContractBySymbol,
+    searchIndstocksOptions
+} from "./symbols.js";
+
+import {
+    resolveOptionContract
+} from "../feeds/OptionContractResolver.ts";
+
 import {
     connectIndstocksWebSocket,
     disconnectIndstocksWebSocket,
@@ -39,38 +47,133 @@ export function createIndstocksFeed() {
 
     let running = false;
 
-    function resolveInstrument(symbol) {
-
-        const existing = normalizeSymbol(symbol);
-
-        if (existing) {
-            return existing;
-        }
-
-        const rawSymbol = String(symbol ?? "").trim().toUpperCase();
-
-        if (!rawSymbol) {
-            throw new Error("[INDSTOCKS] Symbol is required.");
-        }
-
-        const contract =
-            getIndstocksContractBySymbol(rawSymbol, "") ??
-            getIndstocksContractBySymbol(rawSymbol, "NSE") ??
-            getIndstocksContractBySymbol(rawSymbol, "BSE");
-
-        if (!contract) {
-            throw new Error(
-                `[INDSTOCKS] Unable to resolve ${rawSymbol} to an IndStocks instrument.`
-            );
-        }
-
-        return {
-            exchange: contract.exchange,
-            securityId: contract.securityId,
-            key: `${contract.exchange}_${contract.securityId}`
-        };
-
-    }
+	function resolveInstrument(symbol) {
+	
+		const existing = normalizeSymbol(symbol);
+	
+		if (existing) {
+	
+			const contract =
+				getIndstocksContractBySymbol(
+					existing.key,
+					existing.exchange
+				);
+	
+			return {
+				exchange: existing.exchange,
+				securityId: existing.securityId,
+				key: existing.key,
+				contract
+			};
+	
+		}
+	
+		const rawSymbol =
+			String(symbol ?? "")
+				.trim()
+				.toUpperCase();
+	
+		if (!rawSymbol) {
+			throw new Error(
+				"[INDSTOCKS] Symbol is required."
+			);
+		}
+	
+		//==================================================
+		// CANONICAL OPTION SYMBOL
+		//
+		// Expected forms already produced by the UI:
+		//
+		// NIFTY 29SEP 23400CE
+		// NIFTY 29SEP 23400 CE
+		// SENSEX 29SEP 84000CE
+		//
+		// Resolve through the central canonical resolver.
+		//==================================================
+	
+		const optionMatch =
+			rawSymbol.match(
+				/^([A-Z]+)\s+([0-9]{1,2}[A-Z]{3}[0-9]{0,4})\s+([0-9]+(?:\.[0-9]+)?)\s*(CE|PE)$/
+			);
+	
+		if (optionMatch) {
+	
+			const canonical = {
+				underlying: optionMatch[1],
+				expiry: optionMatch[2],
+				strike: Number(optionMatch[3]),
+				optionType: optionMatch[4]
+			};
+	
+			const resolved =
+				resolveOptionContract(
+					"INDSTOCKS",
+					canonical
+				);
+	
+			if (resolved?.securityId) {
+	
+				const exchange =
+					String(
+						resolved.exchange ?? ""
+					)
+						.trim()
+						.toUpperCase();
+	
+				const securityId =
+					String(
+						resolved.securityId
+					).trim();
+	
+				return {
+					exchange,
+					securityId,
+					key: `${exchange}_${securityId}`,
+					contract: resolved.raw
+				};
+	
+			}
+	
+			throw new Error(
+				`[INDSTOCKS] Unable to resolve option ${rawSymbol} from canonical metadata.`
+			);
+	
+		}
+	
+		//==================================================
+		// NORMAL SYMBOL / INDEX
+		//==================================================
+	
+		const contract =
+			getIndstocksContractBySymbol(
+				rawSymbol,
+				""
+			) ??
+			getIndstocksContractBySymbol(
+				rawSymbol,
+				"NSE"
+			) ??
+			getIndstocksContractBySymbol(
+				rawSymbol,
+				"BSE"
+			);
+	
+		if (!contract) {
+	
+			throw new Error(
+				`[INDSTOCKS] Unable to resolve ${rawSymbol} to an IndStocks instrument.`
+			);
+	
+		}
+	
+		return {
+			exchange: contract.exchange,
+			securityId: contract.securityId,
+			key: `${contract.exchange}_${contract.securityId}`,
+			contract
+		};
+	
+	}
 
     async function start(tickHandler) {
 
