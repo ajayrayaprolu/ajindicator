@@ -605,21 +605,21 @@ const defaultCharts: ChartConfig[] = [
       return;
     }
 
-    const canonicalSymbol =
-      `${metadata.underlying} ${metadata.strike} ${metadata.optionType}`.trim();
-
-    updateSymbol(
-      activeChart.id,
-      canonicalSymbol,
-      undefined,
-      canonicalSymbol,
-      {
-        underlying: metadata.underlying,
-        expiry: metadata.expiry,
-        strike: metadata.strike,
-        optionType: metadata.optionType
-      }
-    );
+	const canonicalSymbol =
+	metadata.optionSymbol.trim();
+	
+	updateSymbol(
+	activeChart.id,
+	canonicalSymbol,
+	undefined,
+	canonicalSymbol,
+	{
+		underlying: metadata.underlying,
+		expiry: metadata.expiry,
+		strike: metadata.strike,
+		optionType: metadata.optionType
+	}
+	);
   }
 //============================================  
   function toggleExpand(id: number) {

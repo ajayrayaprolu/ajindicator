@@ -154,9 +154,13 @@ import {
     createIndstocksFeed
 } from "./indstocks/INDstocksFeed.js";
 
+//import {
+//    initializeIndstocksSymbols,
+//    startSymbolRefresh as startIndstocksSymbolRefresh
+//} from "./indstocks/symbols.js";
+
 import {
-    initializeIndstocksSymbols,
-    startSymbolRefresh as startIndstocksSymbolRefresh
+    loadContractMaster
 } from "./indstocks/symbols.js";
 
 import {
@@ -1875,27 +1879,45 @@ catch (error) {
         error
     );
 }
-
+//==========================================================
+//try {
+//    const indstocksSymbolStatus =
+//        await initializeIndstocksSymbols({
+//            downloadIfMissing: true
+//        });
+//
+//    startIndstocksSymbolRefresh();
+//
+//    console.log(
+//        "[INDSTOCKS SYMBOLS] Initialized:",
+//        indstocksSymbolStatus
+//    );
+//}
+//catch (error) {
+//    console.error(
+//        "[INDSTOCKS SYMBOLS] Initialization failed:",
+//        error?.message ??
+//        error
+//    );
+//}
+//=========================================================
 try {
-    const indstocksSymbolStatus =
-        await initializeIndstocksSymbols({
-            downloadIfMissing: true
-        });
-
-    startIndstocksSymbolRefresh();
+    const indstocksSymbolsLoaded =
+        loadContractMaster();
 
     console.log(
-        "[INDSTOCKS SYMBOLS] Initialized:",
-        indstocksSymbolStatus
+        "[INDSTOCKS SYMBOLS] Local cache loaded:",
+        indstocksSymbolsLoaded
     );
 }
 catch (error) {
     console.error(
-        "[INDSTOCKS SYMBOLS] Initialization failed:",
+        "[INDSTOCKS SYMBOLS] Local cache initialization failed:",
         error?.message ??
         error
     );
 }
+
 
 try {
     const fyersEquityStatus =
