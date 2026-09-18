@@ -61,39 +61,52 @@ function resolveInstrument(symbol) {
         throw new Error("[INDSTOCKS] Symbol is required.");
     }
 
-    // Canonical option form:
-    // UNDERLYING DDMMM STRIKE CE/PE
-    //
-    // Example:
-    // NIFTY 29SEP 23400CE
+    // Canonical option:
     // NIFTY 29SEP 23400 CE
+    // NIFTY 29 SEP 23400 CE
+    // NIFTY 29SEP 23400CE
+
     const optionMatch = rawSymbol.match(
-        /^([A-Z][A-Z0-9]*)\s+(\d{1,2}[A-Z]{3})\s+(\d+(?:\.\d+)?)\s*(CE|PE)$/
+        /^([A-Z][A-Z0-9]*)\s+(\d{1,2})\s*([A-Z]{3})\s*(\d+(?:\.\d+)?)\s*(CE|PE)$/
     );
 
     if (optionMatch) {
 
-        const [, underlying, expiry, strike, optionType] = optionMatch;
+        const [
+            ,
+            underlying,
+            expiryDay,
+            expiryMonth,
+            strike,
+            optionType
+        ] = optionMatch;
 
-        const resolved = resolveOptionContract(
-            "INDSTOCKS",
-            {
-                underlying,
-                expiry,
-                strike: Number(strike),
-                optionType
-            }
-        );
+        const expiry = `${expiryDay}${expiryMonth}`;
 
-        if (resolved) {
+        const matches = searchIndstocksOptions({
+            underlying,
+            expiry,
+            strike: Number(strike),
+            optionType,
+            limit: 10
+        });
 
-            const exchange = String(resolved.exchange ?? "").trim().toUpperCase();
+        const contract =
+            Array.isArray(matches) && matches.length
+                ? matches[0]
+                : null;
+
+        if (contract) {
+
+            const exchange = String(
+                contract.exchange ?? ""
+            ).trim().toUpperCase();
+
             const securityId = String(
-                resolved.securityId ?? resolved.token ?? ""
+                contract.securityId ?? ""
             ).trim();
 
             if (exchange && securityId) {
-
                 return {
                     exchange,
                     securityId,
@@ -119,7 +132,6 @@ function resolveInstrument(symbol) {
         securityId: contract.securityId,
         key: `${contract.exchange}_${contract.securityId}`
     };
-
 }
 
     async function start(tickHandler) {
