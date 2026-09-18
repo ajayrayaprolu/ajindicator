@@ -292,23 +292,23 @@ export function resolveOptionContract(
     // INDSTOCKS
     //==================================================
 
+    //==================================================
+    // INDSTOCKS
+    //==================================================
+
     if (provider === "INDSTOCKS") {
+
         const matches =
             searchIndstocksOptions({
-                underlying:
-                    canonical.underlying,
-                expiry:
-                    canonical.expiry,
-                strike:
-                    canonical.strike,
-                optionType:
-                    canonical.optionType,
+                underlying: canonical.underlying,
+                expiry: canonical.expiry,
+                strike: canonical.strike,
+                optionType: canonical.optionType,
                 limit: 5
             });
 
         const contract =
-            Array.isArray(matches) &&
-            matches.length > 0
+            Array.isArray(matches) && matches.length > 0
                 ? matches[0]
                 : null;
 
@@ -344,7 +344,8 @@ export function resolveOptionContract(
             tickSize:
                 contract.tickSize,
 
-            raw: contract
+            raw:
+                contract
         };
     }
 

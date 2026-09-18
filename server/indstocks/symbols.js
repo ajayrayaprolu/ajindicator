@@ -562,27 +562,193 @@ export function searchIndstocksOptions(options = {}) {
 
     const wantedUnderlying = clean(underlying);
     const wantedOptionType = clean(optionType);
-    const wantedStrike = strike !== undefined && strike !== null && strike !== "" ? Number(strike) : undefined;
-    const max = Math.min(Math.max(Number(limit) || 100, 1), 500);
+    const wantedStrike =
+        strike !== undefined &&
+        strike !== null &&
+        strike !== ""
+            ? Number(strike)
+            : undefined;
+
+    const wantedExpiry = clean(expiry);
+
+    const max = Math.min(
+        Math.max(Number(limit) || 100, 1),
+        500
+    );
+
+function expiryMatches(contract) {
+
+    if (!wantedExpiry) {
+        return true;
+    }
+
+    const candidates = [
+        contract.expiryDate,
+        contract.expiryCode,
+        contract.tradingSymbol,
+        contract.customSymbol
+    ]
+        .filter(Boolean)
+        .map(clean);
+
+    if (candidates.includes(wantedExpiry)) {
+        return true;
+    }
+
+    // Canonical form: 29SEP
+    const compactMatch = wantedExpiry.match(
+        /^(\d{1,2})([A-Z]{3})$/
+    );
+
+    if (compactMatch) {
+
+        const [, day, monthName] = compactMatch;
+
+        const monthMap = {
+            JAN: "01",
+            FEB: "02",
+            MAR: "03",
+            APR: "04",
+            MAY: "05",
+            JUN: "06",
+            JUL: "07",
+            AUG: "08",
+            SEP: "09",
+            OCT: "10",
+            NOV: "11",
+            DEC: "12"
+        };
+
+        const month = monthMap[monthName];
+        const paddedDay = day.padStart(2, "0");
+
+        if (month) {
+
+            // IndStocks expiryDate:
+            // 09/29/2026 14:00
+            if (
+                candidates.some(value =>
+                    new RegExp(
+                        `^${month}/${paddedDay}/\\d{4}`
+                    ).test(value)
+                )
+            ) {
+                return true;
+            }
+
+            // IndStocks expiryCode:
+            // 29 SEP 2026
+            if (
+                candidates.some(value =>
+                    new RegExp(
+                        `^${paddedDay} ${monthName} \\d{4}$`
+                    ).test(value)
+                )
+            ) {
+                return true;
+            }
+
+            // tradingSymbol:
+            // NIFTY-SEP2026-23400-CE
+            if (
+                candidates.some(value =>
+                    value.includes(
+                        `-${monthName}20`
+                    ) &&
+                    value.includes(
+                        `-${paddedDay}-`
+                    )
+                )
+            ) {
+                return true;
+            }
+
+            // customSymbol:
+            // NIFTY 29 SEP 23400 CE
+            if (
+                candidates.some(value =>
+                    value.includes(
+                        ` ${paddedDay} ${monthName} `
+                    )
+                )
+            ) {
+                return true;
+            }
+        }
+    }
+
+    // ISO canonical form: 2026-09-29
+    const isoMatch = wantedExpiry.match(
+        /^(\d{4})-(\d{2})-(\d{2})$/
+    );
+
+    if (isoMatch) {
+
+        const [, year, month, day] = isoMatch;
+        const paddedDay = day.padStart(2, "0");
+
+        if (
+            candidates.some(value =>
+                value.includes(
+                    `${month}/${paddedDay}/${year}`
+                )
+            )
+        ) {
+            return true;
+        }
+
+        if (
+            candidates.some(value =>
+                value.includes(
+                    `${day}-${month}-${year}`
+                )
+            )
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
     const result = contracts.filter(c => {
 
-        if (c.optionType !== "CE" && c.optionType !== "PE") return false;
+        if (
+            c.optionType !== "CE" &&
+            c.optionType !== "PE"
+        ) {
+            return false;
+        }
 
-        if (wantedUnderlying && extractUnderlying(c) !== wantedUnderlying) return false;
+        if (
+            wantedUnderlying &&
+            extractUnderlying(c) !== wantedUnderlying
+        ) {
+            return false;
+        }
 
-        if (expiry && c.expiryDate !== expiry) return false;
+        if (!expiryMatches(c)) {
+            return false;
+        }
 
-        if (wantedStrike !== undefined && Number(c.strike) !== wantedStrike) return false;
+        if (
+            wantedStrike !== undefined &&
+            Number(c.strike) !== wantedStrike
+        ) {
+            return false;
+        }
 
-        if (wantedOptionType && c.optionType !== wantedOptionType) return false;
+        if (
+            wantedOptionType &&
+            c.optionType !== wantedOptionType
+        ) {
+            return false;
+        }
 
         return true;
-
     });
 
     return result.slice(0, max);
-
 }
 
 export function searchIndstocksStrike(strike, underlying = "", limit = 100) {
