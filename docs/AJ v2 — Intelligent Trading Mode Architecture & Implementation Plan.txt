@@ -949,3 +949,679 @@ One Gate	Final TRADE/NO_TRADE decision
 And before we change thresholds, I would fix the visibility/decision pipeline first. Once we can see exactly which calculation produced the score and which gate rejected it, we can tune the production thresholds scientifically instead of guessing.
 
 That will also tell us whether the current AJRuntimeParameters.ts can be safely retired and everything moved into RuntimeParameters.ts, or whether one or two of its parameters are actually calculation-specific and should remain in the calculation engine.
+=========================================================================================================
+Yes — your understanding is correct, with one important terminology clarification.
+
+1. The intended behavior is exactly this
+Default
+
+When the user leaves the setting at SCORE, we treat that selection as:
+
+SCORE = AUTO / INTELLIGENT controller
+
+It does not mean the engine is permanently forced to calculate only SCORE.
+
+Instead:
+
+User selects:
+SCORE
+   ↓
+SCORE / INTELLIGENT CONTROLLER
+   ↓
+Market-condition analysis
+   ↓
+┌───────────────────────────────┐
+│ Select effective calculation  │
+│                               │
+│ SCORE                         │
+│ AI                            │
+│ AI + SMC                      │
+└───────────────────────────────┘
+   ↓
+Calculate trade
+   ↓
+Risk / execution authorization
+   ↓
+TRADE / NO TRADE
+
+So the user does not need to manually decide:
+
+"Now I think market is volatile, I should switch to AI."
+
+The intelligent controller decides that internally.
+
+2. Debug must distinguish Controller Mode from Effective Mode
+
+This is extremely important.
+
+Default intelligent operation
+
+For example:
+
+Trade Mode = SCORE (INTELLIGENT)
+Effective Calculation = SCORE
+Market Regime = NORMAL
+Reason = Normal trend / momentum conditions
+
+Then market conditions become more difficult:
+
+Trade Mode = SCORE (INTELLIGENT)
+Effective Calculation = AI
+Market Regime = HIGH_VOLATILITY
+Reason = Elevated volatility / conflicting momentum
+
+Then institutional/SMC conditions become important:
+
+Trade Mode = SCORE (INTELLIGENT)
+Effective Calculation = AI_SMC
+Market Regime = STRUCTURAL_RISK
+Reason = Liquidity sweep + CHOCH + institutional imbalance
+
+The user still sees:
+
+SCORE (INTELLIGENT)
+
+because that is the user-selected controller.
+
+But internally:
+
+Effective Calculation = AI_SMC
+
+That distinction prevents enormous debugging confusion.
+
+3. Manual AI / AI+SMC
+
+If the user explicitly selects AI:
+
+Trade Mode = AI (MANUAL)
+Effective Calculation = AI
+
+The intelligent controller must not override it.
+
+Likewise:
+
+Trade Mode = AI+SMC (MANUAL)
+Effective Calculation = AI_SMC
+
+Therefore:
+
+User setting	Controller	Effective calculation
+SCORE	Intelligent	SCORE / AI / AI_SMC
+AI	Manual	AI
+AI+SMC	Manual	AI_SMC
+
+That is the architecture I recommend.
+
+One terminology correction
+
+I would use:
+
+SCORE (INTELLIGENT)
+
+rather than:
+
+SCORE (AUTO)
+
+because AUTO could be misunderstood as merely automatic SCORE calculation.
+
+INTELLIGENT communicates that the controller can change the effective calculation mode.
+
+4. And yes — your Scalper / Safe / Swing observation is very important
+
+This is actually one of the things we should investigate before implementing the intelligent controller.
+
+You observed:
+
+AI
+   → NO TRADE
+
+AI + SMC
+   → NO TRADE
+
+but:
+
+AI + SCALPER
+   → TRADE
+
+or:
+
+AI + SAFE
+   → TRADE
+
+or:
+
+AI + SWING
+   → TRADE
+
+and similarly:
+
+Crypto
+   → NO TRADE
+
+Crypto + Advanced Crypto
+   → TRADE
+
+That means these settings are not merely cosmetic strategy labels.
+
+Something in the current implementation is changing the actual decision path.
+
+We need to find exactly what.
+
+It could be:
+
+threshold
+weight
+confidence
+risk qualification
+execution qualification
+minimum score
+structure requirement
+liquidity requirement
+AI adjustment
+SMC requirement
+bypass
+override
+score normalization
+
+But we should not guess which one.
+
+We need to trace the current code.
+
+5. This is the implementation order I recommend
+
+We should not immediately rewrite the trading engine.
+
+We'll do this in controlled phases.
+
+PHASE 1 — Freeze current behavior
+
+First, don't change the calculation engines.
+
+We establish exactly what currently happens:
+
+Indicator Settings
+        ↓
+RuntimeParameters
+        ↓
+AJRuntimeParameters
+        ↓
+Context
+        ↓
+Score / AI / SMC
+        ↓
+Confidence
+        ↓
+Risk
+        ↓
+Execution
+        ↓
+Trade
+
+The objective is to find where the current behavior diverges.
+
+PHASE 2 — Audit the two parameter systems
+
+We currently have:
+
+src/runtime/config/RuntimeParameters.ts
+
+and:
+
+src/indicators/AJIndicator/config/AJRuntimeParameters.ts
+
+This is important because we already know there are overlapping threshold systems.
+
+For example, RuntimeParameters currently contains:
+
+minimumConfidence = 60;
+executionConfidence = 60;
+institutionalConfidence = 65;
+minimumTradeScore = 65;
+
+while AJRuntimeParameters independently contains things such as:
+
+confidenceThreshold
+authorityConfidenceThreshold
+riskThreshold
+trendStrength
+momentumStrength
+structureQuality
+liquidityQuality
+institutionalAlignment
+approvalRatio
+executionConfidence
+tradeScore
+
+That can easily create this situation:
+
+Score says:
+GOOD
+
+AI says:
+GOOD
+
+but
+
+Authority says:
+FAIL
+
+or
+
+Execution says:
+FAIL
+
+We need to expose that instead of simply displaying:
+
+36 / 60
+PHASE 3 — Trace every mode consumer
+
+Next search the repository for every place that consumes:
+
+tradeEngineMode
+enableAITradeSafety
+enableAISMCMode
+smcProfile
+aiScalperEnabled
+scoreScalperEnabled
+enableAdvancedCrypto
+cryptoBTCMode
+
+And especially:
+
+minimumConfidence
+minimumTradeScore
+executionConfidence
+executionThreshold
+minimumExecutionScore
+
+We need to build this map:
+
+Setting
+  ↓
+Who reads it?
+  ↓
+What does it change?
+  ↓
+Does it change calculation?
+  ↓
+Does it change threshold?
+  ↓
+Does it bypass a gate?
+  ↓
+Does it change risk?
+  ↓
+Does it change execution?
+
+This will answer your Scalper/Safe/Swing question objectively.
+
+PHASE 4 — Investigate Scalper / Safe / Swing
+
+For each profile we need to identify the exact delta.
+
+SCORE
+SCORE
+SCALPER
+SCORE
++ ?
++ ?
++ ?
+SAFE
+SCORE
++ ?
++ ?
++ ?
+SWING
+SCORE
++ ?
++ ?
++ ?
+
+And:
+
+AI_SCALPER
+
+must be separately traced.
+
+The final debug should eventually tell us something like:
+
+Profile = SCALPER
+Base Score = 54
+Profile Adjustment = +8
+Effective Score = 62
+Required Score = 60
+
+rather than simply:
+
+TRADE
+
+Then we know why Scalper caused the trade.
+
+PHASE 5 — Investigate Advanced Crypto
+
+Same treatment.
+
+We should determine whether:
+
+enableAdvancedCrypto = true
+
+changes:
+
+score weights
+volatility weighting
+institutional weighting
+thresholds
+crypto-specific calculations
+risk
+execution
+trade qualification
+bypass logic
+
+Your current parameters already show:
+
+cryptoVolatilityWeight = 1.0;
+cryptoInstitutionalWeight = 1.0;
+cryptoMinimumScore = 60;
+
+So Advanced Crypto is clearly intended to have its own calculation/profile behavior.
+
+But we should trace the actual consumers before deciding how it participates in intelligent mode.
+
+The important architectural point remains:
+
+Advanced Crypto is not a fourth trading mode.
+
+It should remain a market/calculation profile.
+
+For example:
+
+SCORE (INTELLIGENT)
++ ADVANCED CRYPTO
++ SCALPER
+
+is valid.
+
+And:
+
+AI (MANUAL)
++ ADVANCED CRYPTO
++ SWING
+
+is also valid.
+
+And:
+
+AI+SMC (MANUAL)
++ ADVANCED CRYPTO
+
+is valid.
+
+PHASE 6 — Investigate NIFTY/BANKNIFTY and BTC/SPX500 synchronization
+
+Do not assume these are gates.
+
+We need to find:
+
+NIFTY ↔ BANKNIFTY sync
+BTC ↔ SPX500 sync
+
+and determine whether they currently affect:
+
+score
+confidence
+risk
+direction
+authorization
+execution
+
+or are simply UI/configuration values that aren't being consumed.
+
+The debug should eventually make the state visible:
+
+NIFTY/BANKNIFTY Sync = ON
+BTC/SPX500 Sync = OFF
+
+and, if they actually influence a decision:
+
+Sync Adjustment = +5
+
+or:
+
+Sync Status = PASS
+
+But we should not invent this behavior until we trace the existing implementation.
+
+PHASE 7 — Build the intelligent controller
+
+Only after the current system is understood.
+
+The controller should conceptually be:
+
+if user explicitly selected AI:
+    effectiveMode = AI
+
+else if user explicitly selected AI_SMC:
+    effectiveMode = AI_SMC
+
+else:
+    // SCORE selection = intelligent controller
+
+    if market is NORMAL:
+        effectiveMode = SCORE
+
+    else if market has elevated volatility,
+            conflicting signals,
+            trap risk, etc.:
+        effectiveMode = AI
+
+    else if market has strong institutional/
+            liquidity/structure conditions:
+        effectiveMode = AI_SMC
+
+    else:
+        effectiveMode = SCORE
+
+But the actual regime conditions must come from your existing calculations, not a second parallel indicator engine.
+
+PHASE 8 — Do NOT make AI+SMC a giant mandatory checklist
+
+This is especially important for your current problem.
+
+We should not accidentally create:
+
+AI+SMC requires:
+
+OB
+AND FVG
+AND BOS
+AND CHOCH
+AND liquidity sweep
+AND volume
+AND CVD
+AND VWAP
+AND trend
+AND momentum
+
+because that will produce:
+
+NO_TRADE
+
+almost constantly.
+
+Instead:
+
+Base Score
+     ↓
+AI contextual adjustment
+     ↓
+SMC structural/liquidity adjustment
+     ↓
+risk/trap adjustment
+     ↓
+final confidence
+     ↓
+authorization
+
+So OB/FVG/BOS/CHOCH become meaningful evidence.
+
+PHASE 9 — One canonical decision
+
+Eventually we want one final decision object conceptually like:
+
+{
+    controllerMode: "INTELLIGENT",
+    effectiveMode: "AI_SMC",
+
+    marketRegime: "...",
+    profile: "SWING",
+    marketProfile: "ADVANCED_CRYPTO",
+
+    baseScore: 54,
+    aiAdjustment: 6,
+    smcAdjustment: 8,
+
+    confidence: 68,
+    requiredConfidence: 60,
+
+    risk: "...",
+    execution: "...",
+
+    blockers: [],
+
+    result: "TRADE",
+
+    reason: "..."
+}
+
+Then every consumer uses that result.
+
+No separate component should independently decide:
+
+trade = true
+
+using a different threshold.
+
+PHASE 10 — Debug becomes transparent
+
+This is the final debug structure I want us to reach:
+
+Trade Mode = SCORE (INTELLIGENT)
+Effective Calculation = AI_SMC
+
+Market Regime = HIGH_VOLATILITY / STRUCTURAL_RISK
+Profile = SWING
+Market Profile = ADVANCED_CRYPTO
+
+Base Score = 54
+AI Adjustment = +6
+SMC Adjustment = +8
+
+Final Confidence = 68
+Required Confidence = 60
+
+OB = PRESENT
+FVG = PRESENT
+BOS = CONFIRMED
+CHOCH = NONE
+Liquidity Sweep = PRESENT
+
+NIFTY/BANKNIFTY Sync = ON
+BTC/SPX500 Sync = OFF
+
+Risk = PASS
+Execution = PASS
+
+Result = TRADE
+Reason = AI+SMC confirmation under elevated volatility
+
+And when there is no trade:
+
+Trade Mode = SCORE (INTELLIGENT)
+Effective Calculation = AI
+
+Base Score = 48
+AI Adjustment = -4
+
+Final Confidence = 44
+Required Confidence = 60
+
+Risk = PASS
+Execution = PASS
+
+Blocker = Confidence below threshold
+
+Result = NO_TRADE
+
+That will finally let us answer why a trade did or did not happen.
+
+11. The most important part: don't modify the main engines yet
+
+Given your requirement to preserve the existing system, I recommend this exact order:
+
+STEP 1
+Audit RuntimeParameters.ts
+        ↓
+STEP 2
+Audit AJRuntimeParameters.ts
+        ↓
+STEP 3
+Trace all consumers
+        ↓
+STEP 4
+Trace Indicator Settings → parameters
+        ↓
+STEP 5
+Trace SCORE
+        ↓
+STEP 6
+Trace AI
+        ↓
+STEP 7
+Trace AI+SMC
+        ↓
+STEP 8
+Trace SCALPER / SAFE / SWING
+        ↓
+STEP 9
+Trace AI SCALPER
+        ↓
+STEP 10
+Trace ADVANCED CRYPTO
+        ↓
+STEP 11
+Trace NIFTY/BANKNIFTY sync
+        ↓
+STEP 12
+Trace BTC/SPX500 sync
+        ↓
+STEP 13
+Identify duplicate/conflicting gates
+        ↓
+STEP 14
+Add INTELLIGENT controller
+        ↓
+STEP 15
+Add effective-mode debug
+        ↓
+STEP 16
+Unify final authorization
+        ↓
+STEP 17
+Test DEV vs PROD
+        ↓
+STEP 18
+Only then tune thresholds
+And I would not change the HTML yet.
+
+Your interpretation is correct enough that the architecture document should be updated to explicitly state:
+
+SCORE is the default intelligent controller. It does not permanently force SCORE calculation. When SCORE is selected, the controller automatically selects SCORE, AI, or AI+SMC internally according to market conditions. Explicit AI and AI+SMC selections are manual overrides.
+
+But before updating the HTML, the next implementation step should be the code audit, because that will determine exactly how we implement this without disturbing your existing main logic.
+
+Next step
+
+We should start with Step 1–4 only: audit the two parameter files and trace the Indicator Settings → tradeEngineMode / AI / SMC / profile flow.
+
+I already have the RuntimeParameters.ts and AJRuntimeParameters.ts content you supplied. The next useful code we need is the current Indicator Settings / settings bridge code, especially AJSettingsBridge.ts, plus the places where tradeEngineMode, smcProfile, aiScalperEnabled, scoreScalperEnabled, and enableAdvancedCrypto are read.
+
+If those files are not currently attached, you can upload them here and I’ll work from the exact source rather than guessing.

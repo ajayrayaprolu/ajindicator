@@ -23,9 +23,20 @@ export class OptionRecommendationEngine {
         direction:number,
         config?:OptionContractConfig
     ):OptionRecommendationResult {
+
+        const EXCHANGE_KEY_TO_UNDERLYING: Record<string,string> = {
+            "NSE_40000001": "NIFTY",
+            "BSE_40000006": "SENSEX"
+        };
+
+        const normalizedUnderlying =
+            EXCHANGE_KEY_TO_UNDERLYING[
+                String(underlying ?? "").trim().toUpperCase()
+            ] ?? underlying;
+
         const contract =
             OptionContractResolver.resolve(
-                underlying,
+                normalizedUnderlying,
                 spot,
                 direction,
                 config
@@ -35,7 +46,7 @@ export class OptionRecommendationEngine {
             optionSymbol: contract.symbol,
             recommendedOption: contract.symbol,
 
-            underlying,
+            underlying: normalizedUnderlying,
 
             optionType:
 				contract.optionType === "CE" ||

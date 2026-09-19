@@ -594,32 +594,45 @@ const defaultCharts: ChartConfig[] = [
     );
  }
 
-  function optionFocusOpenSymbol(metadata: {
-    optionSymbol: string;
-    underlying: string;
-    expiry: string;
-    strike: number;
-    optionType: "CE" | "PE" | "";
-  }) {
-    if (!activeChart) {
-      return;
-    }
+  function optionFocusOpenSymbol(metadata: { 
+    optionSymbol: string; 
+    underlying: string; 
+    expiry: string; 
+    strike: number; 
+    optionType: "CE" | "PE" | ""; 
+  }) { 
+    if (!activeChart) { 
+      return; 
+    } 
 
-    const canonicalSymbol =
-      `${metadata.underlying} ${metadata.expiry} ${metadata.strike} ${metadata.optionType}`;
+    const isoMatch =
+      /^(\d{4})-(\d{2})-(\d{2})$/.exec(metadata.expiry);
 
-    updateSymbol(
-      activeChart.id,
-      canonicalSymbol,
-      undefined,
-      canonicalSymbol,
-      {
-        underlying: metadata.underlying,
-        expiry: metadata.expiry,
-        strike: metadata.strike,
-        optionType: metadata.optionType
-      }
-    );
+    const MONTH_ABBR = [
+      "JAN","FEB","MAR","APR","MAY","JUN",
+      "JUL","AUG","SEP","OCT","NOV","DEC"
+    ];
+
+    const displayExpiry =
+      isoMatch
+        ? `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`
+        : metadata.expiry;
+
+    const canonicalSymbol = 
+      `${metadata.underlying} ${displayExpiry} ${metadata.strike} ${metadata.optionType}`; 
+ 
+    updateSymbol( 
+      activeChart.id, 
+      canonicalSymbol, 
+      undefined, 
+      canonicalSymbol, 
+      { 
+        underlying: metadata.underlying, 
+        expiry: metadata.expiry, 
+        strike: metadata.strike, 
+        optionType: metadata.optionType 
+      } 
+    ); 
   }
   
 //============================================  
