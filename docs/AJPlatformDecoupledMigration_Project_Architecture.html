@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AJPlatformDecoupledMigration — Project Purpose, Architecture & Migration Design</title>
+<style>
+:root{--bg:#0b1020;--panel:#121a2d;--panel2:#18233b;--text:#e9eefb;--muted:#aab6cf;--line:#2c3a59;--accent:#72a7ff;--ok:#62d69a;--warn:#ffd166;--bad:#ff7f8c}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}header{padding:48px 7%;background:linear-gradient(135deg,#101a34,#162646);border-bottom:1px solid var(--line)}h1{font-size:34px;margin:0 0 10px}h2{margin-top:42px;font-size:24px}h3{font-size:18px;margin-top:28px}.subtitle{color:var(--muted);font-size:17px;max-width:1000px}.wrap{max-width:1250px;margin:auto;padding:0 7% 60px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px}.card strong{color:var(--accent)}table{width:100%;border-collapse:collapse;background:var(--panel);border-radius:10px;overflow:hidden}th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--panel2);color:#cfe0ff}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:18px 0}.box{padding:11px 15px;border:1px solid #42628f;background:var(--panel2);border-radius:8px}.arrow{color:var(--accent);font-weight:700}.good{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}pre{background:#080d19;border:1px solid var(--line);border-radius:10px;padding:16px;overflow:auto;color:#dbe6ff}code{color:#d8e5ff}.note{border-left:4px solid var(--accent);padding:12px 16px;background:var(--panel);margin:18px 0}.danger{border-left-color:var(--bad)}.ok{border-left-color:var(--ok)}ul{padding-left:22px}.small{color:var(--muted);font-size:13px}.badge{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:3px 9px;margin:2px;color:#cfe0ff}footer{color:var(--muted);border-top:1px solid var(--line);padding-top:24px;margin-top:50px}</style>
+</head>
+<body>
+<header>
+<h1>AJPlatformDecoupledMigration</h1>
+<div class="subtitle">Project purpose, target architecture, migration strategy, multi-OpenAlgo orchestration, compatibility model, validation gates, and the surgical dependency-ordering design used by the migration script.</div>
+</header>
+<div class="wrap">
+<h2>1. Why this project exists</h2>
+<p>The authoritative AJInstitutional source currently lives under <code>C:\AI-Institutional\src</code>. The project is creating a repeatable migration/orchestration mechanism that can deploy that AJ source into multiple independently installed OpenAlgo frontends under <code>C:\AJMultiAlgo</code>.</p>
+<p>The central objective is <strong>decoupling AJInstitutional from the OpenAlgo platform implementation</strong>. AJ remains the calculation/decision engine. OpenAlgo remains the broker/platform/UI host. The migration script creates the thin adapter boundary between them.</p>
+<div class="grid">
+<div class="card"><strong>AJInstitutional Core</strong><br>Authoritative trading/indicator calculation engine. Broker and UI agnostic.</div>
+<div class="card"><strong>AJ OpenAlgo Adapter</strong><br>Converts OpenAlgo bars/context into AJ inputs and AJ results into the chart/indicator contract.</div>
+<div class="card"><strong>AJ Indicator Orchestrator</strong><br>Lifecycle, cache, incremental/tail calculation, registry and worker-oriented orchestration.</div>
+<div class="card"><strong>AJ UI/Consumers</strong><br>Dashboard, debug and advisory consumers of shared AJ state; not the calculation authority.</div>
+</div>
+<h2>2. Target architecture</h2>
+<div class="flow">
+<div class="box">OpenAlgo Platform / Broker / Data</div><div class="arrow">→</div>
+<div class="box">OpenAlgo Adapter Boundary</div><div class="arrow">→</div>
+<div class="box">AJInstitutional Core</div><div class="arrow">→</div>
+<div class="box">AJRuntimeResult</div><div class="arrow">→</div>
+<div class="box">AJ Host / Indicator Boundary</div>
+</div>
+<div class="flow">
+<div class="box">Thin register.ts</div><div class="arrow">→</div>
+<div class="box">Destination-native OpenAlgo registration contract</div><div class="arrow">→</div>
+<div class="box">OpenAlgo Charts rendering/lifecycle</div>
+</div>
+<div class="note ok"><strong>Ownership rule:</strong> OpenAlgo owns broker integration, chart rendering and its platform contracts. AJ owns AJ calculations, state, decisions and AJ-specific presentation data. <code>register.ts</code> contains no business logic.</div>
+<h2>3. What must remain decoupled</h2>
+<table><tr><th>Layer</th><th>Allowed responsibility</th><th>Explicitly avoided</th></tr>
+<tr><td>AJ Core</td><td>Calculation, context, decisions, runtime state, AJ results.</td><td>React, DOM, broker APIs, OpenAlgo chart objects.</td></tr>
+<tr><td>AJ OpenAlgo Adapter</td><td>OpenAlgo bar/context/result conversion and indicator descriptor adaptation.</td><td>Broker-specific implementation and platform snapshots.</td></tr>
+<tr><td>AJ Orchestrator</td><td>Lifecycle, cache, incremental updates, workers, registry.</td><td>Owning broker connectivity or chart rendering.</td></tr>
+<tr><td>OpenAlgo</td><td>Broker connectivity, platform UI, chart lifecycle/rendering, native module contracts.</td><td>Being modified to behave like an old Fyers installation.</td></tr>
+<tr><td>register.ts</td><td>Thin registration/import bridge.</td><td>Business logic, calculations, platform rewrites.</td></tr></table>
+<h2>4. Why the migration script is required</h2>
+<p>There are multiple OpenAlgo installations with potentially different destination versions and broker adapters. A manual copy is unsafe because platform files and module contracts can differ between installations.</p>
+<ul>
+<li>Discover all OpenAlgo instances below <code>C:\AJMultiAlgo</code>.</li>
+<li>Use <code>C:\AI-Institutional\src</code> as the authoritative AJ source.</li>
+<li>Extract the reachable AJ source/import closure into each destination's <code>frontend/src/indicators/AJInstitutional</code>.</li>
+<li>Create destination-local AJ package structure without requiring AJ packages outside that boundary.</li>
+<li>Preserve the destination OpenAlgo platform files.</li>
+<li>Detect the destination's actual OpenAlgo Charts/indicator registration contract.</li>
+<li>Generate only the thin bridge required by that destination contract.</li>
+<li>Run import, TypeScript and full frontend build gates before reporting success.</li>
+</ul>
+<h2>5. Multi-instance orchestration</h2>
+<table><tr><th>Instance</th><th>Broker</th><th>Migration rule</th></tr>
+<tr><td>aliceblueopenalgo</td><td>aliceblue</td><td>Use its installed/latest destination platform and package contracts.</td></tr>
+<tr><td>fyersopenalgo</td><td>fyers</td><td>May contain legacy AJ artifacts; Fyers platform files are reference-only and must not become a platform snapshot for another instance.</td></tr>
+<tr><td>indstocksopenalgo</td><td>indstocks</td><td>Use its own installed destination platform/package contracts.</td></tr></table>
+<p>Each instance is treated independently. A failure in one instance must stop the deployment rather than falsely reporting an all-instance success.</p>
+<h2>6. Authoritative source and destination rules</h2>
+<div class="grid">
+<div class="card"><strong>Authoritative AJ source</strong><br><code>C:\AI-Institutional\src</code></div>
+<div class="card"><strong>Destination AJ boundary</strong><br><code>&lt;instance&gt;\frontend\src\indicators\AJInstitutional</code></div>
+<div class="card"><strong>Destination platform authority</strong><br>The installed OpenAlgo instance itself.</div>
+<div class="card"><strong>Legacy Fyers material</strong><br>Reference/legacy only. Never copied as a platform snapshot and never used to downgrade a new destination.</div>
+</div>
+<h2>7. Migration lifecycle implemented by the script</h2>
+<ol>
+<li><strong>Discover:</strong> scan the multi-instance root and identify OpenAlgo frontends.</li>
+<li><strong>Resolve destination:</strong> establish the canonical AJ destination.</li>
+<li><strong>Backup:</strong> back up destination-native frontend wiring files before AJ bridge changes.</li>
+<li><strong>Source preflight:</strong> walk the authoritative AJ import closure and identify unresolved/third-party dependencies before copying.</li>
+<li><strong>Extract:</strong> copy the reachable AJ Core source closure into the destination-local AJ package boundary.</li>
+<li><strong>Generate adapters:</strong> create AJ runtime/context/result/orchestration adapters locally.</li>
+<li><strong>Normalize:</strong> repair only AJ-owned aliases/imports; do not rewrite OpenAlgo platform code.</li>
+<li><strong>Restore destination dependencies:</strong> use the destination's own package manifest/lockfile when required.</li>
+<li><strong>Detect compatibility:</strong> inspect the actual installed <code>openalgo-charts</code> contract.</li>
+<li><strong>Generate thin registration:</strong> select the correct root, indicators-tier, or legacy host bridge.</li>
+<li><strong>Wire terminal:</strong> add the destination-local AJ registration import to the native terminal loader.</li>
+<li><strong>Audit:</strong> verify AJ boundary and local import closure.</li>
+<li><strong>Build:</strong> run TypeScript preflight and the destination's actual frontend build.</li>
+<li><strong>Report:</strong> only report deployment complete after all required gates pass.</li>
+</ol>
+<h2>8. Critical compatibility model</h2>
+<p>The destination version is not assumed. The script detects what is actually installed.</p>
+<div class="grid">
+<div class="card"><strong>native-root</strong><br><code>registerIndicator</code> is exported by the root OpenAlgo Charts module.</div>
+<div class="card"><strong>native-indicators-tier</strong><br><code>registerIndicator</code> is exported by <code>openalgo-charts/indicators</code>.</div>
+<div class="card"><strong>legacy-host</strong><br>The destination frontend exposes an older host registration pattern; the AJ bridge uses the host API rather than assuming the current Charts API.</div>
+<div class="card"><strong>unsupported</strong><br>No safe registration contract is detected. The script stops rather than changing the destination platform.</div>
+</div>
+<h2>9. Dependency-ordering design</h2>
+<div class="note danger"><strong>Failure that triggered the v8 surgical correction:</strong> v7 attempted to inspect <code>node_modules/openalgo-charts/package.json</code> from <code>New-CoreAdapters</code> before destination dependencies were guaranteed to exist. A fresh or partially installed frontend therefore failed even though its AJ source extraction was successful.</div>
+<p>The corrected sequence is:</p>
+<pre>destination selected
+    ↓
+backup destination-native wiring
+    ↓
+restore/check destination TypeScript toolchain
+    ↓
+restore/check destination-native openalgo-charts dependency
+    ↓
+AJ source preflight + extraction
+    ↓
+AJ adapter generation  ← no platform compatibility inspection here
+    ↓
+AJ import normalization
+    ↓
+compatibility detection against actual installed destination package
+    ↓
+thin register.ts generation
+    ↓
+native terminal loader wiring
+    ↓
+import closure / TypeScript / full build</pre>
+<p>This specifically covers <strong>old OpenAlgo destinations, new OpenAlgo destinations, fresh node_modules, and partially installed node_modules</strong> without copying Fyers platform files or intentionally changing OpenAlgo versions.</p>
+<h2>10. Why the script must not copy old Fyers platform files</h2>
+<p>A prior build demonstrated the risk: old Fyers frontend files introduced incompatible destination types such as drawing document/index signatures, legend properties, drawing style properties and Trading component props. Those failures were platform-contract mismatches rather than AJ calculation failures.</p>
+<p>Therefore the current design backs up and preserves destination-native files such as:</p>
+<ul><li><code>package.json</code></li><li><code>package-lock.json</code></li><li><code>ChartPane.tsx</code></li><li><code>IndicatorSettingsDialog.tsx</code></li><li><code>PlotStyleRow.tsx</code></li><li><code>chartTypes.tsx</code></li><li><code>chartTheme.ts</code></li><li><code>terminal.ts</code></li></ul>
+<p>The only intended platform-side integration is a destination-local AJ loader import.</p>
+<h2>11. AJ indicator descriptor</h2>
+<p>The generated AJ module exposes the chart-facing descriptor through the adapter layer. The known descriptor responsibilities include:</p>
+<div class="grid">
+<div class="card"><strong>calc</strong><br>Full/history calculation and AJ output storage.</div>
+<div class="card"><strong>calcTail</strong><br>Incremental/tail calculation and latest-output storage.</div>
+<div class="card"><strong>markers</strong><br>AJ marker output for chart consumers.</div>
+<div class="card"><strong>draws</strong><br>AJ drawing/zone output for chart consumers.</div>
+<div class="card"><strong>table</strong><br>Latest dashboard/table data exposed to the chart layer.</div>
+</div>
+<h2>12. Incremental calculation and state</h2>
+<p>The architecture is intended to avoid recalculating expensive history unnecessarily. AJ state and outputs are retained in destination-local orchestration storage, allowing full history and tail/incremental execution paths.</p>
+<p>The migration script's role is not to invent the trading logic. It packages and wires the existing authoritative AJ implementation into the destination contract.</p>
+<h2>13. Validation gates</h2>
+<table><tr><th>Gate</th><th>Purpose</th><th>Failure behavior</th></tr>
+<tr><td>Source closure preflight</td><td>Ensure authoritative AJ imports are resolvable.</td><td>Stop before unsafe extraction.</td></tr>
+<tr><td>AJ local import audit</td><td>Ensure the migrated AJ tree is self-contained and internally resolvable.</td><td>Stop.</td></tr>
+<tr><td>Destination dependency restoration</td><td>Ensure native build tooling and OpenAlgo Charts are present.</td><td>Restore from destination manifest/lockfile or stop with explicit error.</td></tr>
+<tr><td>Compatibility detection</td><td>Determine actual registration contract.</td><td>Stop if unsupported.</td></tr>
+<tr><td>Destination platform audit</td><td>Ensure native platform files remain present and authoritative.</td><td>Stop.</td></tr>
+<tr><td>TypeScript preflight</td><td>Detect compile-time contract/import errors.</td><td>Stop with diagnostics.</td></tr>
+<tr><td>Full frontend build</td><td>Validate the real application integration.</td><td>Repair only deterministic AJ/dependency issues; otherwise stop.</td></tr>
+</table>
+<h2>14. Error handling philosophy</h2>
+<ul>
+<li>Every deployment step is explicit and logged.</li>
+<li>Errors include function, script line and stack information.</li>
+<li>No success is reported after a failed audit/build.</li>
+<li>The script does not silently downgrade/upgrade OpenAlgo to match a legacy reference.</li>
+<li>Automatic repairs are restricted to deterministic AJ-owned/generated artifacts and destination dependency restoration.</li>
+<li>Platform-contract uncertainty causes a controlled stop instead of speculative source copying.</li>
+</ul>
+<h2>15. Current surgical revision</h2>
+<p>The v8 revision removes the dependency-sensitive compatibility lookup from <code>New-CoreAdapters</code>. <code>New-CoreAdapters</code> now performs only AJ adapter generation. Compatibility detection is performed later, after destination dependencies are guaranteed.</p>
+<pre>New-CoreAdapters(...)
+    └── AJ adapter generation only
+
+Invoke-FrontendCompatibilityClosure(...)
+    ├── Ensure-FrontendTypeScriptToolchain
+    ├── Ensure-FrontendOpenAlgoChartsDependency
+    ├── Get-OpenAlgoIndicatorCompatibility
+    ├── Write-ThinRegister
+    ├── Update-TerminalLoader
+    ├── TypeScript preflight
+    └── destination build validation</pre>
+<h2>16. Desired end state</h2>
+<div class="note ok"><strong>One AJ source, many OpenAlgo destinations.</strong> The same AJInstitutional source/version is deployed into each instance's local AJ boundary. Each destination retains its own OpenAlgo version, broker adapter, frontend platform files and package contract. Only the thin AJ integration layer adapts to the destination.</div>
+<div class="flow">
+<div class="box">One authoritative AJ source</div><div class="arrow">→</div><div class="box">AliceBlue OpenAlgo</div>
+</div>
+<div class="flow">
+<div class="box">One authoritative AJ source</div><div class="arrow">→</div><div class="box">Fyers OpenAlgo</div>
+</div>
+<div class="flow">
+<div class="box">One authoritative AJ source</div><div class="arrow">→</div><div class="box">IndStocks OpenAlgo</div>
+</div>
+<p>Each arrow represents extraction + local AJ adapters + destination-specific registration—not a platform clone.</p>
+<h2>17. Project success criteria</h2>
+<ul>
+<li>AJInstitutional source remains authoritative and broker/platform agnostic.</li>
+<li>Each OpenAlgo instance retains its own native platform implementation.</li>
+<li>No old Fyers platform snapshot is copied into a new destination.</li>
+<li>Old and new destination registration contracts are detected rather than assumed.</li>
+<li>Fresh and partially installed dependency states are handled deterministically.</li>
+<li>AJ artifacts remain inside each instance's <code>frontend/src/indicators/AJInstitutional</code> boundary.</li>
+<li>Incremental/tail execution remains available through the AJ orchestration layer.</li>
+<li>Build success is required before deployment success is reported.</li>
+</ul>
+<footer>Prepared as the project architecture/design companion to the AJPlatformDecoupledMigration orchestration script. The document reflects the project structure, constraints, logs and architecture established during the migration work.</footer>
+</div>
+</body></html>
