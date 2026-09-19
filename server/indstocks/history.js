@@ -158,7 +158,7 @@ async function fetchLiveCandles({ exchange, securityId, resolution, fromMs, toMs
 
     return rows
         .map(row => ({
-            time: Number(row.ts),
+            time: Math.floor(Number(row.ts) / 1000),
             open: Number(row.o),
             high: Number(row.h),
             low: Number(row.l),

@@ -606,7 +606,7 @@ const defaultCharts: ChartConfig[] = [
     }
 
     const canonicalSymbol =
-      metadata.optionSymbol.trim();
+      `${metadata.underlying} ${metadata.expiry} ${metadata.strike} ${metadata.optionType}`;
 
     updateSymbol(
       activeChart.id,
