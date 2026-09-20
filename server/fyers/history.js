@@ -338,8 +338,9 @@ export async function getHistory(
         throw new Error(
 
             `[FYERS HISTORY] ${
-                data?.message ??
-                JSON.stringify(data)
+                (data?.message && data.message.trim()) ||
+                JSON.stringify(data) ||
+                "Unknown FYERS error (empty response body)"
             }`
 
         );

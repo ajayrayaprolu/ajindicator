@@ -3467,9 +3467,7 @@ useEffect(() => {
 							datasource !== "Zerodha" &&
 							datasource !== "Fyers" &&
 							datasource !== "AliceBlue" &&
-							datasource !== "aliceblue" &&
-							datasource !== "IndStocks" &&
-							datasource !== "indstocks"
+							datasource !== "aliceblue"
 						)
 						||
 						(

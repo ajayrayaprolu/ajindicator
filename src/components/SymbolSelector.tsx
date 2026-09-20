@@ -117,25 +117,34 @@ function loadStoredCategory(): Category {
 
 function parseFyersOptionQuery(
     text: string
-): { underlying?: string; strike?: string; optionType?: string } | null {
+): {
+    underlying?: string;
+    expiry?: string;
+    strike?: string;
+    optionType?: string;
+} | null {
 
-    const upper = text.trim().toUpperCase();
-    const tokens = upper.split(/\s+/).filter(Boolean);
+    const upper =
+        text
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, " ");
 
-    const knownUnderlyings = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "SENSEX", "BANKEX"];
-    const underlying = tokens.find(t => knownUnderlyings.includes(t));
+    const match =
+        upper.match(
+            /^([A-Z][A-Z0-9]*)\s+(\d{1,2})\s*([A-Z]{3})\s*(\d+(?:\.\d+)?)\s*(CE|PE)$/
+        );
 
-    const optionType =
-        tokens.includes("CE") ? "CE" : tokens.includes("PE") ? "PE" : undefined;
-
-    const strikeToken =
-        tokens.find(t => /^\d+(\.\d+)?$/.test(t));
-
-    if (!optionType && !strikeToken) {
+    if (!match) {
         return null;
     }
 
-    return { underlying, strike: strikeToken, optionType };
+    return {
+        underlying: match[1],
+        expiry: `${match[2]}${match[3]}`,
+        strike: match[4],
+        optionType: match[5]
+    };
 }
 
 //==================================================
@@ -408,10 +417,23 @@ export default function SymbolSelector({
             const feedSourceLabel =
                 fyers ? "FYERS" : isAliceBlue ? "ALICEBLUE" : "INDSTOCKS";
 
-            const params = new URLSearchParams({ limit: "50" });
-            if (optionQuery.underlying) params.set("underlying", optionQuery.underlying);
-            if (optionQuery.strike) params.set("strike", optionQuery.strike);
-            if (optionQuery.optionType) params.set("type", optionQuery.optionType);
+			const params = new URLSearchParams({ limit: "50" });
+			
+			if (optionQuery.underlying) {
+				params.set("underlying", optionQuery.underlying);
+			}
+			
+			if (optionQuery.expiry) {
+				params.set("expiry", optionQuery.expiry);
+			}
+			
+			if (optionQuery.strike) {
+				params.set("strike", optionQuery.strike);
+			}
+			
+			if (optionQuery.optionType) {
+				params.set("type", optionQuery.optionType);
+			}
 
             const response = await fetch(`${endpoint}?${params.toString()}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -458,29 +480,59 @@ export default function SymbolSelector({
             String(result.optionType ?? "").toUpperCase() === "CE" ||
             String(result.optionType ?? "").toUpperCase() === "PE";
 
-        if (isOption) {
-            const canonicalSymbol =
-                `${String(result.underlying ?? "").trim().toUpperCase()} ${Number(result.strike)} ${String(result.optionType ?? "").trim().toUpperCase()}`;
-
-            lastSelectedRef.current = {
-                symbol: canonicalSymbol,
-                displayName: canonicalSymbol
-            };
-
-            onChange(
-                canonicalSymbol,
-                undefined,
-                canonicalSymbol,
-                {
-                    exchange: result.exchange,
-                    feedSource: result.feedSource,
-                    underlying: result.underlying,
-                    expiry: result.expiry,
-                    strike: result.strike,
-                    optionType: result.optionType
-                }
-            );
-        } else {
+		if (isOption) {
+		
+			const rawExpiry =
+				String(result.expiry ?? "")
+					.trim()
+					.toUpperCase();
+		
+			const isoMatch =
+				/^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
+		
+			const slashMatch =
+				/^(\d{2})\/(\d{2})\/(\d{4})/.exec(rawExpiry);
+		
+			const MONTH_ABBR = [
+				"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+				"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+			];
+		
+			const displayExpiry =
+				isoMatch
+					? `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`
+					: slashMatch
+						? `${slashMatch[2]}${MONTH_ABBR[Number(slashMatch[1]) - 1]}`
+						: rawExpiry;
+		
+			const canonicalSymbol =
+				`${String(result.underlying ?? "")
+					.trim()
+					.toUpperCase()} ${displayExpiry} ${Number(result.strike)} ${String(
+						result.optionType ?? ""
+					)
+						.trim()
+						.toUpperCase()}`;
+		
+			lastSelectedRef.current = {
+				symbol: canonicalSymbol,
+				displayName: canonicalSymbol
+			};
+		
+			onChange(
+				canonicalSymbol,
+				undefined,
+				canonicalSymbol,
+				{
+					exchange: result.exchange,
+					feedSource: result.feedSource,
+					underlying: result.underlying,
+					expiry: result.expiry,
+					strike: result.strike,
+					optionType: result.optionType
+				}
+			);
+		} else {
             lastSelectedRef.current = {
                 symbol: result.symbol,
                 displayName: result.displayName || result.symbol
@@ -493,11 +545,12 @@ export default function SymbolSelector({
             );
         }
 
-        setQuery(
-            isOption
-                ? `${String(result.underlying ?? "").trim().toUpperCase()} ${Number(result.strike)} ${String(result.optionType ?? "").trim().toUpperCase()}`
-                : result.displayName || result.symbol
-        );
+		setQuery(
+			isOption
+				? lastSelectedRef.current?.displayName ||
+				`${String(result.underlying ?? "").trim().toUpperCase()} ${Number(result.strike)} ${String(result.optionType ?? "").trim().toUpperCase()}`
+				: result.displayName || result.symbol
+		);
 
         setOpen(false);
         setResults([]);
