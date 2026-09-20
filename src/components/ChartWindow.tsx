@@ -1037,8 +1037,15 @@ export default function ChartWindow({
 				isOptionChart: false,
 				isMirrorOptionChart: false,
 				
-				underlying:
-					underlying || symbol,
+                underlying:
+                    underlying ||
+                    (
+                        /\s|\d(CE|PE)$|\d{4}-\d{2}-\d{2}/i.test(
+                            String(symbol ?? "")
+                        )
+                            ? ""
+                            : symbol
+                    ),
 				
 				expiry:
 					expiry || "",
