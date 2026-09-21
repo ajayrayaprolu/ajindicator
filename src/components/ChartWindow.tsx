@@ -1037,15 +1037,41 @@ export default function ChartWindow({
 				isOptionChart: false,
 				isMirrorOptionChart: false,
 				
-                underlying:
-                    underlying ||
-                    (
-                        /\s|\d(CE|PE)$|\d{4}-\d{2}-\d{2}/i.test(
-                            String(symbol ?? "")
-                        )
-                            ? ""
-                            : symbol
-                    ),
+				underlying:
+					underlying ||
+					(() => {
+						const raw = String(symbol ?? "").trim().toUpperCase();
+
+						const INDEX_ALIASES: Record<string, string> = {
+							"NIFTY": "NIFTY",
+							"NIFTY 50": "NIFTY",
+							"NIFTY50": "NIFTY",
+							"NSE_40000001": "NIFTY",
+							"BANKNIFTY": "BANKNIFTY",
+							"NIFTY BANK": "BANKNIFTY",
+							"NIFTYBANK": "BANKNIFTY",
+							"FINNIFTY": "FINNIFTY",
+							"NIFTY FIN SERVICE": "FINNIFTY",
+							"MIDCPNIFTY": "MIDCPNIFTY",
+							"SENSEX": "SENSEX",
+							"BSE_40000006": "SENSEX",
+							"BANKEX": "BANKEX"
+						};
+
+						if (INDEX_ALIASES[raw]) {
+							return INDEX_ALIASES[raw];
+						}
+
+						if (
+							/\s+\d{1,2}\s*[A-Z]{3}\s+\d+(?:\.\d+)?\s*(?:CE|PE)$/i.test(
+								raw
+							)
+						) {
+							return raw.split(/\s+/)[0];
+						}
+
+						return raw.replace(/-EQ$|-BE$|-SM$/, "").split(/\s+/)[0];
+					})(),
 				
 				expiry:
 					expiry || "",
@@ -1060,6 +1086,30 @@ export default function ChartWindow({
 				
 				currentOptionType:
 					optionType || "",
+				
+				optionSymbol:
+				underlying &&
+				expiry &&
+				typeof strike === "number" &&
+				Number.isFinite(strike) &&
+				(optionType === "CE" || optionType === "PE")
+					? `${String(underlying).trim().toUpperCase()} ${String(expiry).trim().toUpperCase()} ${strike} ${optionType}`
+					: "",
+				
+				optionUnderlying:
+					underlying || "",
+				
+				optionExpiry:
+					expiry || "",
+				
+				optionType:
+					optionType || "",
+				
+				optionStrike:
+					typeof strike === "number" &&
+					Number.isFinite(strike)
+						? strike
+					: 0,
 					
 				greekExecOk: false,
 				greekOptionMode: false,

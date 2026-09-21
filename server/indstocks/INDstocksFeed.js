@@ -77,6 +77,7 @@ export function createIndstocksFeed() {
         // in-memory check; loadContractMaster() reads+parses a ~98MB
         // file, so only call it when the master genuinely isn't loaded —
         // never unconditionally on every resolution.
+		
         if (!getIndstocksSymbolStatus().loaded) {
             loadContractMaster();
         }
@@ -107,6 +108,7 @@ export function createIndstocksFeed() {
             // ever needs to change (format, fallback strategy, etc),
             // it changes in OptionContractResolver.ts ONLY — not here,
             // not by re-guessing a regex in this file.
+			
             const resolved = resolveOptionContract("INDSTOCKS", canonical);
 
             if (resolved) {
@@ -266,16 +268,17 @@ export function createIndstocksFeed() {
 
     async function getHistory(symbol, timeframe = "1m") {
 
-        const instrument = resolveInstrument(symbol);
-
-        const to = Date.now();
-
-        const historyDays =
-            timeframe === "1D" || timeframe === "1d" || timeframe === "D" || timeframe === "day"
-                ? 365
-                : 1;
-
-        const from = to - historyDays * 24 * 60 * 60 * 1000;
+		const instrument = resolveInstrument(symbol);
+		const to = Date.now();
+		const historyDays =
+			timeframe === "1D" ||
+			timeframe === "1d" ||
+			timeframe === "D" ||
+			timeframe === "day"
+				? 365
+				: 7;
+		
+		const from = to - historyDays * 24 * 60 * 60 * 1000;
 
         console.log("[INDSTOCKS FEED] Loading history:", { symbol, instrument, timeframe, from, to });
 

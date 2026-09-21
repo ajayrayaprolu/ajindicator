@@ -153,6 +153,7 @@ function parseFyersOptionQuery(
 
 export default function SymbolSelector({
     value,
+    displayName,
     onChange,
     onAddToWatchlist,
     datasource
@@ -192,17 +193,21 @@ export default function SymbolSelector({
     // Keep UI synchronized with selected chart symbol
     //==================================================
 
-    useEffect(() => {
-        if (
-            lastSelectedRef.current &&
-            lastSelectedRef.current.symbol === value
-        ) {
-            setQuery(lastSelectedRef.current.displayName);
-        } else {
-            setQuery(value || "");
-        }
-    }, [value]);
-
+	useEffect(() => {
+		if (
+			lastSelectedRef.current &&
+			lastSelectedRef.current.symbol === value
+		) {
+			setQuery(lastSelectedRef.current.displayName);
+			return;
+		}
+	
+		setQuery(
+			displayName ||
+			value ||
+			""
+		);
+	}, [value, displayName]);
     //==================================================
     // SEARCH
     //==================================================

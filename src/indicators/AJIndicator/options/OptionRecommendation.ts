@@ -1,3 +1,6 @@
+//===========================================================
+// src/indicators/AJIndicator/options/OptionRecommendation.ts
+//===========================================================
 import {
     OptionRecommendationEngine
 }
