@@ -711,18 +711,164 @@ function expiryMatches(contract) {
     return false;
 }
 
+    //==================================================
+    // RESOLVE APPLICATION UNDERLYING -> ACTUAL TICKER
+    //
+    // The UI may provide a company-name prefix:
+    //   ADANI -> ADANIENT
+    //   STATE -> SBIN
+    //
+    // IndStocks option contracts are keyed by the actual
+    // exchange ticker, so do not require the first word of
+    // the company name to equal the option underlying.
+    //==================================================
+
+    let resolvedUnderlyings = new Set();
+
+    if (wantedUnderlying) {
+
+        // Direct ticker match remains authoritative.
+        resolvedUnderlyings.add(wantedUnderlying);
+
+        // Find equity/index master rows whose company/display
+        // name begins with the supplied application underlying.
+        //
+        // Example:
+        //   ADANI
+        //   -> ADANI ENTERPRISES LIMITED
+        //   -> tradingSymbol ADANIENT
+        //
+        //   STATE
+        //   -> STATE BANK OF INDIA
+        //   -> tradingSymbol SBIN
+        //
+        // Only equity rows are considered here.
+        for (const c of contracts) {
+
+            if (
+                c.instrumentType !== "EQUITY" &&
+                c.instrumentType !== "EQ"
+            ) {
+                continue;
+            }
+
+            const symbolName =
+                clean(c.symbolName);
+
+            const customSymbol =
+                clean(c.customSymbol);
+
+            const tradingSymbol =
+                clean(c.tradingSymbol);
+
+            const instrumentName =
+                clean(c.instrumentName);
+
+            const nameMatches =
+                symbolName === wantedUnderlying ||
+                symbolName.startsWith(`${wantedUnderlying} `) ||
+                customSymbol === wantedUnderlying ||
+                customSymbol.startsWith(`${wantedUnderlying} `) ||
+                instrumentName === wantedUnderlying ||
+                instrumentName.startsWith(`${wantedUnderlying} `);
+
+            if (!nameMatches) {
+                continue;
+            }
+
+            if (tradingSymbol) {
+                resolvedUnderlyings.add(
+                    tradingSymbol.replace(/-EQ$/i, "")
+                );
+            }
+        }
+    }
+
+    //==================================================
+    // OPTION FILTER
+    //==================================================
+
+    //==================================================
+    // RESOLVE APPLICATION UNDERLYING -> OPTION TICKER
+    //
+    // The UI may provide a company-name prefix instead of
+    // the actual exchange ticker.
+    //
+    // Examples:
+    //   ADANI  -> ADANIENT
+    //   STATE  -> SBIN
+    //
+    // Do NOT blindly map the prefix to the first equity
+    // returned by the master. A prefix can match multiple
+    // companies. Instead, collect all possible equity
+    // tickers and let the requested option contract decide
+    // which ticker is correct.
+    //==================================================
+
+    const underlyingCandidates = new Set();
+
+    if (wantedUnderlying) {
+
+        // Direct exchange ticker remains the first candidate.
+        underlyingCandidates.add(wantedUnderlying);
+
+        // Find equity master rows matching the supplied
+        // company/display-name prefix.
+        for (const c of contracts) {
+
+            const instrumentName =
+                clean(c.instrumentName);
+
+            // Only equity master rows participate in alias
+            // resolution. Options/futures must not become
+            // underlying candidates.
+            if (instrumentName !== "EQUITY") {
+                continue;
+            }
+
+            const symbolName =
+                clean(c.symbolName);
+
+            const customSymbol =
+                clean(c.customSymbol);
+
+            const tradingSymbol =
+                clean(c.tradingSymbol);
+
+            const nameMatches =
+                symbolName === wantedUnderlying ||
+                symbolName.startsWith(`${wantedUnderlying} `) ||
+                customSymbol === wantedUnderlying ||
+                customSymbol.startsWith(`${wantedUnderlying} `);
+
+            if (!nameMatches) {
+                continue;
+            }
+
+            if (!tradingSymbol) {
+                continue;
+            }
+
+            underlyingCandidates.add(
+                tradingSymbol.replace(/-EQ$/i, "")
+            );
+        }
+    }
+
+    //==================================================
+    // OPTION FILTER
+    //
+    // We first collect every option matching expiry,
+    // strike and option type. Then, when the UI supplied
+    // a company prefix, we check whether its actual ticker
+    // is one of the resolved equity candidates.
+    //==================================================
+
     const result = contracts.filter(c => {
 
         if (
             c.optionType !== "CE" &&
             c.optionType !== "PE"
-        ) {
-            return false;
-        }
-
-        if (
-            wantedUnderlying &&
-            extractUnderlying(c) !== wantedUnderlying
         ) {
             return false;
         }
@@ -741,6 +887,15 @@ function expiryMatches(contract) {
         if (
             wantedOptionType &&
             c.optionType !== wantedOptionType
+        ) {
+            return false;
+        }
+
+        if (
+            wantedUnderlying &&
+            !underlyingCandidates.has(
+                extractUnderlying(c)
+            )
         ) {
             return false;
         }

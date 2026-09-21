@@ -339,19 +339,56 @@ export default function SymbolSelector({
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
-                return Array.isArray(data.results)
-                    ? data.results.map((item: any) => ({
-                        symbol: item.symbol, // EXCH_SECURITYID — authoritative, already resolved
-                        displayName: item.displayName || `${item.underlying} ${item.strike} ${item.optionType}`,
-                        exchange: item.exchange,
-                        type: "OPTION",
-                        feedSource: "INDSTOCKS",
-                        expiry: item.expiry,
-                        strike: item.strike,
-                        optionType: item.optionType,
-                        underlying: item.underlying
-                    }))
-                    : [];
+			return Array.isArray(data.results)
+				? data.results.map((item: any) => {
+			
+					const rawExpiry =
+						String(item.expiry ?? "")
+							.trim()
+							.toUpperCase();
+			
+					const MONTH_ABBR = [
+						"JAN","FEB","MAR","APR","MAY","JUN",
+						"JUL","AUG","SEP","OCT","NOV","DEC"
+					];
+			
+					let displayExpiry = rawExpiry;
+			
+					const isoMatch =
+						/^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
+			
+					if (isoMatch) {
+			
+						displayExpiry =
+							`${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
+			
+					} else {
+			
+						const spacedMatch =
+							/^(\d{1,2})\s+([A-Z]{3})(?:\s+\d{4})?$/.exec(rawExpiry);
+			
+						if (spacedMatch) {
+							displayExpiry =
+								`${spacedMatch[1]}${spacedMatch[2]}`;
+						}
+					}
+			
+					const canonicalDisplayName =
+						`${item.underlying} ${displayExpiry} ${item.strike}${item.optionType}`;
+			
+					return {
+						symbol: item.symbol,
+						displayName: canonicalDisplayName,
+						exchange: item.exchange,
+						type: "OPTION",
+						feedSource: "INDSTOCKS",
+						expiry: item.expiry,
+						strike: item.strike,
+						optionType: item.optionType,
+						underlying: item.underlying
+					};
+				})
+				: [];
             }
 
             const response = await fetch(`/api/symbols/search?q=${encodeURIComponent(text)}`);
@@ -537,6 +574,7 @@ export default function SymbolSelector({
 					optionType: result.optionType
 				}
 			);
+		
 		} else {
             lastSelectedRef.current = {
                 symbol: result.symbol,
@@ -546,7 +584,12 @@ export default function SymbolSelector({
             onChange(
                 result.symbol,
                 result.yahooSymbol || undefined,
-                result.displayName || result.symbol
+                result.displayName || result.symbol,
+                {
+                    exchange: result.exchange,
+                    feedSource: result.feedSource,
+                    underlying: result.underlying || result.displayName || result.symbol
+                }
             );
         }
 

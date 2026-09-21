@@ -808,6 +808,268 @@ async function resolveBinanceInstrument(
 }
 
 //======================================================
+// OPTION SYMBOL CANONICALIZATION
+//======================================================
+
+const OPTION_MONTHS: Record<string, string> = {
+    "01": "JAN",
+    "02": "FEB",
+    "03": "MAR",
+    "04": "APR",
+    "05": "MAY",
+    "06": "JUN",
+    "07": "JUL",
+    "08": "AUG",
+    "09": "SEP",
+    "10": "OCT",
+    "11": "NOV",
+    "12": "DEC"
+};
+
+function normalizeOptionExpiry(
+    value: unknown
+): string {
+
+    const raw =
+        String(value ?? "")
+            .trim()
+            .toUpperCase();
+
+    if (!raw) {
+        return "";
+    }
+
+    // 29SEP / 29 SEP / 29-SEP
+    const compact =
+        raw.match(
+            /^(\d{1,2})[\s-]*([A-Z]{3})$/
+        );
+
+    if (compact) {
+        return `${Number(compact[1])}${compact[2]}`;
+    }
+
+    // MM/DD/YYYY [HH:MM]
+    const usDate =
+        raw.match(
+            /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/
+        );
+
+    if (usDate) {
+        const month =
+            OPTION_MONTHS[
+                String(usDate[1]).padStart(2, "0")
+            ];
+
+        if (month) {
+            return `${Number(usDate[2])}${month}`;
+        }
+    }
+
+    // ISO date/time
+    const isoDate =
+        raw.match(
+            /^(\d{4})-(\d{1,2})-(\d{1,2})/
+        );
+
+    if (isoDate) {
+        const month =
+            OPTION_MONTHS[
+                String(isoDate[2]).padStart(2, "0")
+            ];
+
+        if (month) {
+            return `${Number(isoDate[3])}${month}`;
+        }
+    }
+
+    // DD/MM/YYYY
+    const indianDate =
+        raw.match(
+            /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+        );
+
+    if (indianDate) {
+        const month =
+            OPTION_MONTHS[
+                String(indianDate[2]).padStart(2, "0")
+            ];
+
+        if (month) {
+            return `${Number(indianDate[1])}${month}`;
+        }
+    }
+
+    return raw
+        .replace(/[\s-]+/g, "")
+        .replace(/\d{4}$/, "");
+}
+
+function parseOptionSymbol(
+    value: unknown
+): {
+    underlying: string;
+    expiry: string;
+    strike: number;
+    optionType: string;
+    symbol: string;
+} | null {
+
+    const raw =
+        String(value ?? "")
+            .trim()
+            .toUpperCase()
+            .replace(/\s+/g, " ");
+
+    if (!raw) {
+        return null;
+    }
+
+    const match =
+        raw.match(
+            /^(.*?)\s+(.+?)\s+(\d+(?:\.\d+)?)\s*(CE|PE)$/
+        );
+
+    if (!match) {
+        return null;
+    }
+
+    const parsedUnderlying =
+        match[1].trim();
+
+    const parsedExpiry =
+        normalizeOptionExpiry(
+            match[2]
+        );
+
+    const parsedStrike =
+        Number(match[3]);
+
+    const parsedOptionType =
+        match[4].toUpperCase();
+
+    if (
+        !parsedUnderlying ||
+        !parsedExpiry ||
+        !Number.isFinite(parsedStrike) ||
+        !/^(CE|PE)$/.test(parsedOptionType)
+    ) {
+        return null;
+    }
+
+    const canonicalSymbol =
+        `${parsedUnderlying} ${parsedExpiry} ${parsedStrike} ${parsedOptionType}`;
+
+    return {
+        underlying:
+            parsedUnderlying,
+
+        expiry:
+            parsedExpiry,
+
+        strike:
+            parsedStrike,
+
+        optionType:
+            parsedOptionType,
+
+        symbol:
+            canonicalSymbol
+    };
+}
+
+function canonicalizeOptionData(
+    symbolValue: unknown,
+    underlyingValue: unknown,
+    expiryValue: unknown,
+    strikeValue: unknown,
+    optionTypeValue: unknown
+): {
+    symbol: string;
+    underlying: string;
+    expiry: string;
+    strike: number;
+    optionType: string;
+    isOptionChart: boolean;
+} {
+
+    const parsed =
+        parseOptionSymbol(
+            symbolValue
+        );
+
+    const normalizedUnderlying =
+        String(
+            underlyingValue ??
+            parsed?.underlying ??
+            ""
+        )
+            .trim()
+            .toUpperCase();
+
+    const normalizedExpiry =
+        normalizeOptionExpiry(
+            expiryValue ??
+            parsed?.expiry ??
+            ""
+        );
+
+    const numericStrike =
+        Number.isFinite(
+            Number(strikeValue)
+        )
+            ? Number(strikeValue)
+            : (
+                parsed?.strike ??
+                0
+            );
+
+    const normalizedOptionType =
+        String(
+            optionTypeValue ??
+            parsed?.optionType ??
+            ""
+        )
+            .trim()
+            .toUpperCase();
+
+    const isOptionChart =
+        Boolean(
+            normalizedUnderlying &&
+            normalizedExpiry &&
+            Number.isFinite(numericStrike) &&
+            numericStrike > 0 &&
+            /^(CE|PE)$/.test(
+                normalizedOptionType
+            )
+        );
+
+    const canonicalSymbol =
+        isOptionChart
+            ? `${normalizedUnderlying} ${normalizedExpiry} ${numericStrike} ${normalizedOptionType}`
+            : String(symbolValue ?? "").trim();
+
+    return {
+        symbol:
+            canonicalSymbol,
+
+        underlying:
+            normalizedUnderlying,
+
+        expiry:
+            normalizedExpiry,
+
+        strike:
+            numericStrike,
+
+        optionType:
+            normalizedOptionType,
+
+        isOptionChart
+    };
+}
+
+//======================================================
 // COMPONENT
 //======================================================
 
@@ -830,6 +1092,32 @@ export default function ChartWindow({
     candleColors,
     onCandleColorsChange,
 }: Props) {
+	
+	//--------------------------------------------------
+    // CANONICAL OPTION IDENTITY
+    //--------------------------------------------------
+
+    const optionIdentity =
+        useMemo(
+            () =>
+                canonicalizeOptionData(
+                    symbol,
+                    underlying,
+                    expiry,
+                    strike,
+                    optionType
+                ),
+            [
+                symbol,
+                underlying,
+                expiry,
+                strike,
+                optionType
+            ]
+        );
+
+    const chartSymbol =
+        optionIdentity.symbol;
 
     //--------------------------------------------------
     // CANDLES
@@ -991,173 +1279,251 @@ export default function ChartWindow({
 
             return {
 
-				chartId,
-				symbol,
-				timeframe,
-				datasource,
-				candles,
-				current,
-				previous,
-				barIndex:
-					candles.length - 1,
-				timestamp:
-					current.time,
-				open:
-					current.open,
-				high:
-					current.high,
-				low:
-					current.low,
-				close:
-					current.close,
-				volume:
-					current.volume ?? 0,
-				tradeDirection: 0,
-				entryPrice: current.close,
-				stopLoss: current.close,
-				slPrice: current.close,
-				takeProfit1: current.close,
-				takeProfit2: current.close,
-				takeProfit3: current.close,
-				tp1: current.close,
-				tp2: current.close,
-				tp3: current.close,
-				currentPrice:
-					current.close,
-				positionSize: 0,
-				positionOpen: false,
-				inPosition: false,
-				atr: 0,
-				riskATR: 0,
-				slBuffer: 0,
-				tp1RR: 1,
-				tp2RR: 2,
-				tp3RR: 3,
-				isOptionsMode: false,
-				isOptionChart: false,
-				isMirrorOptionChart: false,
-				
-				underlying:
-					underlying ||
-					(() => {
-						const raw = String(symbol ?? "").trim().toUpperCase();
+                chartId,
 
-						const INDEX_ALIASES: Record<string, string> = {
-							"NIFTY": "NIFTY",
-							"NIFTY 50": "NIFTY",
-							"NIFTY50": "NIFTY",
-							"NSE_40000001": "NIFTY",
-							"BANKNIFTY": "BANKNIFTY",
-							"NIFTY BANK": "BANKNIFTY",
-							"NIFTYBANK": "BANKNIFTY",
-							"FINNIFTY": "FINNIFTY",
-							"NIFTY FIN SERVICE": "FINNIFTY",
-							"MIDCPNIFTY": "MIDCPNIFTY",
-							"SENSEX": "SENSEX",
-							"BSE_40000006": "SENSEX",
-							"BANKEX": "BANKEX"
-						};
+                // ALWAYS use canonical option symbol.
+                symbol:
+                    chartSymbol,
 
-						if (INDEX_ALIASES[raw]) {
-							return INDEX_ALIASES[raw];
-						}
+                timeframe,
+                datasource,
+                candles,
+                current,
+                previous,
 
-						if (
-							/\s+\d{1,2}\s*[A-Z]{3}\s+\d+(?:\.\d+)?\s*(?:CE|PE)$/i.test(
-								raw
-							)
-						) {
-							return raw.split(/\s+/)[0];
-						}
+                barIndex:
+                    candles.length - 1,
 
-						return raw.replace(/-EQ$|-BE$|-SM$/, "").split(/\s+/)[0];
-					})(),
-				
-				expiry:
-					expiry || "",
-				
-				strike:
-					typeof strike === "number" &&
-					Number.isFinite(strike)
-						? strike
-						: 0,
-				
-				strikeStep: 50,
-				
-				currentOptionType:
-					optionType || "",
-				
-				optionSymbol:
-				underlying &&
-				expiry &&
-				typeof strike === "number" &&
-				Number.isFinite(strike) &&
-				(optionType === "CE" || optionType === "PE")
-					? `${String(underlying).trim().toUpperCase()} ${String(expiry).trim().toUpperCase()} ${strike} ${optionType}`
-					: "",
-				
-				optionUnderlying:
-					underlying || "",
-				
-				optionExpiry:
-					expiry || "",
-				
-				optionType:
-					optionType || "",
-				
-				optionStrike:
-					typeof strike === "number" &&
-					Number.isFinite(strike)
-						? strike
-					: 0,
-					
-				greekExecOk: false,
-				greekOptionMode: false,
-				enableAITradeSafety: true,
-				enableAISMCMode: true,
-				tradeLifecycleLocked: false,
-				
-				useVWAP: true,
-				useCVD: true,
-				sessionName: "",
-				sessionOpen: true,
-				sessionHigh: current.high,
-				sessionLow: current.low,
-				dayHigh: current.high,
-				dayLow: current.low,
-				marketOpen: true,
-				marketClose: false,
-				exchange:
-					exchange || "",
-				broker:
-					feedSource || datasource || "",
-				accountId: "",
-				currency: "INR",
-				tickSize: 0.05,
-				lotSize: 1,
-				pointValue: 1,
-				pricePrecision: 2,
-				quantityPrecision: 0,
-				orderId: "",
-				orderActive: false,
-				orderFilled: false,
-				orderCancelled: false,
-				positionSide: 0,
-				unrealizedPnL: 0,
-				realizedPnL: 0,
-				state: 0 as any,
-				engineState: 0 as any,
-				metadata: {},
-				tags: []
+                timestamp:
+                    current.time,
+
+                open:
+                    current.open,
+
+                high:
+                    current.high,
+
+                low:
+                    current.low,
+
+                close:
+                    current.close,
+
+                volume:
+                    current.volume ?? 0,
+
+                tradeDirection: 0,
+
+                entryPrice:
+                    current.close,
+
+                stopLoss:
+                    current.close,
+
+                slPrice:
+                    current.close,
+
+                takeProfit1:
+                    current.close,
+
+                takeProfit2:
+                    current.close,
+
+                takeProfit3:
+                    current.close,
+
+                tp1:
+                    current.close,
+
+                tp2:
+                    current.close,
+
+                tp3:
+                    current.close,
+
+                currentPrice:
+                    current.close,
+
+                positionSize: 0,
+                positionOpen: false,
+                inPosition: false,
+
+                atr: 0,
+                riskATR: 0,
+                slBuffer: 0,
+
+                tp1RR: 1,
+                tp2RR: 2,
+                tp3RR: 3,
+
+                //--------------------------------------------------
+                // OPTION STATE
+                //--------------------------------------------------
+
+                isOptionsMode:
+                    optionIdentity.isOptionChart,
+
+                isOptionChart:
+                    optionIdentity.isOptionChart,
+
+                isMirrorOptionChart:
+                    false,
+
+                underlying:
+                    optionIdentity.underlying,
+
+                expiry:
+                    optionIdentity.expiry,
+
+                strike:
+                    optionIdentity.strike,
+
+                strikeStep:
+                    50,
+
+                currentOptionType:
+                    optionIdentity.optionType,
+
+                optionSymbol:
+                    optionIdentity.isOptionChart
+                        ? chartSymbol
+                        : "",
+
+                optionUnderlying:
+                    optionIdentity.underlying,
+
+                optionExpiry:
+                    optionIdentity.expiry,
+
+                optionType:
+                    optionIdentity.optionType,
+
+                optionStrike:
+                    optionIdentity.strike,
+
+                greekExecOk:
+                    false,
+
+                greekOptionMode:
+                    optionIdentity.isOptionChart,
+
+                enableAITradeSafety:
+                    true,
+
+                enableAISMCMode:
+                    true,
+
+                tradeLifecycleLocked:
+                    false,
+
+                useVWAP:
+                    true,
+
+                useCVD:
+                    true,
+
+                sessionName:
+                    "",
+
+                sessionOpen:
+                    true,
+
+                sessionHigh:
+                    current.high,
+
+                sessionLow:
+                    current.low,
+
+                dayHigh:
+                    current.high,
+
+                dayLow:
+                    current.low,
+
+                marketOpen:
+                    true,
+
+                marketClose:
+                    false,
+
+                exchange:
+                    exchange || "",
+
+                broker:
+                    feedSource ||
+                    datasource ||
+                    "",
+
+                accountId:
+                    "",
+
+                currency:
+                    "INR",
+
+                tickSize:
+                    0.05,
+
+                lotSize:
+                    1,
+
+                pointValue:
+                    1,
+
+                pricePrecision:
+                    2,
+
+                quantityPrecision:
+                    0,
+
+                orderId:
+                    "",
+
+                orderActive:
+                    false,
+
+                orderFilled:
+                    false,
+
+                orderCancelled:
+                    false,
+
+                positionSide:
+                    0,
+
+                unrealizedPnL:
+                    0,
+
+                realizedPnL:
+                    0,
+
+                state:
+                    0 as any,
+
+                engineState:
+                    0 as any,
+
+                metadata:
+                    {},
+
+                tags:
+                    []
 
             };
 
         }, [
             chartId,
             candles,
+            chartSymbol,
             symbol,
             timeframe,
-            datasource
+            datasource,
+            underlying,
+            expiry,
+            strike,
+            optionType,
+            exchange,
+            feedSource,
+            optionIdentity
         ]);
 		
 	//--------------------------------------------------
@@ -1932,11 +2298,29 @@ useEffect(() => {
 
         try {
 
-            console.log("[ChartWindow] Loading IndStocks history", { symbol, timeframe });
+            console.log(
+                "[ChartWindow] Loading IndStocks history",
+                {
+                    requestedSymbol:
+                        symbol,
+
+                    canonicalSymbol:
+                        chartSymbol,
+
+                    timeframe
+                }
+            );
+
+            const indstocksSymbol =
+                chartSymbol;
 
             const response =
                 await fetch(
-                    `/api/indstocks/history?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`
+                    `/api/indstocks/history?symbol=${encodeURIComponent(
+                        indstocksSymbol
+                    )}&timeframe=${encodeURIComponent(
+                        timeframe
+                    )}`
                 );
 
             if (!response.ok) {
@@ -1967,7 +2351,9 @@ useEffect(() => {
                 return;
             }
 
-            setCandles(history);
+            setCandles(
+                history
+            );
 
             setFeedError(
                 history.length > 0
@@ -2442,7 +2828,12 @@ useEffect(() => {
     zerodhaLoggedIn,
     fyersLoggedIn,
     aliceBlueLoggedIn,
-    symbol
+    symbol,
+    chartSymbol,
+    underlying,
+    expiry,
+    strike,
+    optionType
 ]);
 
     //--------------------------------------------------
@@ -3153,7 +3544,7 @@ useEffect(() => {
                 onClick={onActivate}
                 title="Select chart"
 			>
-                {datasource}:{displayName || symbol}:{timeframe}:
+                {datasource}:{displayName || chartSymbol}:{timeframe}:
 				{
 					Object.entries(indicators)
 						.filter(([, enabled]) => enabled)
@@ -3545,7 +3936,7 @@ useEffect(() => {
 							<ChartEngine
 								chartId={chartId}
 								candles={candles}
-								symbol={symbol}
+								symbol={chartSymbol}
 								timeframe={timeframe}
 								indicators={indicators}
 								hostResult={hostResult}

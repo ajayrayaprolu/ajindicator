@@ -594,45 +594,83 @@ const defaultCharts: ChartConfig[] = [
     );
  }
 
-  function optionFocusOpenSymbol(metadata: { 
-    optionSymbol: string; 
-    underlying: string; 
-    expiry: string; 
-    strike: number; 
-    optionType: "CE" | "PE" | ""; 
-  }) { 
-    if (!activeChart) { 
-      return; 
-    } 
-
-    const isoMatch =
-      /^(\d{4})-(\d{2})-(\d{2})$/.exec(metadata.expiry);
+  function optionFocusOpenSymbol(metadata: {
+    optionSymbol: string;
+    underlying: string;
+    expiry: string;
+    strike: number;
+    optionType: "CE" | "PE" | "";
+  }) {
+    if (!activeChart) {
+      return;
+    }
 
     const MONTH_ABBR = [
       "JAN","FEB","MAR","APR","MAY","JUN",
       "JUL","AUG","SEP","OCT","NOV","DEC"
     ];
 
-    const displayExpiry =
-      isoMatch
-        ? `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`
-        : metadata.expiry;
+    const rawExpiry =
+      String(metadata.expiry ?? "")
+        .trim()
+        .toUpperCase();
 
-    const canonicalSymbol = 
-      `${metadata.underlying} ${displayExpiry} ${metadata.strike} ${metadata.optionType}`; 
- 
-    updateSymbol( 
-      activeChart.id, 
-      canonicalSymbol, 
-      undefined, 
-      canonicalSymbol, 
-      { 
-        underlying: metadata.underlying, 
-        expiry: metadata.expiry, 
-        strike: metadata.strike, 
-        optionType: metadata.optionType 
-      } 
-    ); 
+    let displayExpiry = rawExpiry;
+
+    // ISO: 2026-09-29 -> 29SEP
+    const isoMatch =
+      /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
+
+    if (isoMatch) {
+      displayExpiry =
+        `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
+    } else {
+
+      // IndStocks/Fyers style:
+      // 29 SEP 2026 -> 29SEP
+      const spacedMatch =
+        /^(\d{1,2})\s+([A-Z]{3})(?:\s+\d{4})?$/.exec(rawExpiry);
+
+      if (spacedMatch) {
+        displayExpiry =
+          `${spacedMatch[1]}${spacedMatch[2]}`;
+      } else {
+
+        // Already canonical:
+        // 29SEP -> 29SEP
+        const compactMatch =
+          /^(\d{1,2})([A-Z]{3})$/.exec(rawExpiry);
+
+        if (compactMatch) {
+          displayExpiry =
+            `${compactMatch[1]}${compactMatch[2]}`;
+        }
+      }
+    }
+
+    // Canonical application option format:
+    //
+    //   ADANI 29SEP 3000PE
+    //   SBIN 29SEP 1000CE
+    //   SENSEX 24SEP 74900PE
+    //
+    // IMPORTANT:
+    // There is NO space between strike and CE/PE.
+    const canonicalSymbol =
+      `${metadata.underlying} ${displayExpiry} ${metadata.strike}${metadata.optionType}`;
+
+    updateSymbol(
+      activeChart.id,
+      canonicalSymbol,
+      undefined,
+      canonicalSymbol,
+      {
+        underlying: metadata.underlying,
+        expiry: metadata.expiry,
+        strike: metadata.strike,
+        optionType: metadata.optionType
+      }
+    );
   }
   
 //============================================  
