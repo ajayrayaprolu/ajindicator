@@ -120,11 +120,15 @@ export function createIndstocksFeed() {
                     String(resolved.securityId ?? resolved.token ?? "").trim();
 
                 if (exchange && securityId) {
-                    return {
-                        exchange,
-                        securityId,
-                        key: `${exchange}_${securityId}`
-                    };
+					return {
+						exchange,
+						securityId,
+						historyExchange:
+							exchange === "BSE"
+								? "BFO"
+								: "NFO",
+						key: `${exchange}_${securityId}`
+					};
                 }
             }
 
@@ -282,13 +286,36 @@ export function createIndstocksFeed() {
 
         console.log("[INDSTOCKS FEED] Loading history:", { symbol, instrument, timeframe, from, to });
 
-        const candles = await getIndstocksHistory({
-            exchange: instrument.exchange,
-            securityId: instrument.securityId,
-            timeframe,
-            from,
-            to
-        });
+		const historyExchange =
+			instrument.historyExchange ??
+			(() => {
+		
+				const contract =
+					getIndstocksContractBySymbol(
+						instrument.key,
+						instrument.exchange
+					);
+		
+				const isOption =
+					contract?.optionType === "CE" ||
+					contract?.optionType === "PE";
+		
+				if (isOption) {
+					return instrument.exchange === "BSE"
+						? "BFO"
+						: "NFO";
+				}
+		
+				return instrument.exchange;
+			})();
+		
+		const candles = await getIndstocksHistory({
+			exchange: historyExchange,
+			securityId: instrument.securityId,
+			timeframe,
+			from,
+			to
+		});
 
         console.log("[INDSTOCKS FEED] History received:", { symbol: instrument.key, count: candles.length });
 
