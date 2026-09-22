@@ -630,7 +630,7 @@ app.get(
                         })
                         : null;
                     if (indexMatch?.exchange && indexMatch?.securityId) {
-                        indstocksSymbol = `${indexMatch.exchange}_${indexMatch.securityId}`;
+                        indstocksSymbol = `\_\`;
                         console.log("[ALICEBLUE HISTORY] IndStocks name resolved:", { rawSymbol, indstocksSymbol });
                     }
                 }

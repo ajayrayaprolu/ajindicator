@@ -160,8 +160,7 @@ import {
 //} from "./indstocks/symbols.js";
 
 import {
-    loadContractMaster,
-    getAllIndstocksSymbols
+    loadContractMaster
 } from "./indstocks/symbols.js";
 
 import {
@@ -617,24 +616,7 @@ app.get(
             try {
                 const indstocksFeed = feedManager.getFeed("indstocks");
                 if (!indstocksFeed || typeof indstocksFeed.getHistory !== "function") { return null; }
-                let indstocksSymbol = String(rawSymbol ?? "").trim();
-                if (indstocksSymbol && !/^[A-Z]+_\d+$/i.test(indstocksSymbol)) {
-                    const normalizedQuery = indstocksSymbol.toUpperCase().replace(/-EQ$/, "").replace(/\s+/g, "");
-                    const allIndstocksSymbols = getAllIndstocksSymbols();
-                    const indexMatch = Array.isArray(allIndstocksSymbols)
-                        ? allIndstocksSymbols.find((m) => {
-                            const type = String(m?.type ?? m?.instrumentType ?? "").toUpperCase();
-                            if (!type.includes("INDEX")) return false;
-                            const name = String(m?.tradingSymbol ?? m?.displayName ?? m?.symbol ?? "").toUpperCase().replace(/\s+/g, "");
-                            return name === normalizedQuery;
-                        })
-                        : null;
-                    if (indexMatch?.exchange && indexMatch?.securityId) {
-                        indstocksSymbol = `${indexMatch.exchange}_${indexMatch.securityId}`;
-                        console.log("[ALICEBLUE HISTORY] IndStocks name resolved:", { rawSymbol, indstocksSymbol });
-                    }
-                }
-                const fallbackResult = await indstocksFeed.getHistory(indstocksSymbol, tf);
+                const fallbackResult = await indstocksFeed.getHistory(String(rawSymbol ?? ""), tf);
                 const fallbackCandles =
                     Array.isArray(fallbackResult)
                         ? fallbackResult

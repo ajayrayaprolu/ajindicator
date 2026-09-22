@@ -629,8 +629,8 @@ app.get(
                             return name === normalizedQuery;
                         })
                         : null;
-                    if (indexMatch?.exchange && indexMatch?.securityId) {
-                        indstocksSymbol = `${indexMatch.exchange}_${indexMatch.securityId}`;
+                    if (indexMatch?.symbol) {
+                        indstocksSymbol = indexMatch.symbol;
                         console.log("[ALICEBLUE HISTORY] IndStocks name resolved:", { rawSymbol, indstocksSymbol });
                     }
                 }
