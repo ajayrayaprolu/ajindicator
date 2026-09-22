@@ -2138,19 +2138,107 @@ useEffect(() => {
                 "[ChartWindow] Loading Alice Blue history",
                 {
                     symbol,
+                    chartSymbol,
+                    underlying,
+                    expiry,
+                    strike,
+                    optionType,
                     timeframe
                 }
             );
 
+            //--------------------------------------------------
+            // ALICEBLUE OPTION RESOLUTION
+            //--------------------------------------------------
+
+            let aliceBlueHistorySymbol =
+                String(symbol ?? "").trim();
+
+            const aliceBlueUnderlying =
+                String(underlying ?? "")
+                    .trim()
+                    .toUpperCase()
+                    .replace(/-EQ$/i, "");
+
+            const isAliceBlueOption =
+                Boolean(
+                    aliceBlueUnderlying &&
+                    expiry &&
+                    Number.isFinite(strike) &&
+                    optionType &&
+                    /^(CE|PE)$/i.test(optionType)
+                );
+
+            if (isAliceBlueOption) {
+
+                const resolveResponse =
+                    await fetch(
+                        `/api/aliceblue/options/resolve?underlying=${encodeURIComponent(
+                            aliceBlueUnderlying
+                        )}&expiry=${encodeURIComponent(
+                            expiry ?? ""
+                        )}&strike=${encodeURIComponent(
+                            String(strike)
+                        )}&type=${encodeURIComponent(
+                            String(optionType).toUpperCase()
+                        )}`
+                    );
+
+                const resolved =
+                    await resolveResponse.json();
+
+                if (!resolveResponse.ok) {
+                    throw new Error(
+                        resolved?.error ??
+                        `Alice Blue option resolution failed: ${resolveResponse.status}`
+                    );
+                }
+
+                const contract =
+                    resolved?.result ??
+                    resolved?.contract ??
+                    resolved;
+
+                const token =
+                    contract?.token ??
+                    contract?.instrumentToken ??
+                    contract?.instrument_token;
+
+                const exchange =
+                    contract?.exchange ??
+                    "NFO";
+
+                if (!token) {
+                    throw new Error(
+                        `Unable to resolve ${symbol} to an Alice Blue instrument token`
+                    );
+                }
+
+                aliceBlueHistorySymbol =
+                    `${exchange}|${token}`;
+
+                console.log(
+                    "[ChartWindow] Alice Blue option resolved",
+                    {
+                        requestedSymbol: symbol,
+                        underlying: aliceBlueUnderlying,
+                        expiry,
+                        strike,
+                        optionType,
+                        nativeSymbol: aliceBlueHistorySymbol,
+                        token
+                    }
+                );
+            }
+
             const response =
                 await fetch(
                     `/api/aliceblue/history?symbol=${encodeURIComponent(
-                        symbol
+                        aliceBlueHistorySymbol
                     )}&timeframe=${encodeURIComponent(
                         timeframe
                     )}`
                 );
-
               if (!response.ok) {
 
                   let reason: string | undefined;

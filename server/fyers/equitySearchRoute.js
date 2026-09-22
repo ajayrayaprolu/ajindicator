@@ -6,6 +6,34 @@
 // Mount in server/index.js with:
 //   import fyersEquitySearchRouter from "./fyers/equitySearchRoute.js";
 //   app.use("/api/fyers/symbols", fyersEquitySearchRouter);
+//	
+//	Fyers equity master
+//        │
+//        ├── symbol       = ADANIENT
+//        ├── symbolTicker = NSE:ADANIENT-EQ
+//        └── companyName  = ADANI ENTERPRISES LIMITED
+//                  │
+//                  ▼
+//          SymbolSelector
+//                  │
+//          ┌───────┴────────┐
+//          │                │
+//      displayName       symbol/identity
+//          │                │
+//          ▼                ▼
+//       ADANI          ADANIENT
+//                         │
+//                         ▼
+//               Option Focus metadata
+//                         │
+//                         ▼
+//              ADANIENT 29SEP 3000PE
+//                         │
+//                         ▼
+//             Fyers /options/resolve
+//                         │
+//                         ▼
+//          NSE:ADANIENT26SEP3000PE
 //======================================================
 
 import express from "express";
@@ -27,13 +55,14 @@ router.get("/search", (req, res) => {
 
         const matches = searchFyersEquities(query, limit);
 
-        const results = matches.map(item => ({
-            symbol: item.symbol,
-            displayName: item.companyName,
-            exchange: item.symbolTicker.split(":")[0] ?? "NSE",
-            type: item.kind === "INDEX" ? "INDEX" : "EQUITY",
-            feedSource: "FYERS"
-        }));
+		const results = matches.map(item => ({
+			symbol: item.symbol,
+			symbolTicker: item.symbolTicker,
+			displayName: item.companyName,
+			exchange: item.symbolTicker.split(":")[0] ?? "NSE",
+			type: item.kind === "INDEX" ? "INDEX" : "EQUITY",
+			feedSource: "FYERS"
+		}));
 
         res.json({ success: true, query, count: results.length, results });
 

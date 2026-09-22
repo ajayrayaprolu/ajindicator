@@ -33,6 +33,7 @@ import {
 interface SymbolSearchResult {
 
     symbol: string;
+    symbolTicker?: string;
     yahooSymbol?: string | null;
     displayName: string;
     exchange: string;
@@ -547,14 +548,22 @@ export default function SymbolSelector({
 						? `${slashMatch[2]}${MONTH_ABBR[Number(slashMatch[1]) - 1]}`
 						: rawExpiry;
 		
+			const brokerUnderlying =
+					String(result.underlying ?? "")
+							.trim()
+							.toUpperCase();
+			
+			const displayUnderlying =
+					brokerUnderlying === "ADANIENT"
+							? "ADANI"
+							: brokerUnderlying;
+			
 			const canonicalSymbol =
-				`${String(result.underlying ?? "")
-					.trim()
-					.toUpperCase()} ${displayExpiry} ${Number(result.strike)} ${String(
-						result.optionType ?? ""
+					`${displayUnderlying} ${displayExpiry} ${Number(result.strike)}${String(
+							result.optionType ?? ""
 					)
-						.trim()
-						.toUpperCase()}`;
+							.trim()
+							.toUpperCase()}`;
 		
 			lastSelectedRef.current = {
 				symbol: canonicalSymbol,
@@ -576,22 +585,39 @@ export default function SymbolSelector({
 			);
 		
 		} else {
-            lastSelectedRef.current = {
-                symbol: result.symbol,
-                displayName: result.displayName || result.symbol
-            };
-
-            onChange(
-                result.symbol,
-                result.yahooSymbol || undefined,
-                result.displayName || result.symbol,
-                {
-                    exchange: result.exchange,
-                    feedSource: result.feedSource,
-                    underlying: result.underlying || result.displayName || result.symbol
-                }
-            );
-        }
+			const brokerSymbol =
+				String(result.symbol ?? "")
+					.trim()
+					.toUpperCase();
+		
+			const friendlyDisplayName =
+				result.displayName || brokerSymbol;
+		
+			lastSelectedRef.current = {
+				symbol: brokerSymbol,
+				displayName: friendlyDisplayName
+			};
+		
+			onChange(
+				brokerSymbol,
+				result.yahooSymbol || undefined,
+				friendlyDisplayName,
+				{
+					exchange: result.exchange,
+					feedSource: result.feedSource,
+		
+					// For FYERS, result.symbol is the authoritative
+					// broker identity (e.g. ADANIENT, SBIN).
+					//
+					// Never fall back to companyName for FYERS because
+					// the option resolver requires the broker underlying.
+					underlying:
+						isFyers
+							? brokerSymbol
+							: result.underlying || result.displayName || brokerSymbol
+				}
+			);
+		}
 
 		setQuery(
 			isOption

@@ -1735,38 +1735,100 @@ export class AJDecisionEngine {
 			"";
 		
 		const chartUnderlying =
-			String(payload.ajRuntime.underlying ?? "")
-				.trim()
-				.toUpperCase();
+				String(
+						payload.ajRuntime.underlying ??
+						""
+				)
+						.trim()
+						.toUpperCase()
+						.replace(/-EQ$/i, "");
 		
 		const chartExpiry =
-			String(payload.ajRuntime.expiry ?? "")
-				.trim();
+				String(
+						payload.ajRuntime.expiry ??
+						""
+				)
+						.trim();
 		
 		const chartStrike =
 			Number(payload.ajRuntime.strike);
 		
 		const chartOptionType =
-			String(
-				payload.ajRuntime.currentOptionType ?? ""
-			)
-				.trim()
-				.toUpperCase();
+				String(
+						payload.ajRuntime.currentOptionType ??
+						""
+				)
+						.trim()
+						.toUpperCase();
 		
 		const isOptionChart =
-			Boolean(
-				chartUnderlying &&
-				chartExpiry &&
-				Number.isFinite(chartStrike) &&
-				/^(CE|PE)$/.test(chartOptionType)
-			);
+				Boolean(
+						chartUnderlying &&
+						chartExpiry &&
+						Number.isFinite(chartStrike) &&
+						/^(CE|PE)$/.test(chartOptionType)
+				);
 		
 		const baseOptionResult =
-			OptionRecommendation.evaluate(
-				payload.optionInputs.underlying,
-				payload.optionInputs.spotPrice,
-				payload.tradeDirectionFinal
-			);
+				isOptionChart
+					? {
+					optionSymbol:
+							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+		
+					recommendedOption:
+							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+		
+					underlying:
+							chartUnderlying,
+		
+					expiry:
+							chartExpiry,
+		
+					strike:
+							chartStrike,
+		
+					optionType:
+							chartOptionType as "CE" | "PE",
+		
+					atmStrike:
+							chartStrike,
+		
+					itmStrike:
+							chartStrike,
+		
+					otmStrike:
+							chartStrike,
+		
+					atmSymbol:
+							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+		
+					itmSymbol:
+							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+		
+					otmSymbol:
+							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+		
+					direction:
+							payload.tradeDirectionFinal,
+		
+					strikeDistance: 0,
+					premium: 0,
+					impliedVolatility: 0,
+					delta: 0,
+					gamma: 0,
+					theta: 0,
+					vega: 0,
+					liquidityScore: 0,
+					isRecommended: true,
+					confidenceScore: 0,
+					recommendationReason:
+						"Existing option chart contract."
+				}
+				: OptionRecommendation.evaluate(
+						payload.optionInputs.underlying,
+						payload.optionInputs.spotPrice,
+						payload.tradeDirectionFinal
+				);
 		
 		const optionResult =
 			isOptionChart

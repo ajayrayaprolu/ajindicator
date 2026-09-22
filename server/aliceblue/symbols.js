@@ -1590,168 +1590,87 @@ export function searchAliceBlueSymbols(
 //     underlying: "NIFTY",
 //     strike: 24500
 // })
-//======================================================
-
-export function searchAliceBlueOptions(
-    options = {}
-) {
-
-    const {
-
-        underlying = "",
-
-        expiry = "",
-
-        strike,
-
-        optionType = "",
-
-        exchange = "NFO",
-
-        limit = 100
-
-    } = options;
-
-    const wantedUnderlying =
-        normalizeSymbol(
-            underlying
-        );
-
-    const wantedExpiry =
-        normalizeExpiry(
-            expiry
-        );
-
-    const wantedOptionType =
-        normalizeSymbol(
-            optionType
-        );
-
-    const wantedStrike =
-        strike !== undefined &&
-        strike !== null &&
-        strike !== ""
-            ? Number(
-                strike
-            )
-            : undefined;
-
-    const max =
-        Math.min(
-            Math.max(
-                Number(
-                    limit
-                ) || 100,
-                1
-            ),
-            500
-        );
-
-    const result =
-        contracts.filter(
-            contract => {
-
-                if (
-                    exchange &&
-                    contract.exchange !==
-                    normalizeExchange(
-                        exchange
-                    )
-                ) {
-
-                    return false;
-
-                }
-
-                if (
-                    wantedUnderlying
-                ) {
-
-                    const actualUnderlying =
-                        extractUnderlying(
-                            contract
-                        );
-
-                    if (
-                        actualUnderlying !==
-                        wantedUnderlying
-                    ) {
-
-                        return false;
-
-                    }
-
-                }
-
-                if (
-                    wantedExpiry
-                ) {
-
-                    const actualExpiry =
-                        normalizeExpiry(
-                            contract.expiry
-                        );
-
-                    if (
-                        actualExpiry !==
-                        wantedExpiry
-                    ) {
-
-                        return false;
-
-                    }
-
-                }
-
-                if (
-                    wantedStrike !==
-                    undefined
-                ) {
-
-                    if (
-                        Number(
-                            contract.strike
-                        ) !==
-                        wantedStrike
-                    ) {
-
-                        return false;
-
-                    }
-
-                }
-
-                if (
-                    wantedOptionType
-                ) {
-
-                    if (
-                        normalizeSymbol(
-                            contract.optionType
-                        ) !==
-                        wantedOptionType
-                    ) {
-
-                        return false;
-
-                    }
-
-                }
-
-                return true;
-
-            }
-        );
-
-    return result
-        .slice(
-            0,
-            max
-        );
-
-}
-
-//======================================================
+//====================================================== 
+ 
+export function searchAliceBlueOptions(options = {}) { 
+    const { 
+        underlying = "", 
+        expiry = "", 
+        strike, 
+        optionType = "", 
+        exchange = "NFO", 
+        limit = 100 
+    } = options; 
+ 
+    const wantedUnderlying = normalizeSymbol(underlying); 
+    const wantedExpiry = normalizeExpiry(expiry); 
+    const wantedStrike = 
+        strike === undefined || strike === null || String(strike).trim() === "" 
+            ? undefined 
+            : Number(strike); 
+    const wantedType = normalizeSymbol(optionType); 
+    const wantedExchange = normalizeExchange(exchange); 
+ 
+    const max = Math.min(Math.max(Number(limit) || 100, 1), 500); 
+ 
+    const results = contracts.filter((contract) => { 
+        if (wantedExchange && normalizeExchange(contract.exchange) !== wantedExchange) { 
+            return false; 
+        } 
+ 
+        if ( 
+            wantedUnderlying && 
+            normalizeSymbol(contract.symbol) !== wantedUnderlying 
+        ) { 
+            return false; 
+        } 
+ 
+        if ( 
+            wantedExpiry && 
+            normalizeExpiry(contract.expiry) !== wantedExpiry 
+        ) { 
+            return false; 
+        } 
+ 
+        if ( 
+            wantedStrike !== undefined && 
+            Number(contract.strike) !== wantedStrike 
+        ) { 
+            return false; 
+        } 
+ 
+        if ( 
+            wantedType && 
+            normalizeSymbol(contract.optionType) !== wantedType 
+        ) { 
+            return false; 
+        } 
+ 
+        const instrumentType = normalizeSymbol(contract.instrumentType); 
+ 
+        return ( 
+            instrumentType === "OPTSTK" || 
+            instrumentType === "OPTIDX" || 
+            instrumentType.includes("OPT") 
+        ); 
+    }); 
+ 
+    return results 
+        .sort( 
+            (a, b) => 
+                String(a.expiry ?? "").localeCompare(String(b.expiry ?? "")) || 
+                Number(a.strike ?? 0) - Number(b.strike ?? 0) || 
+                String(a.optionType ?? "").localeCompare( 
+                    String(b.optionType ?? "") 
+                ) || 
+                String(a.tradingSymbol ?? "").localeCompare( 
+                    String(b.tradingSymbol ?? "") 
+                ) 
+        ) 
+        .slice(0, max); 
+} 
+ 
+//====================================================== 
 // STRIKE SEARCH
 //
 // Example:

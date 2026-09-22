@@ -715,10 +715,221 @@ app.get(
                     });
                 }
 
-                const resolved =
-                    resolver(
-                        aliceBlueSymbol
+                //--------------------------------------------------
+                // CANONICAL OPTION RESOLUTION
+                //
+                // Friendly UI symbols such as:
+                // ADANIENT-EQ 29SEP 3000PE
+                //
+                // must NOT be passed directly to the legacy
+                // AliceBlueFeed resolver.
+                //
+                // Resolve through the authoritative Alice Blue
+                // option master when canonical option metadata is
+                // available.
+                //--------------------------------------------------
+
+                const optionMatch =
+                    aliceBlueSymbol.match(
+                        /^([A-Z0-9&.-]+)(?:-EQ)?\s+(\d{1,2}[A-Z]{3})\s+(\d+(?:\.\d+)?)(CE|PE)$/i
                     );
+
+                let resolved = null;
+
+                if (optionMatch) {
+                    const underlying =
+                        String(optionMatch[1] ?? "")
+                            .trim()
+                            .toUpperCase()
+                            .replace(/-EQ$/i, "");
+
+                    const expiryText =
+                        String(optionMatch[2] ?? "")
+                            .trim()
+                            .toUpperCase();
+
+                    const strike =
+                        Number(optionMatch[3]);
+
+                    const optionType =
+                        String(optionMatch[4] ?? "")
+                            .trim()
+                            .toUpperCase();
+
+                    const monthMap = {
+                        JAN: "01",
+                        FEB: "02",
+                        MAR: "03",
+                        APR: "04",
+                        MAY: "05",
+                        JUN: "06",
+                        JUL: "07",
+                        AUG: "08",
+                        SEP: "09",
+                        OCT: "10",
+                        NOV: "11",
+                        DEC: "12"
+                    };
+
+					const expiryMatch =
+						expiryText.match(
+							/^(\d{1,2})(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/
+						);
+					
+					if (expiryMatch) {
+						const day =
+							expiryMatch[1].padStart(2, "0");
+					
+						const month =
+							monthMap[expiryMatch[2]];
+					
+						//--------------------------------------------------
+						// Canonical expiry year.
+						//
+						// The UI sends DDMMM (for example 29SEP), while
+						// Alice Blue's master uses YYYY-MM-DD.
+						//
+						// Use the contract-master year instead of blindly
+						// deriving it from the system clock.
+						//--------------------------------------------------
+					
+						const currentYear =
+							new Date().getFullYear();
+					
+						let expiry =
+							`${currentYear}-${month}-${day}`;
+					
+						//--------------------------------------------------
+						// If the current-year date has already expired,
+						// the DDMMM contract belongs to the next occurrence.
+						//--------------------------------------------------
+					
+						const expiryDate =
+							new Date(`${expiry}T00:00:00`);
+					
+						const today =
+							new Date();
+					
+						today.setHours(0, 0, 0, 0);
+					
+						if (expiryDate < today) {
+							expiry =
+								`${currentYear + 1}-${month}-${day}`;
+						}
+
+                        const { searchAliceBlueOptions } =
+                            await import(
+                                "./aliceblue/symbols.js"
+                            );
+
+                        const matches =
+                            searchAliceBlueOptions({
+                                underlying,
+                                expiry,
+                                strike,
+                                optionType,
+                                limit: 5
+                            });
+
+                        if (
+                            Array.isArray(matches) &&
+                            matches.length > 0
+                        ) {
+                            const contract =
+                                matches[0];
+
+                            resolved = {
+                                exchange:
+                                    contract.exchange,
+                                token:
+                                    contract.token
+                            };
+                        }
+                    }
+                }
+
+				//--------------------------------------------------
+				// FALL BACK TO NORMAL EQUITY / INDEX RESOLUTION
+				//--------------------------------------------------
+				
+				if (!resolved) {
+				
+					const normalizedIndex =
+						String(aliceBlueSymbol ?? "")
+							.trim()
+							.toUpperCase();
+				
+					const indexAliases = {
+						"NIFTY": "NIFTY",
+						"NIFTY 50": "NIFTY",
+						"NIFTY50": "NIFTY",
+						"BANKNIFTY": "BANKNIFTY",
+						"BANK NIFTY": "BANKNIFTY",
+						"FINNIFTY": "FINNIFTY",
+						"MIDCPNIFTY": "MIDCPNIFTY"
+					};
+				
+					const indexSymbol =
+						indexAliases[normalizedIndex];
+				
+					if (indexSymbol) {
+				
+						const {
+							searchAliceBlueSymbols
+						} = await import(
+							"./aliceblue/symbols.js"
+						);
+				
+						const matches =
+							searchAliceBlueSymbols({
+								query: indexSymbol,
+								limit: 50
+							});
+				
+						const indexContract =
+							Array.isArray(matches)
+								? matches.find((item) => {
+				
+									const type =
+										String(
+											item?.type ??
+											item?.instrumentType ??
+											""
+										).toUpperCase();
+				
+									const segment =
+										String(
+											item?.exchangeSegment ??
+											item?.segment ??
+											""
+										).toUpperCase();
+				
+									return (
+										type === "INDEX" ||
+										segment.includes("INDEX")
+									);
+								})
+								: null;
+				
+						if (indexContract) {
+							resolved = {
+								exchange:
+									indexContract.exchange ?? "NSE",
+				
+								token:
+									indexContract.token ??
+									indexContract.instrumentToken
+							};
+						}
+					}
+				}
+				
+				if (!resolved) {
+					resolved =
+						resolver(
+							aliceBlueSymbol
+						);
+				}
 
                 if (
                     !resolved ||
