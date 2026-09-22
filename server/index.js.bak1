@@ -1039,34 +1039,6 @@ app.get(
                     `${contract.exchange}|${contract.token}`;
             }
 
-            // ALICEBLUE INDEX FALLBACK -> INDSTOCKS (AliceBlue chart API
-            // does not support index instruments - confirmed empirically).
-            // Resolution path/frontend unchanged; gated on the ORIGINAL
-            // requested symbol text. Add entries only once verified.
-            const ALICEBLUE_INDEX_TO_INDSTOCKS = {
-                "NIFTY": "NSE_40000001"
-            };
-            const aliceBlueRequestedUpper =
-                String(symbol ?? "").trim().toUpperCase();
-            const indstocksRedirectSymbol =
-                ALICEBLUE_INDEX_TO_INDSTOCKS[aliceBlueRequestedUpper];
-            if (indstocksRedirectSymbol) {
-                const indstocksFeed = feedManager.getFeed("indstocks");
-                if (indstocksFeed && typeof indstocksFeed.getHistory === "function") {
-                    console.log(
-                        "[ALICEBLUE HISTORY] Index redirect to IndStocks:",
-                        { requested: symbol, indstocksRedirectSymbol }
-                    );
-                    const indstocksCandles =
-                        await indstocksFeed.getHistory(indstocksRedirectSymbol, timeframe);
-                    return res.json({
-                        candles: Array.isArray(indstocksCandles) ? indstocksCandles : [],
-                        freshness: null,
-                        source: "indstocks"
-                    });
-                }
-            }
-
             const result =
                 await feed.getHistory(
                     aliceBlueSymbol,

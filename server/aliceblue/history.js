@@ -569,21 +569,19 @@ export async function getAliceBlueHistory({
 
     const key = cacheKey(exch, instrumentToken, resolution);
 
-    // --- TEMPORARILY DISABLED FOR TESTING (see chat) ---
-    //     const UNSUPPORTED_CHART_EXCHANGES = new Set(["BSE", "BCD", "BFO"]);
-    // 
-    //     if (UNSUPPORTED_CHART_EXCHANGES.has(exch)) {
-    // 
-    //         const unsupportedError =
-    //             new Error(
-    //                 `[ALICEBLUE HISTORY] AliceBlue does not provide chart/history data for ${exch} yet (their docs: "BSE, BCD and BFO Chart data will be added later"). Use another provider for SENSEX/BANKEX candles.`
-    //             );
-    // 
-    //         unsupportedError.aliceBlueReason = "EXCHANGE_NOT_SUPPORTED";
-    // 
-    //         throw unsupportedError;
-    //     }
-    console.warn("[ALICEBLUE HISTORY] BSE/BCD/BFO pre-check disabled for testing - attempting live call for", exch);
+    const UNSUPPORTED_CHART_EXCHANGES = new Set(["BSE", "BCD", "BFO"]);
+
+    if (UNSUPPORTED_CHART_EXCHANGES.has(exch)) {
+
+        const unsupportedError =
+            new Error(
+                `[ALICEBLUE HISTORY] AliceBlue does not provide chart/history data for ${exch} yet (their docs: "BSE, BCD and BFO Chart data will be added later"). Use another provider for SENSEX/BANKEX candles.`
+            );
+
+        unsupportedError.aliceBlueReason = "EXCHANGE_NOT_SUPPORTED";
+
+        throw unsupportedError;
+    }
 
     //--------------------------------------------------
     // RESOLUTION — no pre-block here anymore. A previous
