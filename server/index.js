@@ -160,7 +160,8 @@ import {
 //} from "./indstocks/symbols.js";
 
 import {
-    loadContractMaster
+    loadContractMaster,
+    searchIndstocksSymbols
 } from "./indstocks/symbols.js";
 
 import {
@@ -612,6 +613,34 @@ app.get(
 app.get(
     "/api/aliceblue/history",
     async (req, res) => {
+        const tryIndstocksFallback = async (rawSymbol, tf) => {
+            try {
+                const indstocksFeed = feedManager.getFeed("indstocks");
+                if (!indstocksFeed || typeof indstocksFeed.getHistory !== "function") { return null; }
+                let indstocksSymbol = String(rawSymbol ?? "").trim();
+                if (indstocksSymbol && !/^[A-Z]+_\d+$/i.test(indstocksSymbol)) {
+                    const normalizedQuery = indstocksSymbol.toUpperCase().replace(/-EQ$/, "").replace(/\s+/g, "");
+                    const matches = searchIndstocksSymbols(indstocksSymbol, 20);
+                    const exactMatch = Array.isArray(matches)
+                        ? matches.find((m) => String(m?.tradingSymbol ?? m?.displayName ?? "").toUpperCase().replace(/\s+/g, "") === normalizedQuery)
+                        : null;
+                    if (exactMatch?.symbol) {
+                        indstocksSymbol = exactMatch.symbol;
+                        console.log("[ALICEBLUE HISTORY] IndStocks name resolved:", { rawSymbol, indstocksSymbol });
+                    }
+                }
+                const fallbackResult = await indstocksFeed.getHistory(indstocksSymbol, tf);
+                const fallbackCandles =
+                    Array.isArray(fallbackResult)
+                        ? fallbackResult
+                        : (Array.isArray(fallbackResult?.candles) ? fallbackResult.candles : []);
+                return fallbackCandles.length > 0 ? fallbackCandles : null;
+            } catch (fallbackError) {
+                console.warn("[ALICEBLUE HISTORY] IndStocks fallback also failed:", fallbackError?.message ?? fallbackError);
+                return null;
+            }
+        };
+
         try {
             const symbol =
                 decodeURIComponent(
@@ -1039,34 +1068,6 @@ app.get(
                     `${contract.exchange}|${contract.token}`;
             }
 
-            // ALICEBLUE INDEX FALLBACK -> INDSTOCKS (AliceBlue chart API
-            // does not support index instruments - confirmed empirically).
-            // Resolution path/frontend unchanged; gated on the ORIGINAL
-            // requested symbol text. Add entries only once verified.
-            const ALICEBLUE_INDEX_TO_INDSTOCKS = {
-                "NIFTY": "NSE_40000001"
-            };
-            const aliceBlueRequestedUpper =
-                String(symbol ?? "").trim().toUpperCase();
-            const indstocksRedirectSymbol =
-                ALICEBLUE_INDEX_TO_INDSTOCKS[aliceBlueRequestedUpper];
-            if (indstocksRedirectSymbol) {
-                const indstocksFeed = feedManager.getFeed("indstocks");
-                if (indstocksFeed && typeof indstocksFeed.getHistory === "function") {
-                    console.log(
-                        "[ALICEBLUE HISTORY] Index redirect to IndStocks:",
-                        { requested: symbol, indstocksRedirectSymbol }
-                    );
-                    const indstocksCandles =
-                        await indstocksFeed.getHistory(indstocksRedirectSymbol, timeframe);
-                    return res.json({
-                        candles: Array.isArray(indstocksCandles) ? indstocksCandles : [],
-                        freshness: null,
-                        source: "indstocks"
-                    });
-                }
-            }
-
             const result =
                 await feed.getHistory(
                     aliceBlueSymbol,
@@ -1090,6 +1091,13 @@ app.get(
                     ? null
                     : (result?.freshness ?? null);
 
+            if (!candles || candles.length === 0) {
+                const fallbackCandles = await tryIndstocksFallback(symbol, timeframe);
+                if (fallbackCandles) {
+                    return res.json({ candles: fallbackCandles, freshness: null, source: "indstocks" });
+                }
+            }
+
             return res.json({
                 candles,
                 freshness
@@ -1097,6 +1105,11 @@ app.get(
         }
 		
         catch (error) {
+            const fallbackCandles = await tryIndstocksFallback(req.query.symbol, req.query.timeframe ?? "1m");
+            if (fallbackCandles) {
+                return res.json({ candles: fallbackCandles, freshness: null, source: "indstocks" });
+            }
+
             console.error(
                 "[ALICEBLUE HISTORY ROUTE] ERROR",
                 {
