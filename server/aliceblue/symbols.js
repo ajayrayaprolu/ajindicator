@@ -1,4 +1,4 @@
-﻿//======================================================
+//======================================================
 // server/aliceblue/symbols.js.new
 //
 // Alice Blue Contract Master / Symbol Catalog
@@ -196,6 +196,10 @@ function normalizeExpiry(value) {
 
     }
 
+    if (typeof value === "number" && Number.isFinite(value) && value > 100000000000) {
+        return new Date(value).toISOString().slice(0, 10);
+    }
+
     const text =
         String(
             value
@@ -323,7 +327,7 @@ function normalizeContract(raw) {
 
     const expiry =
         normalizeExpiry(
-            raw.expiry ??
+            raw.expiry_date ?? raw.expiry ??
             raw.expiryDate
         ) ??
         parseExpiryFromTradingSymbol(
@@ -676,7 +680,7 @@ function buildIndexes() {
 }
 
 //======================================================
-// INDEX DETECTION (module-level — shared by
+// INDEX DETECTION (module-level � shared by
 // getAliceBlueContractBySymbol and toUISymbol so both
 // use the same, more reliable text-based heuristic
 // instead of just checking exchangeSegment for "idx".)
@@ -802,7 +806,7 @@ function extractUnderlying(
     ) {
         return "BANKEX";
     }
-    return symbol;
+    return symbol.replace(/-EQ$/, "").replace(/-BE$/, "").replace(/-SM$/, "");
 }
 
 //======================================================
@@ -1117,8 +1121,8 @@ export function loadContractMaster() {
         // NORMALIZED contracts (written by
         // downloadContractMaster() after normalizeContract()
         // already ran once). Running normalizeContract()
-        // again here â€” treating already-normalized objects
-        // as if they were fresh raw AliceBlue payloads â€”
+        // again here — treating already-normalized objects
+        // as if they were fresh raw AliceBlue payloads —
         // double-normalizes them: each restart nests another
         // nowdead "raw" layer and silently degrades fields
         // like formattedName (e.g. "NIFTY 50" -> "NIFTY").
@@ -1651,6 +1655,8 @@ export function searchAliceBlueOptions(options = {}) {
         return ( 
             instrumentType === "OPTSTK" || 
             instrumentType === "OPTIDX" || 
+            instrumentType === "SO" ||
+            instrumentType === "IO" ||
             instrumentType.includes("OPT") 
         ); 
     }); 

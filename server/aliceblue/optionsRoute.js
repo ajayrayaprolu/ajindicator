@@ -63,6 +63,24 @@ function normalizeUnderlying(value) {
     return String(value ?? "").trim().toUpperCase().replace(/-EQ$/i, "");
 }
 
+const OPTION_MONTHS = { JAN:"01",FEB:"02",MAR:"03",APR:"04",MAY:"05",JUN:"06",JUL:"07",AUG:"08",SEP:"09",OCT:"10",NOV:"11",DEC:"12" };
+
+function normalizeExpiryInput(value) {
+    const raw = String(value ?? "").trim().toUpperCase();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) { return raw; }
+    const m = raw.match(/^(\d{1,2})[\s-]*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/);
+    if (!m) { return raw; }
+    const day = m[1].padStart(2, "0");
+    const month = OPTION_MONTHS[m[2]];
+    const currentYear = new Date().getFullYear();
+    let expiry = `${currentYear}-${month}-${day}`;
+    const expiryDate = new Date(`${expiry}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (expiryDate < today) { expiry = `${currentYear + 1}-${month}-${day}`; }
+    return expiry;
+}
+
 //======================================================
 // DERIVE UNDERLYING FROM TRADING SYMBOL
 //
@@ -83,7 +101,10 @@ function deriveUnderlying(contract) {
     if (symbol.startsWith("BANKEX")) return "BANKEX";
     if (symbol.startsWith("SENSEX")) return "SENSEX";
 
-    return "";
+    return symbol
+        .replace(/-EQ$/, "")
+        .replace(/-BE$/, "")
+        .replace(/-SM$/, "");
 }
 
 //======================================================
@@ -99,6 +120,7 @@ function toApiShape(contract) {
 
     return {
         symbol: `${contract.exchange}|${contract.token}`,
+        token: contract.token,
         broker: "ALICEBLUE",
         exchange: contract.exchange,
         tradingSymbol: contract.tradingSymbol,
@@ -131,7 +153,7 @@ router.get("/search", (req, res) => {
             contracts =
                 searchAliceBlueOptions({
                     underlying: normalizeUnderlying(underlying),
-                    expiry,
+                    expiry: normalizeExpiryInput(expiry),
                     strike,
                     optionType: type,
                     exchange,
@@ -145,13 +167,13 @@ router.get("/search", (req, res) => {
             // underlying-optional behavior as the FYERS route.
             const nfo =
                 searchAliceBlueOptions({
-                    expiry, strike, optionType: type,
+                    expiry: normalizeExpiryInput(expiry), strike, optionType: type,
                     exchange: "NFO", limit: limit ?? 100
                 });
 
             const bfo =
                 searchAliceBlueOptions({
-                    expiry, strike, optionType: type,
+                    expiry: normalizeExpiryInput(expiry), strike, optionType: type,
                     exchange: "BFO", limit: limit ?? 100
                 });
 
@@ -209,7 +231,7 @@ router.get("/resolve", (req, res) => {
         const matches =
             searchAliceBlueOptions({
                 underlying: normalizeUnderlying(underlying),
-                expiry,
+                expiry: normalizeExpiryInput(expiry),
                 strike,
                 optionType: type,
                 exchange,
