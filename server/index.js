@@ -161,7 +161,8 @@ import {
 
 import {
     loadContractMaster,
-    getAllIndstocksSymbols
+    getAllIndstocksSymbols,
+    searchIndstocksOptions
 } from "./indstocks/symbols.js";
 
 import {
@@ -618,7 +619,19 @@ app.get(
                 const indstocksFeed = feedManager.getFeed("indstocks");
                 if (!indstocksFeed || typeof indstocksFeed.getHistory !== "function") { return null; }
                 let indstocksSymbol = String(rawSymbol ?? "").trim();
-                if (indstocksSymbol && !/^[A-Z]+_\d+$/i.test(indstocksSymbol)) {
+                const optUnderlying = String(req.query.underlying ?? "").trim();
+                const optExpiry = String(req.query.expiry ?? "").trim();
+                const optStrike = req.query.strike;
+                const optType = String(req.query.optionType ?? "").trim().toUpperCase();
+                if (optUnderlying && optExpiry && optStrike && /^(CE|PE)$/.test(optType)) {
+                    const optMatches = searchIndstocksOptions({ underlying: optUnderlying, expiry: optExpiry, strike: Number(optStrike), optionType: optType, limit: 5 });
+                    const optContract = Array.isArray(optMatches) && optMatches.length > 0 ? optMatches[0] : null;
+                    if (optContract?.exchange && optContract?.securityId) {
+                        indstocksSymbol = `${optContract.exchange}_${optContract.securityId}`;
+                        console.log("[ALICEBLUE HISTORY] IndStocks OPTION resolved:", { optUnderlying, optExpiry, optStrike, optType, indstocksSymbol });
+                    }
+                }
+                else if (indstocksSymbol && !/^[A-Z]+_\d+$/i.test(indstocksSymbol)) {
                     const normalizedQuery = indstocksSymbol.toUpperCase().replace(/-EQ$/, "").replace(/\s+/g, "");
                     const allIndstocksSymbols = getAllIndstocksSymbols();
                     const indexMatch = Array.isArray(allIndstocksSymbols)

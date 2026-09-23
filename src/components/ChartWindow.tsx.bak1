@@ -2231,18 +2231,13 @@ useEffect(() => {
                 );
             }
 
-            const optionParams =
-                isAliceBlueOption
-                    ? `&underlying=${encodeURIComponent(aliceBlueUnderlying)}&expiry=${encodeURIComponent(expiry ?? "")}&strike=${encodeURIComponent(String(strike))}&optionType=${encodeURIComponent(String(optionType).toUpperCase())}`
-                    : "";
-
             const response =
                 await fetch(
                     `/api/aliceblue/history?symbol=${encodeURIComponent(
                         aliceBlueHistorySymbol
                     )}&timeframe=${encodeURIComponent(
                         timeframe
-                    )}${optionParams}`
+                    )}`
                 );
               if (!response.ok) {
 
