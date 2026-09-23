@@ -53,6 +53,17 @@ function resolveExchangeForUnderlying(underlying) {
 }
 
 //======================================================
+// NORMALIZE UNDERLYING - strip a chart equity "-EQ" suffix
+// (e.g. "ADANIENT-EQ") down to the canonical option
+// underlying ("ADANIENT"), same normalization the inline
+// history.js option parser already applies.
+//======================================================
+
+function normalizeUnderlying(value) {
+    return String(value ?? "").trim().toUpperCase().replace(/-EQ$/i, "");
+}
+
+//======================================================
 // DERIVE UNDERLYING FROM TRADING SYMBOL
 //
 // searchAliceBlueOptions() results don't carry a stored
@@ -111,7 +122,7 @@ router.get("/search", (req, res) => {
         const { underlying, expiry, strike, type, limit } = req.query;
 
         const exchange =
-            resolveExchangeForUnderlying(underlying);
+            resolveExchangeForUnderlying(normalizeUnderlying(underlying));
 
         let contracts;
 
@@ -119,7 +130,7 @@ router.get("/search", (req, res) => {
 
             contracts =
                 searchAliceBlueOptions({
-                    underlying,
+                    underlying: normalizeUnderlying(underlying),
                     expiry,
                     strike,
                     optionType: type,
@@ -193,11 +204,11 @@ router.get("/resolve", (req, res) => {
         }
 
         const exchange =
-            resolveExchangeForUnderlying(underlying) ?? "NFO";
+            resolveExchangeForUnderlying(normalizeUnderlying(underlying)) ?? "NFO";
 
         const matches =
             searchAliceBlueOptions({
-                underlying,
+                underlying: normalizeUnderlying(underlying),
                 expiry,
                 strike,
                 optionType: type,
