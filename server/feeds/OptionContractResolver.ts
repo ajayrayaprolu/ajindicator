@@ -2,6 +2,18 @@
  * server/feeds/OptionContractResolver.ts
  *
  * Canonical option identity -> datasource-specific contract resolver.
+ * | Layer                    | Responsibility                                                   |
+ * | ------------------------ | ---------------------------------------------------------------- |
+ * | `OptionContractResolver` | Canonical option identity                                        |
+ * | `AJDecisionEngine`       | Recommendation/decision only                                     |
+ * | `ChartWindow`            | Carry canonical metadata; no broker-specific option construction |
+ * | `SymbolSelector`         | Search/display → canonical metadata                              |
+ * | `FYERS adapter`          | Canonical → FYERS native symbol                                  |
+ * | `INDSTOCKS adapter`      | Canonical → exchange/securityId                                  |
+ * | `AliceBlue adapter`      | Canonical → exchange|token                                       |
+ * | `WebSocket`              | Subscribe using resolved native instrument                       |
+ * | `History`                | Request using resolved native instrument                         |
+ * 
  *
  * IMPORTANT:
  * - This file does NOT construct broker option symbols.
