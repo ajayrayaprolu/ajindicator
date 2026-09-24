@@ -1,24 +1,26 @@
-﻿{
-  "watch": [
-    "server"
-  ],
-  "ext": "js,mjs,cjs,json",
-  "ignore": [
-    "server/data/**",
-    "server/aliceblue/data/**",
-    "server/fyers/data/**",
-	"server/indstocks/data/**",
-    "server/**/*.db",
-    "server/**/*.sqlite",
-    "server/**/*.sqlite3",
-    "server/**/cache/**",
-    "server/**/tmp/**",
-	"server/aliceblue/**",
-	"server/fyers/**",
-	"server/indstocks/**",
-    "server/fyers/session.json",
-    "server/aliceblue/session.json",
-    "server/**/candle-cache/**"
-  ],
-  "delay": 1000
+{
+    "watch":  [
+                  "server"
+              ],
+    "ext":  "js,mjs,cjs,json",
+    "ignore":  [
+                   "server/data/**",
+                   "server/aliceblue/data/**",
+                   "server/fyers/data/**",
+                   "server/indstocks/data/**",
+                   "server/**/*.db",
+                   "server/**/*.sqlite",
+                   "server/**/*.sqlite3",
+                   "server/**/cache/**",
+                   "server/**/tmp/**",
+                   "server/aliceblue/**",
+                   "server/fyers/**",
+                   "server/indstocks/**",
+                   "server/fyers/session.json",
+                   "server/aliceblue/session.json",
+                   "server/**/candle-cache/**",
+                   "server/zerodha/instruments.json",
+                   "server/zerodha/session.json"
+               ],
+    "delay":  1000
 }
