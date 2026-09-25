@@ -188,9 +188,9 @@ export function getPublicToken() {
     const session =
         loadSession();
 
-    return
+    return (
         session?.publicToken ??
-        "";
+        "");
 
 }
 
@@ -203,9 +203,9 @@ export function getUserId() {
     const session =
         loadSession();
 
-    return
+    return (
         session?.userId ??
-        "";
+        "");
 
 }
 
@@ -218,13 +218,13 @@ export function getApiKey() {
     const session =
         loadSession();
 
-    return
+    return (
         session?.apiKey ??
 
         process.env
             .ZERODHA_API_KEY ??
 
-        "";
+        "");
 
 }
 
@@ -255,8 +255,8 @@ export function isLoggedIn() {
         const token =
             getAccessToken();
 
-        return
-            token.length > 0;
+        return (
+            token.length > 0);
 
     }
 

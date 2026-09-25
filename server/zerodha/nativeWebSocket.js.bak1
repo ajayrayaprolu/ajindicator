@@ -1,0 +1,253 @@
+//======================================================
+// server/zerodha/nativeWebSocket.js
+//
+// Isolated native Zerodha WebSocket transport.
+// This does NOT replace websocket.js yet.
+//
+// Purpose:
+//   1. Connect directly to Zerodha's native WebSocket.
+//   2. Subscribe to one instrument.
+//   3. Request FULL mode.
+//   4. Decode binary frames through kiteBinaryParser.
+//   5. Print real ticks for verification.
+//
+// No ChartWindow integration.
+// No frontend broadcasting.
+// No modification of existing KiteTicker feed.
+//======================================================
+
+import WebSocket from "ws";
+
+import {
+    getApiKey,
+    getAccessToken,
+    isLoggedIn
+} from "./token.js";
+
+import { parseTicks } from "./kiteBinaryParser.js";
+
+const WS_BASE_URL = "wss://ws.kite.trade";
+
+let socket = null;
+let receivedTick = false;
+
+function requireCredentials() {
+    if (!isLoggedIn()) {
+        throw new Error(
+            "[ZERODHA NATIVE WS] Zerodha session is not logged in."
+        );
+    }
+
+    const apiKey = getApiKey();
+    const accessToken = getAccessToken();
+
+    if (!apiKey) {
+        throw new Error(
+            "[ZERODHA NATIVE WS] Missing Zerodha API key."
+        );
+    }
+
+    if (!accessToken) {
+        throw new Error(
+            "[ZERODHA NATIVE WS] Missing Zerodha access token."
+        );
+    }
+
+    return {
+        apiKey,
+        accessToken
+    };
+}
+
+function sendJson(payload) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+        throw new Error(
+            "[ZERODHA NATIVE WS] WebSocket is not open."
+        );
+    }
+
+    socket.send(JSON.stringify(payload));
+}
+
+function subscribe(instrumentToken) {
+    console.log(
+        `[ZERODHA NATIVE WS] Subscribing token ${instrumentToken}`
+    );
+
+    sendJson({
+        a: "subscribe",
+        v: [instrumentToken]
+    });
+
+    sendJson({
+        a: "mode",
+        v: ["full", [instrumentToken]]
+    });
+}
+
+function handleBinaryMessage(data) {
+    const buffer = Buffer.isBuffer(data)
+        ? data
+        : Buffer.from(data);
+
+    if (buffer.length === 1) {
+        console.log(
+            "[ZERODHA NATIVE WS] Heartbeat received."
+        );
+        return;
+    }
+
+    let ticks;
+
+    try {
+        ticks = parseTicks(buffer);
+    } catch (error) {
+        console.error(
+            "[ZERODHA NATIVE WS] Binary parser error:",
+            error
+        );
+        return;
+    }
+
+    for (const tick of ticks) {
+        receivedTick = true;
+
+        console.log(
+            "[ZERODHA NATIVE WS] REAL TICK:"
+        );
+
+        console.log(
+            JSON.stringify(tick, null, 2)
+        );
+
+        // One successful real tick is enough for this
+        // isolated verification.
+        setTimeout(() => {
+            close();
+        }, 1000);
+    }
+}
+
+function handleMessage(data, isBinary) {
+    if (isBinary) {
+        handleBinaryMessage(data);
+        return;
+    }
+
+    const text = Buffer.isBuffer(data)
+        ? data.toString("utf8")
+        : String(data);
+
+    console.log(
+        "[ZERODHA NATIVE WS] TEXT:",
+        text
+    );
+
+    try {
+        const message = JSON.parse(text);
+
+        if (message.type === "error") {
+            console.error(
+                "[ZERODHA NATIVE WS] Server error:",
+                JSON.stringify(message, null, 2)
+            );
+        }
+    } catch {
+        // Non-JSON text is intentionally ignored.
+    }
+}
+
+function close() {
+    if (!socket) {
+        return;
+    }
+
+    if (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+    ) {
+        console.log(
+            "[ZERODHA NATIVE WS] Closing test connection."
+        );
+
+        socket.close();
+    }
+}
+
+export async function testNativeWebSocket(instrumentToken) {
+    if (!instrumentToken) {
+        throw new Error(
+            "[ZERODHA NATIVE WS] instrumentToken is required."
+        );
+    }
+
+    const {
+        apiKey,
+        accessToken
+    } = requireCredentials();
+
+    const url =
+        `${WS_BASE_URL}?api_key=${encodeURIComponent(apiKey)}` +
+        `&access_token=${encodeURIComponent(accessToken)}`;
+
+    console.log(
+        `[ZERODHA NATIVE WS] Connecting... token=${instrumentToken}`
+    );
+
+    socket = new WebSocket(url);
+
+    socket.binaryType = "nodebuffer";
+
+    socket.on("open", () => {
+        console.log(
+            "[ZERODHA NATIVE WS] CONNECTED"
+        );
+
+        try {
+            subscribe(Number(instrumentToken));
+        } catch (error) {
+            console.error(
+                "[ZERODHA NATIVE WS] Subscribe failed:",
+                error
+            );
+            close();
+        }
+    });
+
+    socket.on("message", handleMessage);
+
+    socket.on("error", (error) => {
+        console.error(
+            "[ZERODHA NATIVE WS] ERROR:",
+            error.message
+        );
+    });
+
+    socket.on("close", (code, reason) => {
+        console.log(
+            `[ZERODHA NATIVE WS] CLOSED code=${code}` +
+            ` reason=${reason?.toString?.() ?? ""}`
+        );
+
+        if (!receivedTick) {
+            console.log(
+                "[ZERODHA NATIVE WS] No real tick received."
+            );
+        }
+
+        socket = null;
+    });
+
+    return socket;
+}
+
+export function isNativeWebSocketConnected() {
+    return (
+        socket !== null &&
+        socket.readyState === WebSocket.OPEN
+    );
+}
+
+export function closeNativeWebSocket() {
+    close();
+}

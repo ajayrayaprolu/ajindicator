@@ -26,7 +26,7 @@ import {
 
 import { parseTicks } from "./kiteBinaryParser.js";
 
-const WS_BASE_URL = "wss://ws.kite.trade";
+const WS_BASE_URL = "wss://ws.kite.trade/";
 
 let socket = null;
 let receivedTick = false;
@@ -187,14 +187,20 @@ export async function testNativeWebSocket(instrumentToken) {
     } = requireCredentials();
 
     const url =
-        `${WS_BASE_URL}?api_key=${encodeURIComponent(apiKey)}` +
-        `&access_token=${encodeURIComponent(accessToken)}`;
+        `${WS_BASE_URL}?api_key=${apiKey}` +
+        `&access_token=${accessToken}` +
+        `&uid=${Date.now()}`;
 
     console.log(
         `[ZERODHA NATIVE WS] Connecting... token=${instrumentToken}`
     );
 
-    socket = new WebSocket(url);
+    socket = new WebSocket(url, {
+        headers: {
+            "X-Kite-Version": "3",
+            "User-Agent": "AJInstitutional-ZerodhaNativeWS/1.0"
+        }
+    });
 
     socket.binaryType = "nodebuffer";
 
