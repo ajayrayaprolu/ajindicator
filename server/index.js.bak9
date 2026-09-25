@@ -51,9 +51,7 @@ import {
 import {
     initializeInstrumentCache,
     getAllInstruments,
-    instrumentCount,
-    getInstrument,
-    getByTradingSymbol
+    instrumentCount
 } from "./zerodha/instruments.js";
 
 import {
@@ -103,7 +101,6 @@ import {
 import {
     initializeFyersSymbolMaster,
 	getFyersContractByTicker,
-    getFyersOptionContract,
     startFyersSymbolRefresh
 } from "./fyers/symbolMaster.js";
 
@@ -1312,35 +1309,6 @@ app.get(
             res.json(candles);
         }
         catch (error) {
-            try {
-                const zerodhaRow = getInstrument("NSE", symbol) || getInstrument("NFO", symbol) || getInstrument("BSE", symbol) || getByTradingSymbol(symbol);
-                if (zerodhaRow) {
-                    const isOption = zerodhaRow.instrument_type === "CE" || zerodhaRow.instrument_type === "PE";
-                    let fyersCandles = null;
-                    if (isOption) {
-                        const cleanUnderlying = String(zerodhaRow.name ?? "").replace(/^"+|"+$/g, "").trim();
-                        const contract = getFyersOptionContract({
-                            underlying: cleanUnderlying,
-                            expiry: zerodhaRow.expiry,
-                            strike: Number(zerodhaRow.strike),
-                            optionType: zerodhaRow.instrument_type
-                        });
-                        if (contract?.symbolTicker) {
-                            fyersCandles = await getFyersHistory(contract.symbolTicker, timeframe);
-                        }
-                    } else {
-                        const fyersSymbol = resolveFyersSymbol(symbol);
-                        fyersCandles = await getFyersHistory(fyersSymbol, timeframe);
-                    }
-                    if (Array.isArray(fyersCandles) && fyersCandles.length > 0) {
-                        console.log("[ZERODHA HISTORY] FYERS fallback succeeded:", { symbol, isOption, count: fyersCandles.length });
-                        return res.json(fyersCandles);
-                    }
-                }
-            } catch (fallbackError) {
-                console.warn("[ZERODHA HISTORY] FYERS fallback also failed:", fallbackError?.message ?? fallbackError);
-            }
-
             console.error(
                 "[ZERODHA HISTORY]",
                 error
