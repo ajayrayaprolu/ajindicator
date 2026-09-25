@@ -1312,7 +1312,6 @@ app.get(
             res.json(candles);
         }
         catch (error) {
-            fs.appendFileSync("./zerodha-fallback-debug.log", `[${new Date().toISOString()}] Fallback catch block entered for symbol=${symbol}` + "\n");
             try {
                 const zerodhaRow = getInstrument("NSE", symbol) || getInstrument("NFO", symbol) || getInstrument("BSE", symbol) || getByTradingSymbol(symbol);
                 if (zerodhaRow) {
