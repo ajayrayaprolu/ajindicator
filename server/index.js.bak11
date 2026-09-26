@@ -1312,11 +1312,9 @@ app.get(
             res.json(candles);
         }
         catch (error) {
-            const fallbackSymbol = decodeURIComponent(req.params.symbol ?? "").toUpperCase();
-            const fallbackTimeframe = req.query.timeframe || "1minute";
-            fs.appendFileSync("./zerodha-fallback-debug.log", `[${new Date().toISOString()}] Fallback catch block entered for symbol=${fallbackSymbol}` + "\n");
+            fs.appendFileSync("./zerodha-fallback-debug.log", `[${new Date().toISOString()}] Fallback catch block entered for symbol=${symbol}` + "\n");
             try {
-                const zerodhaRow = getInstrument("NSE", fallbackSymbol) || getInstrument("NFO", fallbackSymbol) || getInstrument("BSE", fallbackSymbol) || getByTradingSymbol(fallbackSymbol);
+                const zerodhaRow = getInstrument("NSE", symbol) || getInstrument("NFO", symbol) || getInstrument("BSE", symbol) || getByTradingSymbol(symbol);
                 if (zerodhaRow) {
                     const isOption = zerodhaRow.instrument_type === "CE" || zerodhaRow.instrument_type === "PE";
                     let fyersCandles = null;
@@ -1329,14 +1327,14 @@ app.get(
                             optionType: zerodhaRow.instrument_type
                         });
                         if (contract?.symbolTicker) {
-                            fyersCandles = await getFyersHistory(contract.symbolTicker, fallbackTimeframe);
+                            fyersCandles = await getFyersHistory(contract.symbolTicker, timeframe);
                         }
                     } else {
-                        const fyersSymbol = resolveFyersSymbol(fallbackSymbol);
-                        fyersCandles = await getFyersHistory(fyersSymbol, fallbackTimeframe);
+                        const fyersSymbol = resolveFyersSymbol(symbol);
+                        fyersCandles = await getFyersHistory(fyersSymbol, timeframe);
                     }
                     if (Array.isArray(fyersCandles) && fyersCandles.length > 0) {
-                        console.log("[ZERODHA HISTORY] FYERS fallback succeeded:", { symbol: fallbackSymbol, isOption, count: fyersCandles.length });
+                        console.log("[ZERODHA HISTORY] FYERS fallback succeeded:", { symbol, isOption, count: fyersCandles.length });
                         return res.json(fyersCandles);
                     }
                 }
