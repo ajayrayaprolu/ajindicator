@@ -64,3 +64,4 @@ Thumbs.db
 .idea/
 
 git-logs/
+server/zerodha/instruments.json
