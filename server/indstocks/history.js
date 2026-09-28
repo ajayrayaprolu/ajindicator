@@ -176,6 +176,15 @@ async function fetchLiveCandles({ exchange, securityId, resolution, fromMs, toMs
 
 }
 
+const LOOKBACK_DAYS = {
+    "1minute": 3,
+    "5minute": 5,
+    "15minute": 10,
+    "30minute": 20,
+    "60minute": 40,
+    "day": 365
+};
+
 //======================================================
 // PUBLIC ENTRY POINT
 //======================================================
@@ -198,18 +207,39 @@ export async function getIndstocksHistory({
     const key = cacheKey(exch, secId, resolution);
 
     const now = Date.now();
-    const fromMs = from ?? (now - 24 * 60 * 60 * 1000);
+    const DAY_MS = 24 * 60 * 60 * 1000;
     const toMs = to ?? now;
+    const narrowFromMs = from ?? (now - DAY_MS);
+    const wideFromMs = from ?? (now - (LOOKBACK_DAYS[resolution] ?? 1) * DAY_MS);
 
     try {
 
-        const candles = await fetchLiveCandles({
-            exchange: exch,
-            securityId: secId,
-            resolution,
-            fromMs,
-            toMs
-        });
+        let candles = [];
+
+        try {
+            candles = await fetchLiveCandles({
+                exchange: exch,
+                securityId: secId,
+                resolution,
+                fromMs: wideFromMs,
+                toMs
+            });
+        } catch (wideError) {
+            if (wideError?.indstocksReason === "SESSION_EXPIRED") {
+                throw wideError;
+            }
+            console.log("[INDSTOCKS HISTORY] Wide window failed, retrying 24h:", wideError?.message);
+        }
+
+        if (candles.length === 0 && wideFromMs !== narrowFromMs) {
+            candles = await fetchLiveCandles({
+                exchange: exch,
+                securityId: secId,
+                resolution,
+                fromMs: narrowFromMs,
+                toMs
+            });
+        }
 
         if (candles.length > 0) {
             writeCache(key, candles);

@@ -1118,6 +1118,42 @@ export default function ChartWindow({
 
     const chartSymbol =
         optionIdentity.symbol;
+		
+	const runtimeSymbol =
+    useMemo(() => {
+
+        const BROKER_KEY =
+            /^(NSE|BSE|NFO|BFO|MCX|CDS)_\d+$/i;
+
+        if (
+            optionIdentity.isOptionChart ||
+            !BROKER_KEY.test(chartSymbol)
+        ) {
+            return chartSymbol;
+        }
+
+        const friendly =
+            String(
+                displayName ??
+                underlying ??
+                ""
+            )
+                .trim()
+                .toUpperCase();
+
+        return (
+            friendly &&
+            !BROKER_KEY.test(friendly)
+        )
+            ? friendly
+            : chartSymbol;
+
+    }, [
+        chartSymbol,
+        optionIdentity.isOptionChart,
+        displayName,
+        underlying
+    ]);
 
     //--------------------------------------------------
     // CANDLES
@@ -1283,7 +1319,7 @@ export default function ChartWindow({
 
                 // ALWAYS use canonical option symbol.
                 symbol:
-                    chartSymbol,
+                    runtimeSymbol,
 
                 timeframe,
                 datasource,
@@ -1514,6 +1550,7 @@ export default function ChartWindow({
             chartId,
             candles,
             chartSymbol,
+			runtimeSymbol,
             symbol,
             timeframe,
             datasource,
@@ -2511,8 +2548,9 @@ useEffect(() => {
 
                     canonicalSymbol:
                         chartSymbol,
-
-                    timeframe
+						displayName,
+						underlying,
+						timeframe
                 }
             );
 
