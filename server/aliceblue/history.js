@@ -394,10 +394,12 @@ async function fetchLiveCandles({ exch, instrumentToken, resolution, fromMs, toM
     }
 
     const data = response?.data;
-    console.log(
-        "[ALICEBLUE HISTORY] RAW RESPONSE DATA:",
-        JSON.stringify(data)?.slice(0, 2000)
-    );
+    if (process.env.ALICEBLUE_DEBUG === "1") {
+        console.log(
+            "[ALICEBLUE HISTORY] RAW RESPONSE DATA:",
+            JSON.stringify(data)?.slice(0, 2000)
+        );
+    }
 
     if (!data) {
 
