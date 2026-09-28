@@ -2379,16 +2379,12 @@ const wss =
         server
     });
 
-attachWebSocketServer(wss);
-
 wss.on(
     "connection",
     socket => {
         console.log(
             "[WS] Client Connected"
         );
-
-        registerClient(socket);
 
         socket.on(
             "message",
