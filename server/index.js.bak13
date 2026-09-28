@@ -174,8 +174,6 @@ import {
 
 import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
 import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
-import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
-import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
 
 //================================================
 const AJTRADE_FRONTEND_ORIGIN =
@@ -255,16 +253,6 @@ app.use(
 app.use(
     "/api/indstocks/symbols",
     indstocksEquitySearchRouter
-);
-
-app.use(
-    "/api/zerodha/options",
-    zerodhaOptionsRouter
-);
-
-app.use(
-    "/api/zerodha/symbols",
-    zerodhaEquitySearchRouter
 );
 
 //=================================

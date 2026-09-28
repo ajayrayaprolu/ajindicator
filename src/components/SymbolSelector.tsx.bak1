@@ -171,7 +171,6 @@ export default function SymbolSelector({
     const isFyers = String(datasource ?? "").toLowerCase() === "fyers";
     const isAliceBlue = String(datasource ?? "").toLowerCase() === "aliceblue";
     const isIndstocks = String(datasource ?? "").toLowerCase() === "indstocks";
-    const isZerodha = String(datasource ?? "").toLowerCase() === "zerodha";
 
     // Remembers the last selection's friendly display name so the
     // value-sync effect below can show it instead of the raw
@@ -330,32 +329,6 @@ export default function SymbolSelector({
                     : [];
             }
 
-            if (isZerodha) {
-
-                const params = new URLSearchParams({
-                    underlying: text.toUpperCase(),
-                    limit: "100"
-                });
-
-                const response = await fetch(`/api/zerodha/options/search?${params.toString()}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const data = await response.json();
-
-                return Array.isArray(data.results)
-                    ? data.results.map((item: any) => ({
-                        symbol: item.symbol,
-                        displayName: item.displayName,
-                        exchange: item.exchange,
-                        type: "OPTION",
-                        feedSource: "ZERODHA",
-                        expiry: item.expiry,
-                        strike: item.strike,
-                        optionType: item.optionType,
-                        underlying: item.underlying
-                    }))
-                    : [];
-            }
-
             if (isIndstocks) {
 
                 const params = new URLSearchParams({
@@ -442,9 +415,7 @@ export default function SymbolSelector({
                     ? `/api/aliceblue/symbols/search?q=${encodeURIComponent(text)}`
                     : isIndstocks
                         ? `/api/indstocks/symbols/search?q=${encodeURIComponent(text)}`
-                        : isZerodha
-                            ? `/api/zerodha/symbols/search?q=${encodeURIComponent(text)}`
-                            : `/api/symbols/search?q=${encodeURIComponent(text)}`;
+                        : `/api/symbols/search?q=${encodeURIComponent(text)}`;
 
             const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -458,7 +429,7 @@ export default function SymbolSelector({
             // there just hides valid results (e.g. NIFTY tagged
             // type:"INDEX" disappearing under the Stocks tab). Return
             // everything unfiltered for those.
-            if (!fyers && !isAliceBlue && !isIndstocks && !isZerodha) {
+            if (!fyers && !isAliceBlue && !isIndstocks) {
                 return allResults;
             }
 
@@ -475,7 +446,7 @@ export default function SymbolSelector({
         // (Same behavior as before category tabs existed.)
         //--------------------------------------------------
 
-        const optionQuery = (fyers || isAliceBlue || isIndstocks || isZerodha) ? parseFyersOptionQuery(text) : null;
+        const optionQuery = (fyers || isAliceBlue || isIndstocks) ? parseFyersOptionQuery(text) : null;
 
         if (optionQuery) {
 
@@ -484,12 +455,10 @@ export default function SymbolSelector({
                     ? "/api/fyers/options/search"
                     : isAliceBlue
                         ? "/api/aliceblue/options/search"
-                        : isIndstocks
-                            ? "/api/indstocks/options/search"
-                            : "/api/zerodha/options/search";
+                        : "/api/indstocks/options/search";
 
             const feedSourceLabel =
-                fyers ? "FYERS" : isAliceBlue ? "ALICEBLUE" : isIndstocks ? "INDSTOCKS" : "ZERODHA";
+                fyers ? "FYERS" : isAliceBlue ? "ALICEBLUE" : "INDSTOCKS";
 
 			const params = new URLSearchParams({ limit: "50" });
 			
@@ -534,9 +503,7 @@ export default function SymbolSelector({
                     ? `/api/aliceblue/symbols/search?q=${encodeURIComponent(text)}`
                     : isIndstocks
                         ? `/api/indstocks/symbols/search?q=${encodeURIComponent(text)}`
-                        : isZerodha
-                            ? `/api/zerodha/symbols/search?q=${encodeURIComponent(text)}`
-                            : `/api/symbols/search?q=${encodeURIComponent(text)}`;
+                        : `/api/symbols/search?q=${encodeURIComponent(text)}`;
 			
 
         const response = await fetch(url);
