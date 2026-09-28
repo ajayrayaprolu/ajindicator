@@ -96,10 +96,6 @@ import {
 } from "./FeedRegistry.js";
 
 import {
-    onTick as onZerodhaTick
-} from "../zerodha/websocket.js";
-
-import {
     setTickHandler as setAliceBlueTickHandler
 } from "../aliceblue/websocket.js";
 
@@ -123,13 +119,8 @@ export class FeedManager {
         this.tickListeners =
             new Set();
 
-        this.zerodhaTickUnsubscribe =
-            null;
-
         this.aliceBlueTickBridgeInitialized =
             false;
-
-        this.initializeZerodhaTickBridge();
 
         this.initializeAliceBlueTickBridge();
 
@@ -591,39 +582,6 @@ export class FeedManager {
             );
 
         };
-
-    }
-
-    //==================================================
-    // ZERODHA BRIDGE
-    //==================================================
-
-    initializeZerodhaTickBridge() {
-
-        if (
-            this.zerodhaTickUnsubscribe
-        ) {
-
-            return;
-
-        }
-
-        this.zerodhaTickUnsubscribe =
-            onZerodhaTick(
-
-                tick => {
-
-                    this.handleTick(
-                        tick
-                    );
-
-                }
-
-            );
-
-        console.log(
-            "[FEED MANAGER] Zerodha tick bridge initialized."
-        );
 
     }
 

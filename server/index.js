@@ -35,12 +35,6 @@ import {
 } from "./instruments/InstrumentSynchronizer.js";
 
 import {
-    startWebSocket,
-    attachWebSocketServer,
-    registerClient
-} from "./zerodha/websocket.js";
-
-import {
     registerLoginRoutes
 } from "./zerodha/login.js";
 
