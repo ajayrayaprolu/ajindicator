@@ -1,4 +1,6 @@
-//\src\indicators\CHOCH.ts
+//=============================================
+//File : .\src\indicators\CHOCH.ts
+//============================================
 
 import type { Candle } from "../types/Candle";
 
@@ -176,6 +178,107 @@ export class CHOCH {
             bearish = true;
 
             currentTrend = -1;
+
+        }
+
+        //--------------------------------------------------
+        // AJ FIX: CHOCH PERSISTENCE WINDOW
+        //--------------------------------------------------
+
+        const CHOCH_VALIDITY_BARS = 10;
+
+        let chochFiredIndex = candles.length - 1;
+
+        if (!bullish && !bearish) {
+
+            const scanStart =
+                Math.max(
+                    lookback + 2,
+                    candles.length - 1 - CHOCH_VALIDITY_BARS
+                );
+
+            for (let i = candles.length - 2; i >= scanStart; i--) {
+
+                const bar = candles[i];
+
+                const prevBar = candles[i - 1];
+
+                const hist =
+                    candles.slice(i - lookback - 1, i - 1);
+
+                if (hist.length < lookback) {
+                    break;
+                }
+
+                const hHigh =
+                    Math.max(...hist.map(c => c.high));
+
+                const hLow =
+                    Math.min(...hist.map(c => c.low));
+
+                const prevTrend =
+                    prevBar.close > hHigh
+                        ? 1
+                        : prevBar.close < hLow
+                            ? -1
+                            : 0;
+
+                if (prevTrend <= 0 && bar.close > hHigh) {
+
+                    bullish = true;
+
+                    chochFiredIndex = i;
+
+                    break;
+
+                }
+
+                if (prevTrend >= 0 && bar.close < hLow) {
+
+                    bearish = true;
+
+                    chochFiredIndex = i;
+
+                    break;
+
+                }
+
+            }
+
+            //--------------------------------------------------
+            // INVALIDATION: close back through break level
+            //--------------------------------------------------
+
+            if (bullish || bearish) {
+
+                const cBreakLevel =
+                    bullish
+                        ? swingHigh
+                        : swingLow;
+
+                for (let j = chochFiredIndex + 1; j < candles.length; j++) {
+
+                    const c = candles[j];
+
+                    if (bullish && c.close < cBreakLevel) {
+
+                        bullish = false;
+
+                        break;
+
+                    }
+
+                    if (bearish && c.close > cBreakLevel) {
+
+                        bearish = false;
+
+                        break;
+
+                    }
+
+                }
+
+            }
 
         }
 

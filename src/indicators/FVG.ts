@@ -305,30 +305,141 @@ export class FVG {
 
         const results: FVGResult[] = [];
 
-        const c1 = candles[candles.length - 3];
-        const c2 = candles[candles.length - 2];
-        const c3 = candles[candles.length - 1];
+        //--------------------------------------------------
+        // AJ FIX: FVG PERSISTENCE WINDOW
+        // Scan back up to FVG_VALIDITY_BARS bars for the
+        // most recent gap that has NOT been fully filled
+        // by subsequent price action (mirroring the
+        // OrderBlock mitigation model).
+        //--------------------------------------------------
+
+        const FVG_VALIDITY_BARS = 20;
 
         let bullish = false;
         let bearish = false;
         let upper = 0;
         let lower = 0;
+        let c3 = candles[candles.length - 1];
+        let c2 = candles[candles.length - 2];
+        let fvgFillPercent = -1;
 
-        if (c1.high < c3.low) {
+        const scanStart =
+            Math.max(
+                2,
+                candles.length - 1 - FVG_VALIDITY_BARS
+            );
 
-            bullish = true;
+        for (let i = candles.length - 1; i >= scanStart; i--) {
 
-            upper = c3.low;
+            const g1 = candles[i - 2];
+            const g3 = candles[i];
 
-            lower = c1.high;
+            let gBullish = false;
+            let gBearish = false;
+            let gUpper = 0;
+            let gLower = 0;
 
-        } else if (c1.low > c3.high) {
+            if (g1.high < g3.low) {
 
-            bearish = true;
+                gBullish = true;
 
-            upper = c1.low;
+                gUpper = g3.low;
 
-            lower = c3.high;
+                gLower = g1.high;
+
+            } else if (g1.low > g3.high) {
+
+                gBearish = true;
+
+                gUpper = g1.low;
+
+                gLower = g3.high;
+
+            }
+
+            if (!gBullish && !gBearish) {
+                continue;
+            }
+
+            //--------------------------------------------------
+            // Check mitigation using bars AFTER the gap
+            //--------------------------------------------------
+
+            const gSize =
+                Math.max(gUpper - gLower, 0.000001);
+
+            const gMid =
+                (gUpper + gLower) / 2;
+
+            let gFill = 0;
+
+            let gMitigated = false;
+
+            for (let j = i + 1; j < candles.length; j++) {
+
+                const c = candles[j];
+
+                if (gBullish) {
+
+                    if (c.low <= gLower) {
+
+                        gMitigated = true;
+
+                        gFill = 100;
+
+                        break;
+
+                    }
+
+                    if (c.low <= gMid) {
+
+                        gFill =
+                            ((gUpper - c.low) / gSize) * 100;
+
+                    }
+
+                } else {
+
+                    if (c.high >= gUpper) {
+
+                        gMitigated = true;
+
+                        gFill = 100;
+
+                        break;
+
+                    }
+
+                    if (c.high >= gMid) {
+
+                        gFill =
+                            ((c.high - gLower) / gSize) * 100;
+
+                    }
+
+                }
+
+            }
+
+            if (!gMitigated) {
+
+                bullish = gBullish;
+
+                bearish = gBearish;
+
+                upper = gUpper;
+
+                lower = gLower;
+
+                c3 = candles[i];
+
+                c2 = candles[i - 1];
+
+                fvgFillPercent = gFill;
+
+                break;
+
+            }
 
         }
 
@@ -357,6 +468,21 @@ export class FVG {
         let fillPercent = 0;
         let mitigated = false;
         let partiallyFilled = false;
+
+        //--------------------------------------------------
+        // AJ FIX: use fill state computed across the full
+        // persistence window, not just the current candle.
+        //--------------------------------------------------
+
+        if (detected && fvgFillPercent >= 0) {
+
+            fillPercent = fvgFillPercent;
+
+            partiallyFilled = fillPercent > 0 && fillPercent < 100;
+
+            mitigated = false;
+
+        }
 
         if (bullish) {
 

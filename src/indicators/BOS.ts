@@ -1,4 +1,7 @@
-//\src\indicators\BOS.ts
+//=========================================
+// File : .\src\indicators\BOS.ts
+//===========================================
+
 import type { Candle } from "../types/Candle";
 
 export interface BOSResult {
@@ -131,11 +134,120 @@ export class BOS {
                 ...previousBars.map(c => c.low)
             );
 
-        const bullish =
+        //--------------------------------------------------
+        // AJ FIX: BOS PERSISTENCE WINDOW
+        // A break of structure stays valid for up to
+        // BOS_VALIDITY_BARS bars, or until price closes
+        // back through the break level (mirroring how
+        // OrderBlock tracks mitigation).
+        //--------------------------------------------------
+
+        const BOS_VALIDITY_BARS = 10;
+
+        let bosFiredIndex = candles.length - 1;
+
+        let bullish =
             current.close > swingHigh;
 
-        const bearish =
+        let bearish =
             current.close < swingLow;
+
+        let breakLevel =
+            bullish
+                ? swingHigh
+                : bearish
+                    ? swingLow
+                    : 0;
+
+        let breakoutPrice =
+            current.close;
+
+        if (!bullish && !bearish) {
+
+            const scanStart =
+                Math.max(
+                    lookback,
+                    candles.length - 1 - BOS_VALIDITY_BARS
+                );
+
+            for (let i = candles.length - 2; i >= scanStart; i--) {
+
+                const bar = candles[i];
+
+                const priorBars =
+                    candles.slice(i - lookback, i);
+
+                if (priorBars.length < lookback) {
+                    break;
+                }
+
+                const pHigh =
+                    Math.max(...priorBars.map(c => c.high));
+
+                const pLow =
+                    Math.min(...priorBars.map(c => c.low));
+
+                if (bar.close > pHigh) {
+
+                    bullish = true;
+
+                    breakLevel = pHigh;
+
+                    breakoutPrice = bar.close;
+
+                    bosFiredIndex = i;
+
+                    break;
+
+                }
+
+                if (bar.close < pLow) {
+
+                    bearish = true;
+
+                    breakLevel = pLow;
+
+                    breakoutPrice = bar.close;
+
+                    bosFiredIndex = i;
+
+                    break;
+
+                }
+
+            }
+
+            //--------------------------------------------------
+            // INVALIDATION: close back through break level
+            //--------------------------------------------------
+
+            if (bullish || bearish) {
+
+                for (let j = bosFiredIndex + 1; j < candles.length; j++) {
+
+                    const c = candles[j];
+
+                    if (bullish && c.close < breakLevel) {
+
+                        bullish = false;
+
+                        break;
+
+                    }
+
+                    if (bearish && c.close > breakLevel) {
+
+                        bearish = false;
+
+                        break;
+
+                    }
+
+                }
+
+            }
+
+        }
 
         const detected =
             bullish || bearish;
@@ -146,14 +258,6 @@ export class BOS {
                 : bearish
                     ? -1
                     : 0;
-
-        const breakLevel =
-            bullish
-                ? swingHigh
-                : swingLow;
-
-        const breakoutPrice =
-            current.close;
 
         const breakoutDistance =
             Math.abs(

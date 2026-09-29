@@ -1,3 +1,6 @@
+//=============================================
+//File : .\src\indicators\LiquiditySweep.ts
+//=============================================
 //\src\indicators\LiquiditySweep.ts
 
 import type { Candle } from "../types/Candle";
@@ -140,13 +143,108 @@ export class LiquiditySweep {
         const lowestLow =
             Math.min(...history.map(c => c.low));
 
-        const sweepHigh =
+        //--------------------------------------------------
+        // AJ FIX: SWEEP PERSISTENCE WINDOW
+        // A sweep stays valid for up to SWEEP_VALIDITY_BARS
+        // bars unless price closes beyond the swept level.
+        //--------------------------------------------------
+
+        const SWEEP_VALIDITY_BARS = 10;
+
+        let lsFiredIndex = candles.length - 1;
+
+        let lsLevel = 0;
+
+        let sweepHigh =
             current.high > highestHigh &&
             current.close < highestHigh;
 
-        const sweepLow =
+        let sweepLow =
             current.low < lowestLow &&
             current.close > lowestLow;
+
+        if (!sweepHigh && !sweepLow) {
+
+            const scanStart =
+                Math.max(
+                    1,
+                    candles.length - 1 - SWEEP_VALIDITY_BARS
+                );
+
+            for (let i = candles.length - 2; i >= scanStart; i--) {
+
+                const bar = candles[i];
+
+                const hist =
+                    candles.slice(Math.max(0, i - lookback), i);
+
+                if (hist.length === 0) {
+                    break;
+                }
+
+                const hHigh =
+                    Math.max(...hist.map(c => c.high));
+
+                const hLow =
+                    Math.min(...hist.map(c => c.low));
+
+                if (bar.high > hHigh && bar.close < hHigh) {
+
+                    sweepHigh = true;
+
+                    lsFiredIndex = i;
+
+                    lsLevel = hHigh;
+
+                    break;
+
+                }
+
+                if (bar.low < hLow && bar.close > hLow) {
+
+                    sweepLow = true;
+
+                    lsFiredIndex = i;
+
+                    lsLevel = hLow;
+
+                    break;
+
+                }
+
+            }
+
+            //--------------------------------------------------
+            // INVALIDATION: close beyond swept level
+            //--------------------------------------------------
+
+            if (sweepHigh || sweepLow) {
+
+                for (let j = lsFiredIndex + 1; j < candles.length; j++) {
+
+                    const c = candles[j];
+
+                    if (sweepLow && c.close < lsLevel) {
+
+                        sweepLow = false;
+
+                        break;
+
+                    }
+
+                    if (sweepHigh && c.close > lsLevel) {
+
+                        sweepHigh = false;
+
+                        break;
+
+                    }
+
+                }
+
+            }
+
+        }
 
         const detected =
             sweepHigh || sweepLow;
