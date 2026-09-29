@@ -157,35 +157,14 @@ async function fetchLiveCandles({ exchange, securityId, resolution, fromMs, toMs
         [];
 
     return rows
-        .map(row => {
-
-            const rawTs = Number(row.ts);
-
-            // IndStocks' docs say ts is milliseconds, but some rows
-            // come back already in seconds. A blind /1000 on a
-            // seconds value produces a near-epoch-zero timestamp
-            // (renders around Jan 1970), which corrupts the whole
-            // chart time axis. Detect the unit by magnitude instead
-            // of assuming it is always milliseconds.
-            const time =
-                Number.isFinite(rawTs)
-                    ? (
-                        rawTs > 1e12
-                            ? Math.floor(rawTs / 1000)
-                            : Math.floor(rawTs)
-                    )
-                    : NaN;
-
-            return {
-                time,
-                open: Number(row.o),
-                high: Number(row.h),
-                low: Number(row.l),
-                close: Number(row.c),
-                volume: Number(row.v) || 0
-            };
-
-        })
+        .map(row => ({
+            time: Math.floor(Number(row.ts) / 1000),
+            open: Number(row.o),
+            high: Number(row.h),
+            low: Number(row.l),
+            close: Number(row.c),
+            volume: Number(row.v) || 0
+        }))
         .filter(c =>
             Number.isFinite(c.time) &&
             Number.isFinite(c.open) &&
