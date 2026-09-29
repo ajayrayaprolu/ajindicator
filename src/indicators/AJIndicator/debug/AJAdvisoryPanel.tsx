@@ -172,7 +172,7 @@ export default function AJAdvisoryPanel({
                     borderBottom: "1px solid var(--border-primary)"
                 }}
             >
-                ?? AJ Advisory
+                🧭 AJ Advisory
             </div>
 
             {/* ROWS */}
