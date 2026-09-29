@@ -1593,50 +1593,46 @@ export class AJDecisionEngine {
             const hasRealEntryPrice =
                 payload.riskInputs.entryPrice > 0;
 
+            // AJ FIX: fresh signal with no open position enters at
+            // market (current close) instead of staying NaN forever.
             execEntryPrice =
                 hasRealEntryPrice
                     ? payload.riskInputs.entryPrice
-                    : NaN;
+                    : payload.riskInputs.currentPrice;
 
             execSlPrice =
-                !hasRealEntryPrice
-                    ? NaN
-                    : execDirection > 0
-                        ? execEntryPrice - execSlDistance
-                        : execEntryPrice + execSlDistance;
+                execDirection > 0
+                    ? execEntryPrice - execSlDistance
+                    : execEntryPrice + execSlDistance;
 
             execTp1 =
-                !hasRealEntryPrice
-                    ? NaN
-                    : execDirection > 0
-                        ? execEntryPrice + execSlDistance * 1.5
-                        : execEntryPrice - execSlDistance * 1.5;
+                execDirection > 0
+                    ? execEntryPrice + execSlDistance * 1.5
+                    : execEntryPrice - execSlDistance * 1.5;
 
             execTp2 =
-                !hasRealEntryPrice
-                    ? NaN
-                    : execDirection > 0
-                        ? execEntryPrice + execSlDistance * 2.5
-                        : execEntryPrice - execSlDistance * 2.5;
+                execDirection > 0
+                    ? execEntryPrice + execSlDistance * 2.5
+                    : execEntryPrice - execSlDistance * 2.5;
 
             execTp3 =
-                !hasRealEntryPrice
-                    ? NaN
-                    : execDirection > 0
-                        ? execEntryPrice + execSlDistance * 4
-                        : execEntryPrice - execSlDistance * 4;
+                execDirection > 0
+                    ? execEntryPrice + execSlDistance * 4
+                    : execEntryPrice - execSlDistance * 4;
 
             execEntryBarIndex =
                 payload.ajRuntime.barIndex;
 
-            AJDecisionEngine.tradePlanLock[lockKey] = {
-                entryPrice: execEntryPrice,
-                slPrice: execSlPrice,
-                tp1: execTp1,
-                tp2: execTp2,
-                tp3: execTp3,
-                entryBarIndex: execEntryBarIndex
-            };
+            if (Number.isFinite(execEntryPrice) && execEntryPrice > 0) {
+                AJDecisionEngine.tradePlanLock[lockKey] = {
+                    entryPrice: execEntryPrice,
+                    slPrice: execSlPrice,
+                    tp1: execTp1,
+                    tp2: execTp2,
+                    tp3: execTp3,
+                    entryBarIndex: execEntryBarIndex
+                };
+            }
 
         }
 

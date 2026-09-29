@@ -361,7 +361,12 @@ export class AJDebugBuilder {
 			blockReason = "NO SCORE";
 		
 		else if (!authority.executionAllowed)
-			blockReason = "SCORE BLOCKED";
+			blockReason =
+				"AUTHORITY: " +
+				(
+					authority.rejectionReasons?.[0] ??
+					"gate not met"
+				);
 		
 		else if (!execution.canEnter)
 			blockReason = "NO BREAKOUT";

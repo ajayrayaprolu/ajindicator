@@ -62,7 +62,7 @@ export class OptionContractResolver {
     ):number {
 
         const s =
-            symbol.toUpperCase();
+            String(symbol ?? "").toUpperCase();
 
         if(
             s.includes("BANKNIFTY") ||
@@ -106,7 +106,7 @@ export class OptionContractResolver {
         const expiry =
             new Date();
         const s =
-            symbol.toUpperCase();
+            String(symbol ?? "").toUpperCase();
 
         //--------------------------------------------------
         // WEEKLY EXPIRY (PINE PARITY)

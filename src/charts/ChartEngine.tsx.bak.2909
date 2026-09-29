@@ -564,8 +564,9 @@ export default function ChartEngine({
                     !isMitigated(z)
             );
 
-        // AJ FIX: show last 2 zones per type (user prefers less clutter).
-        return valid.slice(-2);
+        return valid.length > 0
+            ? [valid[valid.length - 1]]
+            : [];
     }
 	
     //--------------------------------------------------

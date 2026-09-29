@@ -1275,7 +1275,7 @@ export class AJPayloadBuilder {
 		//--------------------------------------------------
 	
 		const strikeStep =
-			ajRuntime.symbol.includes("BANK")
+			String(ajRuntime.symbol ?? "").includes("BANK")
 				? 100
 				: 50;
 	

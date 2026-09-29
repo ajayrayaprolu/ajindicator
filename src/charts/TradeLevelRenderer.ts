@@ -53,8 +53,14 @@ export class TradeLevelRenderer {
         // BLOCK INVALID LEVEL DRAWING
         //--------------------------------------------------
 
+        // AJ FIX: also draw when a trade plan exists (EXECUTED/MANAGE),
+        // even if authority currently says WAIT.
         if(
-            !runtime.executionAllowed
+            !runtime.executionAllowed &&
+            !(
+                runtime.entryPrice != null &&
+                runtime.entryPrice > 0
+            )
         ){
             return {
                 levels:[]

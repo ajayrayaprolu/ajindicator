@@ -27,7 +27,31 @@ export type InstitutionalZoneType =
     | "bosBullish"
     | "bosBearish"
     | "chochBullish"
-    | "chochBearish";
+    | "chochBearish"
+    | "flippedResistance"
+    | "flippedSupport"
+    | "retailersTrap"
+    | "noTradeZone"
+    | "readySignal";
+
+// AJ ADD: Telugu tooltip map for zone labels (shown under English).
+export const ZONE_LABEL_TELUGU: Record<string, string> = {
+    "BUYER Zone": "కొనుగోలుదారుల జోన్ — దాదాపుగా మద్దతు",
+    "SELLER Zone": "అమ్మని జోన్ — దిగువైపు ఒత్తిడి",
+    "FVG": "ఫేర్ వ్యాల్యూ గ్యాప్ — ధరలను నింపే ప్రాంతం",
+    "BOS ▲": "స్ట్రక్చర్ బ్రేక్ ఎగువ — బుల్లిష్ BOS",
+    "BOS ▼": "స్ట్రక్చర్ బ్రేక్ దిగువ — బేయరిష్ BOS",
+    "CHoCH ▲": "ట్రెండ్ మార్పు — ఎగువ పక్షం (CHoCH Bullish)",
+    "CHoCH ▼": "ట్రెండ్ మార్పు — దిగువ పక్షం (CHoCH Bearish)",
+    "FLIPPED RESISTANCE": "మార్లిన రెసిస్టెన్స్ — ఇప్పుడు మద్దతి. ఈ జోన్ నుంచి ధరలు పెరుగుతాయి (CE కొనండి)",
+    "FLIPPED SUPPORT": "మారిన సపోర్ట్ — ఇప్పుడు ఒత్తిడి. ఈ జోన్ నుంచి ధరలు పడతాయి (PE కొనండి)",
+    "⚠ RETAILERS TRAP": "రిటేలర్ల ట్రాప్ — ధరలు పడరవచ్చు. CE/PE నిర్ణయం జాగ్రత్తగా",
+    "⚡ GET READY FOR FALL": "పడటానికి సిద్ధంగా ఉండండి — ధరలు పడతాయి (PE దృష్టిగా)",
+    "⚡ GET READY FOR RAISE": "ఎగిరేందుకు సిద్ధంగా ఉండండి — ధరలు పెరుగుతాయి (CE దృష్టిగా)",
+    "NO TRADE ZONE": "ట్రేడింగ్ చేయవద్దు — ఛాపీ/అస్థిర మార్కెట్, సంకేతాలు లేవు",
+    "BIG PLAYERS SUPPORT": "పెద్ద ఆటగాళ్ల మద్దతు — ఇక్కడ ధర పడితే కొనండి",
+    "LIQUIDITY": "లిక్విడిటీ స్వీప్ — స్టాప్ హంట్ జరిగింది"
+};
 //------------------------------------------------------
 // SINGLE ZONE
 //------------------------------------------------------
@@ -583,6 +607,37 @@ private createRectanglePrimitive(
                                             labelY +
                                                 paddingY
                                         );
+
+                                        // AJ ADD: Telugu tooltip under English label
+                                        const teluguLabel =
+                                            zone.label
+                                                ? ZONE_LABEL_TELUGU[zone.label]
+                                                : undefined;
+
+                                        if (teluguLabel) {
+
+                                            const teluguFontSize =
+                                                Math.max(
+                                                    9,
+                                                    10 * ratioY
+                                                );
+
+                                            ctx.font =
+                                                `${teluguFontSize}px sans-serif`;
+
+                                            ctx.fillStyle =
+                                                "rgba(255, 255, 255, 0.75)";
+
+                                            ctx.fillText(
+                                                teluguLabel,
+                                                labelX +
+                                                    paddingX,
+                                                labelY +
+                                                    paddingY +
+                                                    fontSize +
+                                                    2 * ratioY
+                                            );
+                                        }
                                     }
 
                                     ctx.restore();
