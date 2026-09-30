@@ -2156,10 +2156,19 @@ export class AJDecisionEngine {
 		
 		//--------------------------------------------------
 		// COMPATIBILITY VARIABLES
+		//
+		// AJ FIX: report the direction the trade ladder was
+		// actually BUILT with (execDirection). Previously this
+		// used payload.tradeDirectionFinal, which could flip
+		// after the plan locked - producing "LONG" labels on a
+		// SHORT ladder (SL above entry, TPs below).
+		// For option charts execDirection is always 1 (buy-side
+		// ladder, options-buy-only rule), so Indian-market
+		// display stays "PE/CE buy long" as designed.
 		//--------------------------------------------------
 		
 		const tradeDirection =
-			payload.tradeDirectionFinal;
+			execDirection;
 		
 		const executionAllowed =
 			authorityResult.executionAllowed;

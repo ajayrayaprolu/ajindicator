@@ -261,6 +261,46 @@ export default function SymbolSelector({
     }, [query, category, isFyers]);
 
     //==================================================
+    // AJ ADD: STRIKE-NUMBER SEARCH PRIORITIZATION
+    // "72400 PE" -> exact strike first, nearest expiry
+    // first, matching optionType only.
+    //==================================================
+    function prioritizeStrikeResults<T extends { strike?: number; optionType?: string; expiry?: string; displayName?: string }>(
+        results: T[],
+        query: string
+    ): T[] {
+
+        const strikeQuery = query.match(/\d{3,6}/)?.[0];
+
+        if (!strikeQuery) {
+            return results;
+        }
+
+        const want = Number(strikeQuery);
+        const typeQuery = query.match(/\b(CE|PE)\b/i)?.[1]?.toUpperCase();
+
+        const expiryRank = (exp: string | undefined): number => {
+
+            const t = Date.parse(String(exp ?? ""));
+
+            return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+        };
+
+        return results
+            .filter(r => r.strike != null)
+            .sort((a, b) =>
+                (Math.abs((a.strike ?? 0) - want) -
+                 Math.abs((b.strike ?? 0) - want)) ||
+                (expiryRank(a.expiry) - expiryRank(b.expiry)) ||
+                String(a.displayName ?? "").localeCompare(String(b.displayName ?? ""))
+            )
+            .filter(r =>
+                !typeQuery ||
+                String(r.optionType ?? "").toUpperCase() === typeQuery
+            );
+    }
+
+    //==================================================
     // SEARCH IMPLEMENTATION
     //==================================================
 
@@ -280,16 +320,25 @@ export default function SymbolSelector({
 
             if (fyers) {
 
+                // AJ FIX: support strike-number searches like "72400 PE".
+                // Digits become a strike filter; remaining text is the underlying.
+                const strikeQuery = text.match(/\d{3,6}/)?.[0];
+                const underlyingText =
+                    strikeQuery
+                        ? text.replace(strikeQuery, "").replace(/\b(CE|PE)\b/gi, "").trim()
+                        : text.trim();
+
                 const params = new URLSearchParams({
-                    underlying: text.toUpperCase(),
-                    limit: "100"
+                    underlying:
+                        (underlyingText || "NIFTY").toUpperCase(),
+                    limit: strikeQuery ? "500" : "100"
                 });
 
                 const response = await fetch(`/api/fyers/options/search?${params.toString()}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
-                return Array.isArray(data.results)
+                const results = Array.isArray(data.results)
                     ? data.results.map((item: any) => ({
                         symbol: item.symbol,
                         displayName: `${item.underlying} ${item.strike} ${item.optionType}`,
@@ -302,6 +351,8 @@ export default function SymbolSelector({
                         underlying: item.underlying
                     }))
                     : [];
+
+                return prioritizeStrikeResults(results, text);
             }
 
             if (isAliceBlue) {
@@ -358,16 +409,25 @@ export default function SymbolSelector({
 
             if (isIndstocks) {
 
+                // AJ FIX: strike-number search (e.g. "72400 PE") —
+                // extract the digits as the strike, use the remaining
+                // text (or NIFTY) as the underlying, and pull a wide
+                // chain so the exact strike + nearest expiry exist in
+                // the result set before prioritization.
+                const strikeQueryInd = text.match(/\d{3,6}/)?.[0];
+                const underlyingTextInd =
+                    text.replace(/\d{3,6}/g, "").replace(/\b(CE|PE)\b/gi, "").trim();
+
                 const params = new URLSearchParams({
-                    underlying: text.toUpperCase(),
-                    limit: "100"
+                    underlying: (underlyingTextInd || "NIFTY").toUpperCase(),
+                    limit: strikeQueryInd ? "500" : "100"
                 });
 
                 const response = await fetch(`/api/indstocks/options/search?${params.toString()}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
 
-			return Array.isArray(data.results)
+			const resultsInd = Array.isArray(data.results)
 				? data.results.map((item: any) => {
 			
 					const rawExpiry =
@@ -417,6 +477,10 @@ export default function SymbolSelector({
 					};
 				})
 				: [];
+
+			// AJ FIX: nearest-expiry + exact-strike prioritization
+			// for strike-number searches (same as Fyers).
+			return prioritizeStrikeResults(resultsInd, text);
             }
 
             const response = await fetch(`/api/symbols/search?q=${encodeURIComponent(text)}`);
