@@ -197,6 +197,7 @@ export interface AJDebugResult {
 
     atmStrike:string;
     itmStrike:string;
+    itmSymbol:string;
     otmStrike:string;
 
     //--------------------------------------------------
@@ -538,6 +539,12 @@ export class AJDebugBuilder {
 
 			itmStrike:
 				(option as any)?.itmStrike
+				?? "-",
+
+			// AJ ADD: engine-built ITM symbol (same builder that
+			// produces the ATM symbol — correct format on all feeds).
+			itmSymbol:
+				(option as any)?.itmSymbol
 				?? "-",
 
 			otmStrike:

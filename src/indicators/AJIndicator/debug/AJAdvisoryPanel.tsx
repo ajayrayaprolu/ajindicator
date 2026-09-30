@@ -209,80 +209,123 @@ export default function AJAdvisoryPanel({
                 {
                     debug.optionSymbol &&
                     debug.optionSymbol !== "-" ? (
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "flex-start",
-                                gap: 12,
-                                padding: "4px 14px",
-                                fontSize: 11,
-                                lineHeight: 1.35
-                            }}
-                        >
-                            <span
-                                style={{
-                                    color: "var(--text-muted)",
-                                    fontWeight: 600,
-                                    flexShrink: 0,
-                                    minWidth: 100
-                                }}
-                            >
-                                Option Focus
-                            </span>
+                        (() => {
+                            // AJ ADD: ATM + ITM option focus rows.
+                            // itmStrike is recomputed by the engine on
+                            // every bar from the live spot price, so
+                            // the ITM contract updates dynamically as
+                            // price moves (ATM <-> ITM flips on its own).
+                            const itmNum = Number(debug.itmStrike);
 
-                            <button
-                                type="button"
-								onClick={() => {
-									const strike = debug.optionStrike;
-								
-									if (
-										!debug.optionSymbol ||
-										debug.optionSymbol === "-" ||
-										!debug.optionUnderlying ||
-										!debug.optionExpiry ||
-										typeof strike !== "number" ||
-											!Number.isFinite(strike) ||
-										!debug.optionType
-									) {
-										return;
-									}
-								
-									onOptionFocus?.({
-										optionSymbol: debug.optionSymbol,
-										underlying: debug.optionUnderlying,
-										expiry: debug.optionExpiry,
-										strike,
-										optionType:
-											debug.optionType === "CE" ||
-											debug.optionType === "PE"
-												? debug.optionType
-												: ""
-									});
-								}}
-                                title="Open this option on the active chart"
-                                style={{
-                                    border: "none",
-                                    background: "transparent",
-                                    padding: 0,
-                                    margin: 0,
-                                    color: "var(--accent-primary)",
-                                    textAlign: "right",
-                                    fontWeight: 700,
-                                    cursor: onOptionFocus
-                                        ? "pointer"
-                                        : "default",
-                                    textDecoration: onOptionFocus
-                                        ? "underline"
-                                        : "none",
-                                    textUnderlineOffset: 2,
-                                    fontFamily: "inherit",
-                                    fontSize: 11
-                                }}
-                            >
-                                {debug.optionSymbol}
-                            </button>
-                        </div>
+                            // AJ FIX: use the engine-built ITM symbol
+                            // (same format as the ATM symbol on every
+                            // feed) instead of constructing it here.
+                            const itmSymbol =
+                                (debug as any).itmSymbol &&
+                                (debug as any).itmSymbol !== "-"
+                                    ? (debug as any).itmSymbol
+                                    : "";
+
+                            const hasItm =
+                                Number.isFinite(itmNum) &&
+                                itmNum !== debug.optionStrike &&
+                                !!itmSymbol;
+
+                            const focusRow = (
+                                label: string,
+                                sym: string,
+                                strike: number | undefined
+                            ) => (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "flex-start",
+                                        gap: 12,
+                                        padding: "4px 14px",
+                                        fontSize: 11,
+                                        lineHeight: 1.35
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            color: "var(--text-muted)",
+                                            fontWeight: 600,
+                                            flexShrink: 0,
+                                            minWidth: 100
+                                        }}
+                                    >
+                                        {label}
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (
+                                                !sym ||
+                                                sym === "-" ||
+                                                !debug.optionUnderlying ||
+                                                !debug.optionExpiry ||
+                                                typeof strike !== "number" ||
+                                                !Number.isFinite(strike) ||
+                                                !debug.optionType
+                                            ) {
+                                                return;
+                                            }
+
+                                            onOptionFocus?.({
+                                                optionSymbol: sym,
+                                                underlying: debug.optionUnderlying,
+                                                expiry: debug.optionExpiry,
+                                                strike,
+                                                optionType:
+                                                    debug.optionType === "CE" ||
+                                                    debug.optionType === "PE"
+                                                        ? debug.optionType
+                                                        : ""
+                                            });
+                                        }}
+                                        title="Open this option on the active chart"
+                                        style={{
+                                            border: "none",
+                                            background: "transparent",
+                                            padding: 0,
+                                            margin: 0,
+                                            color: "var(--accent-primary)",
+                                            textAlign: "right",
+                                            fontWeight: 700,
+                                            cursor: onOptionFocus
+                                                ? "pointer"
+                                                : "default",
+                                            textDecoration: onOptionFocus
+                                                ? "underline"
+                                                : "none",
+                                            textUnderlineOffset: 2,
+                                            fontFamily: "inherit",
+                                            fontSize: 11
+                                        }}
+                                    >
+                                        {sym}
+                                    </button>
+                                </div>
+                            );
+
+                            return (
+                                <>
+                                    {focusRow(
+                                        "Option Focus (ATM)",
+                                        debug.optionSymbol,
+                                        debug.optionStrike
+                                    )}
+                                    {hasItm &&
+                                        focusRow(
+                                            "Option Focus (ITM)",
+                                            itmSymbol,
+                                            itmNum
+                                        )}
+                                </>
+                            );
+                        })()
                     ) : (
                         <Row
                             label="Option Focus"

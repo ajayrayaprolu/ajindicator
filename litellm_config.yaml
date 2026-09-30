@@ -1,0 +1,6 @@
+model_list:
+  - model_name: claude-3-5-sonnet
+    litellm_params:
+      model: openai/gpt-3.5-turbo
+      api_base: https://codecraftapi.com/v1
+      api_key: cc_z22C5UDE0AWSY6agb0PZQTTmdCZ3INSW7RUx0F9LlvzDEg8Z

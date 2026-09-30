@@ -626,6 +626,10 @@ const defaultCharts: ChartConfig[] = [
         `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
     } else {
 
+      // AJ FIX: always zero-pad the day (06OCT, not 6OCT) so the
+      // backend instrument lookup matches on every feed.
+      const pad = (n: string) => String(Number(n)).padStart(2, "0");
+
       // IndStocks/Fyers style:
       // 29 SEP 2026 -> 29SEP
       const spacedMatch =
@@ -633,17 +637,17 @@ const defaultCharts: ChartConfig[] = [
 
       if (spacedMatch) {
         displayExpiry =
-          `${spacedMatch[1]}${spacedMatch[2]}`;
+          `${pad(spacedMatch[1])}${spacedMatch[2]}`;
       } else {
 
         // Already canonical:
-        // 29SEP -> 29SEP
+        // 6OCT -> 06OCT, 29SEP -> 29SEP
         const compactMatch =
           /^(\d{1,2})([A-Z]{3})$/.exec(rawExpiry);
 
         if (compactMatch) {
           displayExpiry =
-            `${compactMatch[1]}${compactMatch[2]}`;
+            `${pad(compactMatch[1])}${compactMatch[2]}`;
         }
       }
     }

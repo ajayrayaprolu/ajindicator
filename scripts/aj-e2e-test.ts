@@ -132,13 +132,27 @@ function runScenario(name: string, candles: Candle[]) {
                 prevState = state;
             }
 
-            if (result?.executionAllowed && result?.entryPrice) {
-                trades.push({ bar: i, dir: result.direction, entry: result.entryPrice,
-                    sl: result.stopLoss, tp1: result.tp1, tp2: result.tp2, tp3: result.tp3,
-                    score, conf, state,
-                    recommendation: result?.confidenceBreakdown?.recommendation ?? result?.recommendation,
-                    authority: result?.authority });
+            // AJ FIX: count only NEW executions. While a position is
+            // held, every bar re-reports the same locked plan — log a
+            // trade only when we transition into EXECUTED/MANAGE from
+            // SCAN/ARMED/CONFIRMED (or a direction change forces a
+            // fresh plan).
+            const inExec = state === "EXECUTED" || state === "MANAGE";
+            if (result?.executionAllowed && result?.entryPrice && inExec) {
+                const last = trades[trades.length - 1];
+                const samePlan =
+                    last &&
+                    last.entry === result.entryPrice &&
+                    last.dir === result.direction;
+                if (!samePlan) {
+                    trades.push({ bar: i, dir: result.direction, entry: result.entryPrice,
+                        sl: result.stopLoss, tp1: result.tp1, tp2: result.tp2, tp3: result.tp3,
+                        score, conf, state,
+                        recommendation: result?.confidenceBreakdown?.recommendation ?? result?.recommendation,
+                        authority: result?.authority });
+                }
             }
+			
         } catch (e: any) {
             errCount++;
             if (printedErrs < 3) {

@@ -1796,23 +1796,101 @@ export class AJDecisionEngine {
 					optionType:
 							chartOptionType as "CE" | "PE",
 		
-					atmStrike:
-							chartStrike,
-		
-					itmStrike:
-							chartStrike,
-		
-					otmStrike:
-							chartStrike,
-		
-					atmSymbol:
-							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
-		
-					itmSymbol:
-							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
-		
-					otmSymbol:
-							`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+					// AJ FIX: build the ATM/ITM/OTM suggestions around
+					// the CHART CONTRACT itself, not a spot lookup —
+					// on an option chart, optionInputs.spotPrice is
+					// the option's PREMIUM (~300), not the index level
+					// (~73500), so resolving from it produced nonsense
+					// strikes like 200CE/500PE. ITM/OTM = chart strike
+					// +/- one strike step of the underlying. Fully
+					// guarded so the chart can never crash.
+					...(() => {
+						try {
+							const underlying =
+								String(chartUnderlying ?? "").toUpperCase();
+
+							const step =
+								underlying.includes("BANK") ||
+								underlying.includes("SENSEX") ||
+								underlying.includes("BANKEX")
+									? 100
+									: 50;
+
+							// For a CE chart: ITM is one step BELOW,
+							// OTM one step ABOVE. For a PE chart: the
+							// reverse. ATM stays the chart strike.
+							const isPE =
+								String(chartOptionType).toUpperCase() === "PE";
+
+							const itmStrike = isPE
+								? chartStrike + step
+								: chartStrike - step;
+
+							const otmStrike = isPE
+								? chartStrike - step
+								: chartStrike + step;
+
+							// Format the expiry the same way the engine's
+							// display symbols do (DDMMM, e.g. 01OCT).
+							const expText = (() => {
+								// AJ FIX: always build the expiry text from
+								// a parsed date with a zero-padded day
+								// (06OCT, not 6OCT) regardless of whether
+								// chartExpiry is ISO, Date, or other.
+								const months = [
+									"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+									"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+								];
+								const d = new Date(String(chartExpiry));
+								if (!Number.isNaN(d.getTime())) {
+									return `${String(d.getDate()).padStart(2, "0")}${months[d.getMonth()]}`;
+								}
+								// Fallback: ISO-like.
+								const match = String(chartExpiry).match(
+									/^(\d{4})-(\d{2})-(\d{2})$/
+								);
+								if (match) {
+									return `${match[3]}${months[Number(match[2]) - 1]}`;
+								}
+								// AJ FIX: compact form like "6OCT" —
+								// zero-pad the day (06OCT).
+								const compact =
+									/^(\d{1,2})([A-Z]{3})$/i.exec(
+										String(chartExpiry).trim()
+									);
+								if (compact) {
+									return `${String(Number(compact[1])).padStart(2, "0")}${compact[2].toUpperCase()}`;
+								}
+								return String(chartExpiry).toUpperCase();
+							})();
+
+							const chartSym =
+								`${chartUnderlying} ${expText} ${chartStrike}${chartOptionType}`;
+
+							return {
+								atmStrike: chartStrike,
+								itmStrike,
+								otmStrike,
+								atmSymbol: chartSym,
+								itmSymbol:
+									`${chartUnderlying} ${expText} ${itmStrike}${chartOptionType}`,
+								otmSymbol:
+									`${chartUnderlying} ${expText} ${otmStrike}${chartOptionType}`
+							};
+						} catch {
+							return {
+								atmStrike: chartStrike,
+								itmStrike: chartStrike,
+								otmStrike: chartStrike,
+								atmSymbol:
+									`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+								itmSymbol:
+									`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
+								otmSymbol:
+									`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`
+							};
+						}
+					})(),
 		
 					direction:
 							payload.tradeDirectionFinal,
@@ -1893,24 +1971,10 @@ export class AJDecisionEngine {
 			optionType:
 				chartOptionType as "CE" | "PE",
 			
-			atmStrike:
-				chartStrike,
-			
-			itmStrike:
-				chartStrike,
-			
-			otmStrike:
-				chartStrike,
-			
-			atmSymbol:
-				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
-			
-			itmSymbol:
-				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
-			
-			otmSymbol:
-				`${chartUnderlying} ${chartExpiry} ${chartStrike}${chartOptionType}`,
-			
+			// AJ FIX: keep the resolved ATM/ITM/OTM strikes and
+			// symbols from baseOptionResult (live spot based) —
+			// do NOT collapse them back onto the chart contract,
+			// so the ITM suggestion works inside option charts too.
 			isRecommended:
 				true
 		}
