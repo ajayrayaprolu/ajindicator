@@ -1562,10 +1562,20 @@ export class AJDecisionEngine {
         const previousEngineState =
             payload.ajRuntime.engineState;
 
+        // AJ FIX: ajRuntime is rebuilt every bar, so engineState
+        // write-back was lost between cycles. Consult the
+        // tradePlanLock map itself so a locked plan is reused
+        // until the state machine reports SCAN/CLOSED.
+        const existingLockEarly =
+            AJDecisionEngine.tradePlanLock[lockKey];
+
         const planIsLocked =
-            previousEngineState != null &&
-            previousEngineState !== "SCAN" &&
-            previousEngineState !== "CLOSED";
+            (previousEngineState != null &&
+                previousEngineState !== "SCAN" &&
+                previousEngineState !== "CLOSED") ||
+            (existingLockEarly != null &&
+                Number.isFinite(existingLockEarly.entryPrice) &&
+                existingLockEarly.entryPrice > 0);
 
         const existingLock =
             AJDecisionEngine.tradePlanLock[lockKey];

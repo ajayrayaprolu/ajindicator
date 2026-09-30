@@ -518,7 +518,9 @@ export default function ChartEngine({
                 tp2: hostResult?.runtimePanel?.tp2,
                 tp3: hostResult?.runtimePanel?.tp3,
                 executionAllowed:
-                    hostResult?.runtimePanel?.executionAllowed
+                    hostResult?.runtimePanel?.executionAllowed,
+                engineState:
+                    hostResult?.runtimePanel?.engineState
             }).levels
             :
             [];

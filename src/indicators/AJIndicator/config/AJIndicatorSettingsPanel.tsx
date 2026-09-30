@@ -450,45 +450,6 @@ export default function AJSettingsPanel({
             </select>
         </label>
 
-        <div style={{ display: "flex", gap: 20 }}>
-            <NumberInput
-                label="SPX Detach"
-                value={settings.spxDetach}
-                set={v=> update({ spxDetach: v })}
-            />
-            <NumberInput
-                label="SPX Reattach"
-                value={settings.spxReattach}
-                set={v=> update({ spxReattach: v })}
-            />
-        </div>
-
-        <div style={{ display: "flex", gap: 20 }}>
-            <NumberInput
-                label="BN Detach"
-                value={settings.bnDetach}
-                set={v=> update({ bnDetach: v })}
-            />
-            <NumberInput
-                label="BN Reattach"
-                value={settings.bnReattach}
-                set={v=> update({ bnReattach: v })}
-            />
-        </div>
-
-        <div style={{ display: "flex", gap: 20 }}>
-            <NumberInput
-                label="Sync Bars"
-                value={settings.syncBars}
-                set={v=> update({ syncBars: v })}
-            />
-            <NumberInput
-                label="Desync Bars"
-                value={settings.desyncBars}
-                set={v=> update({ desyncBars: v })}
-            />
-        </div>
-		
 		{/*==================================================
 			DEVELOPER MODE (Indicator Lifecycle Testing)
 		==================================================*/}

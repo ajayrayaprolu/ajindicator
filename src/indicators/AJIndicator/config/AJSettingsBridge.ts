@@ -204,6 +204,9 @@ export class AJSettingsBridge {
 			
 		//--------------------------------------------------
         // SMART TRADE SYNC
+        // AJ FIX: numeric sync params hardcoded (removed from
+        // the settings panel to reduce clutter). Values match
+        // the previous defaults (SPX 3/2, BN 3/2, Sync 3/2).
         //--------------------------------------------------
 
         (
@@ -213,33 +216,27 @@ export class AJSettingsBridge {
 
         (
             runtime as any
-        ).syncBars =
-            settings.syncBars;
+        ).syncBars = 3;
 
         (
             runtime as any
-        ).desyncBars =
-            settings.desyncBars;
+        ).desyncBars = 2;
 
         (
             runtime as any
-        ).spxDetach =
-            settings.spxDetach;
+        ).spxDetach = 3;
 
         (
             runtime as any
-        ).spxReattach =
-            settings.spxReattach;
+        ).spxReattach = 2;
 
         (
             runtime as any
-        ).bnDetach =
-            settings.bnDetach;
+        ).bnDetach = 3;
 
         (
             runtime as any
-        ).bnReattach =
-            settings.bnReattach;
+        ).bnReattach = 2;
 
 		switch(settings.smcProfile){
 		

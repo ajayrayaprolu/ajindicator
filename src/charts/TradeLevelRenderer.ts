@@ -24,13 +24,13 @@ export interface TradeLevels {
 }
 
 export interface RuntimeTrade {
+    executionAllowed?: boolean;
+    engineState?: string;
     entryPrice?: number;
     stopLoss?: number;
     tp1?: number;
     tp2?: number;
     tp3?: number;
-    executionAllowed?: boolean;
-
 }
 
 
@@ -53,14 +53,22 @@ export class TradeLevelRenderer {
         // BLOCK INVALID LEVEL DRAWING
         //--------------------------------------------------
 
-        // AJ FIX: also draw when a trade plan exists (EXECUTED/MANAGE),
-        // even if authority currently says WAIT.
+        // AJ FIX: draw ENTRY/SL/TP ONLY when the lifecycle has
+        // actually executed a trade (EXECUTED / MANAGE), or when
+        // authority is passing right now (imminent execution).
+        const stateStr =
+            String(
+                (runtime as any).engineState ??
+                ""
+            ).toUpperCase();
+
+        const tradeActive =
+            stateStr === "EXECUTED" ||
+            stateStr === "MANAGE";
+
         if(
             !runtime.executionAllowed &&
-            !(
-                runtime.entryPrice != null &&
-                runtime.entryPrice > 0
-            )
+            !tradeActive
         ){
             return {
                 levels:[]
