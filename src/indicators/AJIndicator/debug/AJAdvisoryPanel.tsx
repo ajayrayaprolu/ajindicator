@@ -225,11 +225,12 @@ export default function AJAdvisoryPanel({
                                 itmNum !== debug.optionStrike &&
                                 !!itmSymbol;
 
-                            // Detect if we're on an option chart (chart
-                            // strike is defined and finite).
+                            // Detect if we're on an option chart by checking if the
+                            // chart symbol itself contains CE or PE (option contract).
+                            // On index charts (NIFTY, SENSEX), the engine builds option
+                            // suggestions but the chart symbol doesn't contain CE/PE.
                             const isOptionChart =
-                                typeof debug.optionStrike === "number" &&
-                                Number.isFinite(debug.optionStrike);
+                                /\b(CE|PE)\b/.test(String(debug.symbol || ""));
 
                             const focusRow = (
                                 label: string,
@@ -275,10 +276,18 @@ export default function AJAdvisoryPanel({
                                                     return;
                                                 }
 
+                                                // AJ FIX: zero-pad the expiry before
+                                                // passing to the backend so 6OCT → 06OCT
+                                                const rawExp = String(debug.optionExpiry).trim();
+                                                const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(rawExp);
+                                                const paddedExpiry = compactMatch
+                                                    ? `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2].toUpperCase()}`
+                                                    : debug.optionExpiry;
+
                                                 onOptionFocus?.({
                                                     optionSymbol: sym,
                                                     underlying: debug.optionUnderlying,
-                                                    expiry: debug.optionExpiry,
+                                                    expiry: paddedExpiry,
                                                     strike,
                                                     optionType:
                                                         debug.optionType === "CE" ||
@@ -325,11 +334,26 @@ export default function AJAdvisoryPanel({
                                 </div>
                             );
 
-                            // On an index chart: both rows clickable.
-                            // On an option chart: only the row that differs
-                            // from the chart strike is clickable.
-                            const atmClickable = !isOptionChart;
-                            const itmClickable = !isOptionChart || hasItm;
+                            // On option charts: ATM row shows chart's own strike, 
+                            // so compare the ATM strike (debug.optionStrike) with ITM strike.
+                            // If they're different, chart = ATM → ATM non-clickable, ITM clickable
+                            // If chart = ITM, then ATM clickable, ITM non-clickable
+                            const atmStrike = debug.optionStrike;
+                            const atmClickable = !isOptionChart ? true : (hasItm && atmStrike !== itmNum);
+                            const itmClickable = !isOptionChart ? true : (hasItm && atmStrike === itmNum);
+
+                            console.log("ADVISORY PANEL DEBUG:", {
+                                isOptionChart,
+                                atmStrike,
+                                itmNum,
+                                hasItm,
+                                atmClickable,
+                                itmClickable,
+                                optionStrike: debug.optionStrike,
+                                underlying: debug.optionUnderlying,
+                                expiry: debug.optionExpiry,
+                                optionType: debug.optionType
+                            });
 
                             return (
                                 <>
