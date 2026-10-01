@@ -1922,20 +1922,30 @@ export class AJDecisionEngine {
 		optionSymbol:
 			`${chartUnderlying} ${
 				(() => {
-					const match = chartExpiry.match(
-						/^(\d{4})-(\d{2})-(\d{2})$/
-					);
-		
-					if (!match) {
-						return chartExpiry.toUpperCase();
-					}
-		
+					// AJ FIX: same zero-padded expiry logic as
+					// baseOptionResult (Date parse → ISO → compact).
 					const months = [
 						"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
 						"JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
 					];
-		
-					return `${match[3]}${months[Number(match[2]) - 1]}`;
+					const d = new Date(String(chartExpiry));
+					if (!Number.isNaN(d.getTime())) {
+						return `${String(d.getDate()).padStart(2, "0")}${months[d.getMonth()]}`;
+					}
+					const match = chartExpiry.match(
+						/^(\d{4})-(\d{2})-(\d{2})$/
+					);
+					if (match) {
+						return `${match[3]}${months[Number(match[2]) - 1]}`;
+					}
+					const compact =
+						/^(\d{1,2})([A-Z]{3})$/i.exec(
+							String(chartExpiry).trim()
+						);
+					if (compact) {
+						return `${String(Number(compact[1])).padStart(2, "0")}${compact[2].toUpperCase()}`;
+					}
+					return String(chartExpiry).toUpperCase();
 				})()
 			} ${chartStrike}${chartOptionType}`,
 		

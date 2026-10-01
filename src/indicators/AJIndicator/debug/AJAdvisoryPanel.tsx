@@ -210,16 +210,10 @@ export default function AJAdvisoryPanel({
                     debug.optionSymbol &&
                     debug.optionSymbol !== "-" ? (
                         (() => {
-                            // AJ ADD: ATM + ITM option focus rows.
-                            // itmStrike is recomputed by the engine on
-                            // every bar from the live spot price, so
-                            // the ITM contract updates dynamically as
-                            // price moves (ATM <-> ITM flips on its own).
+                            // AJ FIX: on an option chart, the chart's own
+                            // strike matches either ATM or ITM. Show both
+                            // rows, but make only the NON-CHART row clickable.
                             const itmNum = Number(debug.itmStrike);
-
-                            // AJ FIX: use the engine-built ITM symbol
-                            // (same format as the ATM symbol on every
-                            // feed) instead of constructing it here.
                             const itmSymbol =
                                 (debug as any).itmSymbol &&
                                 (debug as any).itmSymbol !== "-"
@@ -231,10 +225,17 @@ export default function AJAdvisoryPanel({
                                 itmNum !== debug.optionStrike &&
                                 !!itmSymbol;
 
+                            // Detect if we're on an option chart (chart
+                            // strike is defined and finite).
+                            const isOptionChart =
+                                typeof debug.optionStrike === "number" &&
+                                Number.isFinite(debug.optionStrike);
+
                             const focusRow = (
                                 label: string,
                                 sym: string,
-                                strike: number | undefined
+                                strike: number | undefined,
+                                clickable: boolean
                             ) => (
                                 <div
                                     style={{
@@ -258,70 +259,92 @@ export default function AJAdvisoryPanel({
                                         {label}
                                     </span>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (
-                                                !sym ||
-                                                sym === "-" ||
-                                                !debug.optionUnderlying ||
-                                                !debug.optionExpiry ||
-                                                typeof strike !== "number" ||
-                                                !Number.isFinite(strike) ||
-                                                !debug.optionType
-                                            ) {
-                                                return;
-                                            }
+                                    {clickable ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (
+                                                    !sym ||
+                                                    sym === "-" ||
+                                                    !debug.optionUnderlying ||
+                                                    !debug.optionExpiry ||
+                                                    typeof strike !== "number" ||
+                                                    !Number.isFinite(strike) ||
+                                                    !debug.optionType
+                                                ) {
+                                                    return;
+                                                }
 
-                                            onOptionFocus?.({
-                                                optionSymbol: sym,
-                                                underlying: debug.optionUnderlying,
-                                                expiry: debug.optionExpiry,
-                                                strike,
-                                                optionType:
-                                                    debug.optionType === "CE" ||
-                                                    debug.optionType === "PE"
-                                                        ? debug.optionType
-                                                        : ""
-                                            });
-                                        }}
-                                        title="Open this option on the active chart"
-                                        style={{
-                                            border: "none",
-                                            background: "transparent",
-                                            padding: 0,
-                                            margin: 0,
-                                            color: "var(--accent-primary)",
-                                            textAlign: "right",
-                                            fontWeight: 700,
-                                            cursor: onOptionFocus
-                                                ? "pointer"
-                                                : "default",
-                                            textDecoration: onOptionFocus
-                                                ? "underline"
-                                                : "none",
-                                            textUnderlineOffset: 2,
-                                            fontFamily: "inherit",
-                                            fontSize: 11
-                                        }}
-                                    >
-                                        {sym}
-                                    </button>
+                                                onOptionFocus?.({
+                                                    optionSymbol: sym,
+                                                    underlying: debug.optionUnderlying,
+                                                    expiry: debug.optionExpiry,
+                                                    strike,
+                                                    optionType:
+                                                        debug.optionType === "CE" ||
+                                                        debug.optionType === "PE"
+                                                            ? debug.optionType
+                                                            : ""
+                                                });
+                                            }}
+                                            title="Open this option on the active chart"
+                                            style={{
+                                                border: "none",
+                                                background: "transparent",
+                                                padding: 0,
+                                                margin: 0,
+                                                color: "var(--accent-primary)",
+                                                textAlign: "right",
+                                                fontWeight: 700,
+                                                cursor: onOptionFocus
+                                                    ? "pointer"
+                                                    : "default",
+                                                textDecoration: onOptionFocus
+                                                    ? "underline"
+                                                    : "none",
+                                                textUnderlineOffset: 2,
+                                                fontFamily: "inherit",
+                                                fontSize: 11
+                                            }}
+                                        >
+                                            {sym}
+                                        </button>
+                                    ) : (
+                                        <span
+                                            style={{
+                                                color: "var(--accent-primary)",
+                                                textAlign: "right",
+                                                fontWeight: 700,
+                                                fontFamily: "inherit",
+                                                fontSize: 11
+                                            }}
+                                        >
+                                            {sym}
+                                        </span>
+                                    )}
                                 </div>
                             );
+
+                            // On an index chart: both rows clickable.
+                            // On an option chart: only the row that differs
+                            // from the chart strike is clickable.
+                            const atmClickable = !isOptionChart;
+                            const itmClickable = !isOptionChart || hasItm;
 
                             return (
                                 <>
                                     {focusRow(
                                         "Option Focus (ATM)",
                                         debug.optionSymbol,
-                                        debug.optionStrike
+                                        debug.optionStrike,
+                                        atmClickable
                                     )}
                                     {hasItm &&
                                         focusRow(
                                             "Option Focus (ITM)",
                                             itmSymbol,
-                                            itmNum
+                                            itmNum,
+                                            itmClickable
                                         )}
                                 </>
                             );
