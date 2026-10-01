@@ -227,10 +227,7 @@ export default function AJAdvisoryPanel({
 
                             // Detect if we're on an option chart by checking if the
                             // chart symbol itself contains CE or PE (option contract).
-                            // On index charts (NIFTY, SENSEX), the engine builds option
-                            // suggestions but the chart symbol doesn't contain CE/PE.
-                            const isOptionChart =
-                                /\b(CE|PE)\b/.test(String(debug.symbol || ""));
+                            const isOptionChart = /\b(CE|PE)\b/.test(String(debug.symbol || ""));
 
                             const focusRow = (
                                 label: string,
@@ -276,8 +273,7 @@ export default function AJAdvisoryPanel({
                                                     return;
                                                 }
 
-                                                // AJ FIX: zero-pad the expiry before
-                                                // passing to the backend so 6OCT → 06OCT
+                                                // Zero-pad the expiry
                                                 const rawExp = String(debug.optionExpiry).trim();
                                                 const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(rawExp);
                                                 const paddedExpiry = compactMatch
@@ -305,12 +301,8 @@ export default function AJAdvisoryPanel({
                                                 color: "var(--accent-primary)",
                                                 textAlign: "right",
                                                 fontWeight: 700,
-                                                cursor: onOptionFocus
-                                                    ? "pointer"
-                                                    : "default",
-                                                textDecoration: onOptionFocus
-                                                    ? "underline"
-                                                    : "none",
+                                                cursor: onOptionFocus ? "pointer" : "default",
+                                                textDecoration: onOptionFocus ? "underline" : "none",
                                                 textUnderlineOffset: 2,
                                                 fontFamily: "inherit",
                                                 fontSize: 11
@@ -334,25 +326,22 @@ export default function AJAdvisoryPanel({
                                 </div>
                             );
 
-                            // On option charts: ATM row shows chart's own strike, 
-                            // so compare the ATM strike (debug.optionStrike) with ITM strike.
-                            // If they're different, chart = ATM → ATM non-clickable, ITM clickable
-                            // If chart = ITM, then ATM clickable, ITM non-clickable
-                            const atmStrike = debug.optionStrike;
-                            const atmClickable = !isOptionChart ? true : (hasItm && atmStrike !== itmNum);
-                            const itmClickable = !isOptionChart ? true : (hasItm && atmStrike === itmNum);
+                            // On option charts: compare the symbol text directly to determine clickability
+                            // If the row's symbol matches the chart's symbol exactly, make it non-clickable
+                            const chartSymbolClean = String(debug.symbol || "").trim().toUpperCase();
+                            const atmSymbolClean = String(debug.optionSymbol || "").trim().toUpperCase();
+                            const itmSymbolClean = String(itmSymbol || "").trim().toUpperCase();
 
-                            console.log("ADVISORY PANEL DEBUG:", {
+                            const atmClickable = !isOptionChart ? true : (atmSymbolClean !== chartSymbolClean);
+                            const itmClickable = !isOptionChart ? true : (itmSymbolClean !== chartSymbolClean);
+
+                            console.log("CLICKABILITY DEBUG:", {
                                 isOptionChart,
-                                atmStrike,
-                                itmNum,
-                                hasItm,
+                                chartSymbol: chartSymbolClean,
+                                atmSymbol: atmSymbolClean,
+                                itmSymbol: itmSymbolClean,
                                 atmClickable,
-                                itmClickable,
-                                optionStrike: debug.optionStrike,
-                                underlying: debug.optionUnderlying,
-                                expiry: debug.optionExpiry,
-                                optionType: debug.optionType
+                                itmClickable
                             });
 
                             return (

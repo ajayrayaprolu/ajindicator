@@ -339,17 +339,34 @@ export default function SymbolSelector({
                 const data = await response.json();
 
                 const results = Array.isArray(data.results)
-                    ? data.results.map((item: any) => ({
-                        symbol: item.symbol,
-                        displayName: `${item.underlying} ${item.strike} ${item.optionType}`,
-                        exchange: item.exchange,
-                        type: "OPTION",
-                        feedSource: "FYERS",
-                        expiry: item.expiry,
-                        strike: item.strike,
-                        optionType: item.optionType,
-                        underlying: item.underlying
-                    }))
+                    ? data.results.map((item: any) => {
+                        // Format expiry as DDMMM (e.g., 06OCT)
+                        const rawExpiry = String(item.expiry ?? "").trim();
+                        const MONTH_ABBR = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+                        let displayExpiry = rawExpiry;
+                        const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
+                        if (isoMatch) {
+                            displayExpiry = `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
+                        } else {
+                            const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(rawExpiry);
+                            if (compactMatch) {
+                                displayExpiry = `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2].toUpperCase()}`;
+                            }
+                        }
+
+                        return {
+                            symbol: item.symbol,
+                            displayName: `${item.underlying} ${displayExpiry} ${item.strike}${item.optionType}`,
+                            exchange: item.exchange,
+                            type: "OPTION",
+                            feedSource: "FYERS",
+                            expiry: item.expiry,
+                            strike: item.strike,
+                            optionType: item.optionType,
+                            underlying: item.underlying
+                        };
+                    })
                     : [];
 
                 return prioritizeStrikeResults(results, text);
@@ -367,17 +384,34 @@ export default function SymbolSelector({
                 const data = await response.json();
 
                 return Array.isArray(data.results)
-                    ? data.results.map((item: any) => ({
-                        symbol: item.symbol, // EXCHANGE|TOKEN — authoritative, already resolved
-                        displayName: `${item.underlying} ${item.strike} ${item.optionType}`,
-                        exchange: item.exchange,
-                        type: "OPTION",
-                        feedSource: "ALICEBLUE",
-                        expiry: item.expiry,
-                        strike: item.strike,
-                        optionType: item.optionType,
-                        underlying: item.underlying
-                    }))
+                    ? data.results.map((item: any) => {
+                        // Format expiry as DDMMM (e.g., 06OCT)
+                        const rawExpiry = String(item.expiry ?? "").trim();
+                        const MONTH_ABBR = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+                        let displayExpiry = rawExpiry;
+                        const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
+                        if (isoMatch) {
+                            displayExpiry = `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
+                        } else {
+                            const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(rawExpiry);
+                            if (compactMatch) {
+                                displayExpiry = `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2].toUpperCase()}`;
+                            }
+                        }
+
+                        return {
+                            symbol: item.symbol,
+                            displayName: `${item.underlying} ${displayExpiry} ${item.strike}${item.optionType}`,
+                            exchange: item.exchange,
+                            type: "OPTION",
+                            feedSource: "ALICEBLUE",
+                            expiry: item.expiry,
+                            strike: item.strike,
+                            optionType: item.optionType,
+                            underlying: item.underlying
+                        };
+                    })
                     : [];
             }
 
@@ -429,41 +463,43 @@ export default function SymbolSelector({
 
 			const resultsInd = Array.isArray(data.results)
 				? data.results.map((item: any) => {
-			
+
 					const rawExpiry =
 						String(item.expiry ?? "")
 							.trim()
 							.toUpperCase();
-			
+
 					const MONTH_ABBR = [
 						"JAN","FEB","MAR","APR","MAY","JUN",
 						"JUL","AUG","SEP","OCT","NOV","DEC"
 					];
-			
+
 					let displayExpiry = rawExpiry;
-			
+
 					const isoMatch =
 						/^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
-			
+
 					if (isoMatch) {
-			
 						displayExpiry =
 							`${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
-			
 					} else {
-			
 						const spacedMatch =
 							/^(\d{1,2})\s+([A-Z]{3})(?:\s+\d{4})?$/.exec(rawExpiry);
-			
+
 						if (spacedMatch) {
 							displayExpiry =
-								`${spacedMatch[1]}${spacedMatch[2]}`;
+								`${String(Number(spacedMatch[1])).padStart(2, "0")}${spacedMatch[2]}`;
+						} else {
+							const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(rawExpiry);
+							if (compactMatch) {
+								displayExpiry = `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2].toUpperCase()}`;
+							}
 						}
 					}
-			
+
 					const canonicalDisplayName =
 						`${item.underlying} ${displayExpiry} ${item.strike}${item.optionType}`;
-			
+
 					return {
 						symbol: item.symbol,
 						displayName: canonicalDisplayName,
@@ -539,9 +575,11 @@ export default function SymbolSelector({
         // (Same behavior as before category tabs existed.)
         //--------------------------------------------------
 
+        // AJ FIX: strike-number searches (e.g., "22400", "22400 PE") should trigger option search
+        const strikeOnlyQuery = text.match(/\d{3,6}/)?.[0];
         const optionQuery = (fyers || isAliceBlue || isIndstocks || isZerodha) ? parseFyersOptionQuery(text) : null;
 
-        if (optionQuery) {
+        if (optionQuery || strikeOnlyQuery) {
 
             const endpoint =
                 fyers
@@ -555,41 +593,83 @@ export default function SymbolSelector({
             const feedSourceLabel =
                 fyers ? "FYERS" : isAliceBlue ? "ALICEBLUE" : isIndstocks ? "INDSTOCKS" : "ZERODHA";
 
-			const params = new URLSearchParams({ limit: "50" });
-			
-			if (optionQuery.underlying) {
-				params.set("underlying", optionQuery.underlying);
-			}
-			
-			if (optionQuery.expiry) {
-				params.set("expiry", optionQuery.expiry);
-			}
-			
-			if (optionQuery.strike) {
-				params.set("strike", optionQuery.strike);
-			}
-			
-			if (optionQuery.optionType) {
-				params.set("type", optionQuery.optionType);
-			}
+            // AJ FIX: support strike-number searches in ALL tab (same as OPTIONS tab)
+            const strikeQuery = text.match(/\d{3,6}/)?.[0];
+            const underlyingText = strikeQuery
+                ? text.replace(strikeQuery, "").replace(/\b(CE|PE)\b/gi, "").trim()
+                : text.trim();
+
+            const params = new URLSearchParams({
+                underlying: (optionQuery?.underlying || underlyingText || "NIFTY").toUpperCase(),
+                limit: strikeQuery ? "500" : "50"
+            });
+
+            if (optionQuery?.expiry) {
+                params.set("expiry", optionQuery.expiry);
+            }
+
+            if (optionQuery?.strike) {
+                params.set("strike", optionQuery.strike);
+            }
+
+            if (optionQuery?.optionType) {
+                params.set("type", optionQuery.optionType);
+            }
 
             const response = await fetch(`${endpoint}?${params.toString()}`);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
 
-            return Array.isArray(data.results)
-                ? data.results.map((item: any) => ({
-                    symbol: item.symbol,
-                    displayName: item.displayName || `${item.underlying} ${item.strike} ${item.optionType}`,
-                    exchange: item.exchange,
-                    type: "OPTION",
-                    feedSource: feedSourceLabel,
-                    expiry: item.expiry,
-                    strike: item.strike,
-                    optionType: item.optionType,
-                    underlying: item.underlying
-                }))
+            const results = Array.isArray(data.results)
+                ? data.results.map((item: any) => {
+                    // Format expiry as DDMMM (e.g., 06OCT)
+                    let rawExpiry = String(item.expiry ?? "").trim().toUpperCase();
+                    const MONTH_ABBR = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+                    let displayExpiry = rawExpiry;
+
+                    // Handle ISO format: "2026-10-06"
+                    const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
+                    if (isoMatch) {
+                        displayExpiry = `${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
+                    } else {
+                        // Handle MM/DD/YYYY format with optional time: "09/15/2026 14:00" or "09/15/2026"
+                        const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(rawExpiry);
+                        if (slashMatch) {
+                            const month = Number(slashMatch[1]);
+                            const day = Number(slashMatch[2]);
+                            displayExpiry = `${String(day).padStart(2, "0")}${MONTH_ABBR[month - 1]}`;
+                        } else {
+                            // Handle spaced format "27 OCT" or "27 OCT 2026"
+                            const spacedMatch = /^(\d{1,2})\s+([A-Z]{3})(?:\s+\d{4})?$/.exec(rawExpiry);
+                            if (spacedMatch) {
+                                displayExpiry = `${String(Number(spacedMatch[1])).padStart(2, "0")}${spacedMatch[2]}`;
+                            } else {
+                                // Handle compact format "6OCT" or "06OCT"
+                                const compactMatch = /^(\d{1,2})([A-Z]{3})$/.exec(rawExpiry);
+                                if (compactMatch) {
+                                    displayExpiry = `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2]}`;
+                                }
+                            }
+                        }
+                    }
+
+                    return {
+                        symbol: item.symbol,
+                        displayName: `${item.underlying} ${displayExpiry} ${item.strike}${item.optionType}`,
+                        exchange: item.exchange,
+                        type: "OPTION",
+                        feedSource: feedSourceLabel,
+                        expiry: item.expiry,
+                        strike: item.strike,
+                        optionType: item.optionType,
+                        underlying: item.underlying
+                    };
+                })
                 : [];
+
+            // Prioritize by strike match and nearest expiry for strike searches
+            return prioritizeStrikeResults(results, text);
         }
 
             const url = fyers
