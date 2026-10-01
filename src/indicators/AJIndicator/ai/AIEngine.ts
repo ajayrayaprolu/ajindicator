@@ -647,23 +647,21 @@ export class AIEngine {
         // both are equally visible with logging/tracing on.
         //--------------------------------------------------
 
-		if (AJLoggingGate.isEnabled()) {
-			console.log(
-				"[AI ENGINE]",
-				{
-					aiScoreLong,
-					aiScoreShort,
-					aiBestScore,
-					aiBestDir,
-					aiScalperEnabled: !!input.aiScalperEnabled,
-					aiCorePassThreshold,
-					aiCorePass,
-					aiFastScalp,
-					aiSafeEntry,
-					aiModeText
-				}
-			);
-		}
+		AJLoggingGate.log(
+			"[AI ENGINE]",
+			{
+				aiScoreLong,
+				aiScoreShort,
+				aiBestScore,
+				aiBestDir,
+				aiScalperEnabled: !!input.aiScalperEnabled,
+				aiCorePassThreshold,
+				aiCorePass,
+				aiFastScalp,
+				aiSafeEntry,
+				aiModeText
+			}
+		);
 
         //--------------------------------------------------
         // RESULT

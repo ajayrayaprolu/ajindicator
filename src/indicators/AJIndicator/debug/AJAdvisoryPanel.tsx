@@ -21,6 +21,7 @@ import {
 import type { AJDebugTradeReasons } from "./AJDebugBuilder";
 
 import { ActiveChartStore } from "../../../store/ActiveChartStore";
+import { AJLoggingGate } from "./AJLoggingGate";
 
 //======================================================
 // COPY MAPPING
@@ -335,7 +336,7 @@ export default function AJAdvisoryPanel({
                             const atmClickable = !isOptionChart ? true : (atmSymbolClean !== chartSymbolClean);
                             const itmClickable = !isOptionChart ? true : (itmSymbolClean !== chartSymbolClean);
 
-                            console.log("CLICKABILITY DEBUG:", {
+                            AJLoggingGate.log("CLICKABILITY DEBUG:", {
                                 isOptionChart,
                                 chartSymbol: chartSymbolClean,
                                 atmSymbol: atmSymbolClean,

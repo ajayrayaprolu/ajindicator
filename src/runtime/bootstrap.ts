@@ -8,7 +8,7 @@ import { RSIReversalStrategy} from "./strategies/RSIReversalStrategy";
 import {VWAPReclaimStrategy} from "./strategies/VWAPReclaimStrategy";
 import {ATRBreakoutStrategy} from "./strategies/ATRBreakoutStrategy";
 import {ADXTrendStrategy} from "./strategies/ADXTrendStrategy";
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
+import { AJLoggingGate } from "../indicators/AJIndicator/debug/AJLoggingGate";
 //=================================================================
 
 export function bootstrapRuntime() {

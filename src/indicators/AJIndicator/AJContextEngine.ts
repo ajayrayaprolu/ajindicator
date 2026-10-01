@@ -112,6 +112,7 @@
 
 import { ContextEngine } from "./context/ContextEngine";
 import { ConfidenceEngine } from "./engines/Confidence";
+import { AJLoggingGate } from "./debug/AJLoggingGate";
 
 import type { ContextInputs } from "./context/AJContextTypes";
 import type { AJContextResult } from "./AJTypes";
@@ -170,13 +171,13 @@ export class AJContextEngine {
 		//--------------------------------------------------
 		// RV-07E TRACE (Temporary)
 		//--------------------------------------------------
-		
-		console.group("[RV-07E TRACE]");
+
+		AJLoggingGate.group("[RV-07E TRACE]");
 		//--------------------------------------------------
 		// CONTEXT PRODUCER
 		//--------------------------------------------------
-		
-		console.table({
+
+		AJLoggingGate.table({
 		
 			contextEngine: {
 		
@@ -195,7 +196,7 @@ export class AJContextEngine {
 		//--------------------------------------------------
 		// ROUTING RESULT
 		//--------------------------------------------------
-		console.table({
+		AJLoggingGate.table({
 		
 			routing: {
 		
@@ -221,7 +222,7 @@ export class AJContextEngine {
 		//--------------------------------------------------
 		// CONFIDENCE RESULT
 		//--------------------------------------------------
-		console.table({
+		AJLoggingGate.table({
 		
 			confidenceEngine: {
 		
@@ -250,7 +251,7 @@ export class AJContextEngine {
 		
 		});
 
-		console.groupEnd();
+		AJLoggingGate.groupEnd();
 
 		//--------------------------------------------------
 		// RETURN CANONICAL OUTPUT

@@ -280,20 +280,78 @@ export default function SymbolSelector({
         const typeQuery = query.match(/\b(CE|PE)\b/i)?.[1]?.toUpperCase();
 
         const expiryRank = (exp: string | undefined): number => {
+            if (!exp) return Number.MAX_SAFE_INTEGER;
 
-            const t = Date.parse(String(exp ?? ""));
+            const expStr = String(exp).trim();
 
-            return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+            // Try standard Date.parse first
+            let t = Date.parse(expStr);
+            if (Number.isFinite(t)) return t;
+
+            // Handle ISO format: "2026-10-06"
+            const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(expStr);
+            if (isoMatch) {
+                return new Date(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3])).getTime();
+            }
+
+            // Handle MM/DD/YYYY format: "09/15/2026" or "09/15/2026 14:00"
+            const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(expStr);
+            if (slashMatch) {
+                return new Date(Number(slashMatch[3]), Number(slashMatch[1]) - 1, Number(slashMatch[2])).getTime();
+            }
+
+            // Handle "DD MMM YYYY" or "DD MMM": "27 OCT 2026" or "27 OCT"
+            const MONTH_MAP: Record<string, number> = {
+                "JAN": 0, "FEB": 1, "MAR": 2, "APR": 3, "MAY": 4, "JUN": 5,
+                "JUL": 6, "AUG": 7, "SEP": 8, "OCT": 9, "NOV": 10, "DEC": 11
+            };
+            const spacedMatch = /^(\d{1,2})\s+([A-Z]{3})(?:\s+(\d{4}))?/i.exec(expStr);
+            if (spacedMatch) {
+                const month = MONTH_MAP[spacedMatch[2].toUpperCase()];
+                const year = Number(spacedMatch[3] || new Date().getFullYear());
+                if (month !== undefined) {
+                    return new Date(year, month, Number(spacedMatch[1])).getTime();
+                }
+            }
+
+            // Handle compact "DDMMM": "06OCT" or "27OCT"
+            const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(expStr);
+            if (compactMatch) {
+                const month = MONTH_MAP[compactMatch[2].toUpperCase()];
+                if (month !== undefined) {
+                    return new Date(new Date().getFullYear(), month, Number(compactMatch[1])).getTime();
+                }
+            }
+
+            return Number.MAX_SAFE_INTEGER;
         };
+
+        const now = Date.now();
 
         return results
             .filter(r => r.strike != null)
-            .sort((a, b) =>
-                (Math.abs((a.strike ?? 0) - want) -
-                 Math.abs((b.strike ?? 0) - want)) ||
-                (expiryRank(a.expiry) - expiryRank(b.expiry)) ||
-                String(a.displayName ?? "").localeCompare(String(b.displayName ?? ""))
-            )
+            .sort((a, b) => {
+                // First: sort by strike match (exact strike first)
+                const strikeDiff = Math.abs((a.strike ?? 0) - want) - Math.abs((b.strike ?? 0) - want);
+                if (strikeDiff !== 0) return strikeDiff;
+
+                // Second: prioritize future dates over past dates
+                const aRank = expiryRank(a.expiry);
+                const bRank = expiryRank(b.expiry);
+                const aFuture = aRank >= now;
+                const bFuture = bRank >= now;
+
+                if (aFuture !== bFuture) {
+                    return bFuture ? 1 : -1; // Future dates first
+                }
+
+                // Third: sort by nearest expiry (chronological)
+                const expiryDiff = aRank - bRank;
+                if (expiryDiff !== 0) return expiryDiff;
+
+                // Fourth: alphabetical by displayName
+                return String(a.displayName ?? "").localeCompare(String(b.displayName ?? ""));
+            })
             .filter(r =>
                 !typeQuery ||
                 String(r.optionType ?? "").toUpperCase() === typeQuery
@@ -476,6 +534,7 @@ export default function SymbolSelector({
 
 					let displayExpiry = rawExpiry;
 
+					// Handle ISO format: "2026-10-06"
 					const isoMatch =
 						/^(\d{4})-(\d{2})-(\d{2})$/.exec(rawExpiry);
 
@@ -483,16 +542,26 @@ export default function SymbolSelector({
 						displayExpiry =
 							`${isoMatch[3]}${MONTH_ABBR[Number(isoMatch[2]) - 1]}`;
 					} else {
-						const spacedMatch =
-							/^(\d{1,2})\s+([A-Z]{3})(?:\s+\d{4})?$/.exec(rawExpiry);
-
-						if (spacedMatch) {
-							displayExpiry =
-								`${String(Number(spacedMatch[1])).padStart(2, "0")}${spacedMatch[2]}`;
+						// Handle MM/DD/YYYY format with optional time: "09/15/2026 14:00" or "09/15/2026"
+						const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(rawExpiry);
+						if (slashMatch) {
+							const month = Number(slashMatch[1]);
+							const day = Number(slashMatch[2]);
+							displayExpiry = `${String(day).padStart(2, "0")}${MONTH_ABBR[month - 1]}`;
 						} else {
-							const compactMatch = /^(\d{1,2})([A-Z]{3})$/i.exec(rawExpiry);
-							if (compactMatch) {
-								displayExpiry = `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2].toUpperCase()}`;
+							// Handle spaced format "27 OCT" or "27 OCT 2026"
+							const spacedMatch =
+								/^(\d{1,2})\s+([A-Z]{3})(?:\s+\d{4})?$/.exec(rawExpiry);
+
+							if (spacedMatch) {
+								displayExpiry =
+									`${String(Number(spacedMatch[1])).padStart(2, "0")}${spacedMatch[2]}`;
+							} else {
+								// Handle compact format "6OCT" or "06OCT"
+								const compactMatch = /^(\d{1,2})([A-Z]{3})$/.exec(rawExpiry);
+								if (compactMatch) {
+									displayExpiry = `${String(Number(compactMatch[1])).padStart(2, "0")}${compactMatch[2]}`;
+								}
 							}
 						}
 					}
