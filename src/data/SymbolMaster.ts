@@ -17,7 +17,8 @@ export interface SymbolInfo {
 
   datasource:
     | "Yahoo"
-    | "Binance";
+    | "Binance"
+    | "DeltaExchange";
 
 }
 
@@ -103,6 +104,31 @@ export const SYMBOL_MASTER: SymbolInfo[] = [
     name: "Solana",
     assetClass: "CRYPTO",
     datasource: "Binance"
+  },
+
+  // ======================
+  // CRYPTO (Delta Exchange - perps quoted in USD)
+  // ======================
+
+  {
+    symbol: "BTCUSD",
+    name: "Bitcoin (Delta perp)",
+    assetClass: "CRYPTO",
+    datasource: "DeltaExchange"
+  },
+
+  {
+    symbol: "ETHUSD",
+    name: "Ethereum (Delta perp)",
+    assetClass: "CRYPTO",
+    datasource: "DeltaExchange"
+  },
+
+  {
+    symbol: "XRPUSD",
+    name: "XRP (Delta perp)",
+    assetClass: "CRYPTO",
+    datasource: "DeltaExchange"
   },
 
   // ======================

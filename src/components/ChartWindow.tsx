@@ -347,6 +347,7 @@
  ******************************************************************************/
 
 import { useMemo, useEffect, useRef, useState } from "react";
+import { SymbolRegistry } from "../config/SymbolRegistry";
 import { ActiveChartStore } from "../store/ActiveChartStore";
 //--------------------------------------------------
 // DEBUG
@@ -2802,6 +2803,192 @@ useEffect(() => {
     }
 
     //--------------------------------------------------
+    // DELTA EXCHANGE HISTORY
+    //--------------------------------------------------
+
+    async function loadDeltaHistory() {
+
+        if (!symbol) {
+            return;
+        }
+
+        try {
+
+            // Delta perps are quoted directly (BTCUSD, ETHUSD,
+            // XRPUSD) - the symbol IS the Delta product symbol,
+            // so there is no instrument resolution step here.
+            // Map the app symbol through the registry first
+            // (BTCUSDT -> BTCUSD); fall back to the raw symbol.
+
+            const registryEntry =
+                (SymbolRegistry as Record<string, Record<string, string>>)[
+                    String(chartSymbol || symbol).trim().toUpperCase()
+                ];
+
+            let deltaSymbol =
+                registryEntry?.deltaexchange ??
+                (chartSymbol || symbol);
+
+            if (
+                optionIdentity.isOptionChart &&
+                underlying &&
+                expiry &&
+                Number.isFinite(strike) &&
+                optionType
+            ) {
+
+                const resolveResponse = await fetch(
+                    `/api/deltaexchange/options/resolve?underlying=${encodeURIComponent(
+                        underlying!
+                    )}&expiry=${encodeURIComponent(
+                        expiry!
+                    )}&strike=${encodeURIComponent(
+                        String(strike)
+                    )}&type=${encodeURIComponent(
+                        optionType!.toUpperCase()
+                    )}`
+                );
+
+                if (!resolveResponse.ok) {
+
+                    throw new Error(
+                        `Delta option resolution failed: ${resolveResponse.status}`
+                    );
+
+                }
+
+                const resolvedOption = await resolveResponse.json();
+
+                if (!resolvedOption?.symbol) {
+
+                    throw new Error(
+                        "Delta option resolution returned no contract symbol."
+                    );
+
+                }
+
+                deltaSymbol = String(resolvedOption.symbol)
+                    .trim()
+                    .toUpperCase();
+
+            }
+
+            const response =
+                await fetch(
+                    `/api/deltaexchange/${encodeURIComponent(
+                        deltaSymbol
+                    )}?timeframe=${encodeURIComponent(
+                        timeframe
+                    )}`
+                );
+
+            if (!response.ok) {
+
+                const errorText =
+                    await response.text();
+
+                throw new Error(
+                    `Delta Exchange history request failed: ${response.status} ${errorText}`
+                );
+
+            }
+
+            const raw =
+                await response.json();
+
+            const history =
+                Array.isArray(raw)
+                    ? raw
+                        .map(
+                            (k: any) => ({
+
+                                time:
+                                    Number(k.time) > 1e12
+                                        ? Math.floor(Number(k.time) / 1000)
+                                        : Math.floor(Number(k.time)),
+
+                                open:
+                                    Number(k.open),
+
+                                high:
+                                    Number(k.high),
+
+                                low:
+                                    Number(k.low),
+
+                                close:
+                                    Number(k.close),
+
+                                volume:
+                                    Number(k.volume) || 0
+
+                            })
+                        )
+                        .filter(
+                            (c: Candle) =>
+                                Number.isFinite(c.time) &&
+                                Number.isFinite(c.open) &&
+                                Number.isFinite(c.high) &&
+                                Number.isFinite(c.low) &&
+                                Number.isFinite(c.close)
+                        )
+                    : [];
+
+            if (!mounted) {
+                return;
+            }
+
+            if (!history.length) {
+
+                console.warn(
+                    "[DELTA] No historical candles",
+                    {
+                        requestedSymbol:
+                            symbol,
+
+                        deltaSymbol
+                    }
+                );
+
+                setCandles([]);
+
+                return;
+
+            }
+
+            setCandles(
+                history
+            );
+
+            setFeedError(
+                null
+            );
+
+        }
+        catch (error) {
+
+            if (!mounted) {
+                return;
+            }
+
+            console.error(
+                "[DELTA HISTORY ERROR]",
+                error
+            );
+
+            setCandles([]);
+
+            setFeedError(
+                error instanceof Error
+                    ? error.message
+                    : "Unable to load Delta Exchange historical data."
+            );
+
+        }
+
+    }
+
+    //--------------------------------------------------
     // YAHOO HISTORY
     //--------------------------------------------------
 
@@ -3017,6 +3204,31 @@ useEffect(() => {
         const timer =
             window.setInterval(
                 loadBinanceHistory,
+                5000
+            );
+
+        return () => {
+            mounted = false;
+            window.clearInterval(timer);
+        };
+    }
+
+    //--------------------------------------------------
+    // DELTA EXCHANGE
+    //--------------------------------------------------
+
+    if (
+        normalizedDatasource === "deltaexchange"
+    ) {
+
+        setCandles([]);
+        setFeedError(null);
+
+        loadDeltaHistory();
+
+        const timer =
+            window.setInterval(
+                loadDeltaHistory,
                 5000
             );
 

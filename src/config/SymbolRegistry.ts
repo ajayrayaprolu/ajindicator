@@ -34,17 +34,20 @@ export const SymbolRegistry = {
 
   BTCUSDT: {
     yahoo: "BTCUSDT",
-    binance: "BTCUSDT"
+    binance: "BTCUSDT",
+    deltaexchange: "BTCUSD"
   },
 
   ETHUSDT: {
     yahoo: "ETHUSDT",
-    binance: "ETHUSDT"
+    binance: "ETHUSDT",
+    deltaexchange: "ETHUSD"
   },
 
   SOLUSDT: {
     yahoo: "SOLUSDT",
-    binance: "SOLUSDT"
+    binance: "SOLUSDT",
+    deltaexchange: "SOLUSD"
   },
 
   // XAUUSD remains the application/search symbol.
@@ -53,6 +56,28 @@ export const SymbolRegistry = {
   XAUUSD: {
     yahoo: "XAUUSD",
     binance: "XAUUSDT"
+  },
+
+  // ==============================
+  // DELTA EXCHANGE (crypto perps)
+  // ==============================
+
+  BTCUSD: {
+    yahoo: "BTC-USD",
+    binance: "BTCUSDT",
+    deltaexchange: "BTCUSD"
+  },
+
+  ETHUSD: {
+    yahoo: "ETH-USD",
+    binance: "ETHUSDT",
+    deltaexchange: "ETHUSD"
+  },
+
+  XRPUSD: {
+    yahoo: "XRP-USD",
+    binance: "XRPUSDT",
+    deltaexchange: "XRPUSD"
   },
 
   USDINR: {

@@ -32,6 +32,7 @@ const FEEDS = [
 	"Upstox",
     "Dhan",
 	"Binance",
+	"DeltaExchange",
 	"TwelveData"
 
 ] as const;

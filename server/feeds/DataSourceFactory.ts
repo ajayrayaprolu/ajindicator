@@ -10,6 +10,7 @@ import { ZerodhaFeed } from "./ZerodhaFeed";
 import { UpstoxFeed } from "./UpstoxFeed";
 import { AliceblueFeed } from "./AliceblueFeed";
 import { TwelveDataFeed } from "./TwelveDataFeed";
+import { DeltaExchangeFeed } from "../deltaexchange/DeltaExchangeFeed";
 
 //=========================================================
 export function getFeed(
@@ -38,6 +39,9 @@ export function getFeed(
 
     case "TwelveData":
       return new TwelveDataFeed();
+
+    case "DeltaExchange":
+      return new DeltaExchangeFeed();
 
     default:
       return new YahooFeed();

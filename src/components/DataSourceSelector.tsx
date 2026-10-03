@@ -27,6 +27,7 @@ const DATA_SOURCES = [
   "Upstox",
   "Dhan",
   "Binance",
+  "DeltaExchange",
   "TwelveData"
 ] as const;
 

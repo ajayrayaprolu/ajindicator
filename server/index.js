@@ -72,6 +72,10 @@ import {
     createBinanceFeed
 } from "./binance/BinanceFeedAdapter.js";
 
+import {
+    createDeltaExchangeFeed
+} from "./deltaexchange/DeltaExchangeFeedAdapter.js";
+
 //============================
 // FYERS import
 //============================
@@ -137,6 +141,7 @@ import {
 } from "./aliceblue/symbols.js";
 
 import aliceBlueOptionsRouter from "./aliceblue/optionsRoute.js";
+import deltaExchangeOptionsRouter from "./deltaexchange/optionsRoute.js";
 import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
 
 import {
@@ -195,6 +200,11 @@ registerFeed(
 );
 
 registerFeed(
+    "deltaexchange",
+    createDeltaExchangeFeed()
+);
+
+registerFeed(
     "fyers",
     createFyersFeed()
 );
@@ -233,6 +243,11 @@ app.use(
 app.use(
     "/api/aliceblue/options",
     aliceBlueOptionsRouter
+);
+
+app.use(
+    "/api/deltaexchange/options",
+    deltaExchangeOptionsRouter
 );
 
 app.use(
@@ -1640,6 +1655,215 @@ app.get(
                         error?.response?.data ??
                         error?.message ??
                         "Binance fetch failed"
+                });
+        }
+
+    }
+);
+
+//=====================
+// Delta Exchange API get
+//=====================
+
+app.get(
+    "/api/deltaexchange/:symbol",
+    async (req, res) => {
+
+        try {
+
+            const symbol =
+                String(
+                    req.params.symbol ?? ""
+                )
+                    .trim()
+                    .toUpperCase()
+                    .replace(
+                        /[^A-Z0-9._-]/g,
+                        ""
+                    );
+
+
+            const interval =
+                String(
+                    req.query.timeframe ??
+                    req.query.interval ??
+                    "1m"
+                );
+
+
+            if (!symbol) {
+                return res
+                    .status(400)
+                    .json({
+
+                        error:
+                            "Delta Exchange symbol is required."
+                    });
+            }
+
+
+            // Log each symbol+timeframe once per process,
+            // not on every 5s poll - polling is the normal
+            // operating state and is silent.
+            globalThis.__deltaLogged =
+                globalThis.__deltaLogged || new Set();
+
+            const deltaLogKey = `${symbol}:${interval}`;
+
+            if (!globalThis.__deltaLogged.has(deltaLogKey)) {
+
+                globalThis.__deltaLogged.add(deltaLogKey);
+
+                console.log(
+                    `[DELTA API] ${symbol} ${interval}`
+                );
+            }
+
+
+            // Public endpoint - no auth needed for candles.
+            // India platform resolutions are letter-based:
+            // 1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 1d, 1w
+            const RESOLUTION_MAP = {
+                "1m": "1m",  "3m": "3m",  "5m": "5m",
+                "15m": "15m", "30m": "30m", "1h": "1h",
+                "2h": "2h", "4h": "4h", "6h": "6h",
+                "1d": "1d", "1w": "1w"
+            };
+
+            const resolution =
+                RESOLUTION_MAP[interval] ?? "5";
+
+            const stepSeconds = {
+                "1m": 60, "3m": 180, "5m": 300, "15m": 900,
+                "30m": 1800, "1h": 3600, "2h": 7200,
+                "4h": 14400, "6h": 21600,
+                "1d": 86400, "1w": 604800
+            };
+
+            const step =
+                stepSeconds[resolution] ?? 300;
+
+            const end =
+                Math.floor(Date.now() / 1000);
+
+            const start =
+                end - 1000 * step;
+
+
+            const apiBase =
+                process.env.DELTA_API_BASE ??
+                "https://api.india.delta.exchange";
+
+
+            const response =
+                await axios.get(
+
+                    `${apiBase}/v2/history/candles`,
+
+                    {
+
+                        timeout:
+                            10000,
+
+                        params: {
+
+                            symbol,
+
+                            resolution,
+
+                            start,
+
+                            end
+                        }
+                    }
+                );
+
+
+            const rows =
+                Array.isArray(
+                    response?.data?.result
+                )
+                    ? response.data.result
+                    : [];
+
+
+            // Normalize into the Candle shape the frontend
+            // already consumes (epoch seconds + OHLCV).
+            const candles =
+                rows
+                    .map((c) => ({
+
+                        time:
+                            Number(c.time) > 1e12
+                                ? Math.floor(Number(c.time) / 1000)
+                                : Math.floor(Number(c.time)),
+
+                        open:
+                            Number(c.open),
+
+                        high:
+                            Number(c.high),
+
+                        low:
+                            Number(c.low),
+
+                        close:
+                            Number(c.close),
+
+                        volume:
+                            Number(c.volume ?? 0)
+                    }))
+                    .filter((c) =>
+                        Number.isFinite(c.time) &&
+                        Number.isFinite(c.open) &&
+                        Number.isFinite(c.high) &&
+                        Number.isFinite(c.low) &&
+                        Number.isFinite(c.close)
+                    );
+
+
+            return res.json(candles);
+
+
+        } catch (error) {
+
+            console.error(
+
+                "[DELTA ERROR]",
+
+                {
+
+                    symbol:
+                        req.params?.symbol,
+
+                    timeframe:
+                        req.query?.timeframe ??
+                        req.query?.interval ??
+                        "1m",
+
+                    status:
+                        error?.response?.status,
+
+                    data:
+                        error?.response?.data,
+
+                    message:
+                        error?.message
+                }
+            );
+
+
+            return res
+                .status(
+                    error?.response?.status ??
+                    500
+                )
+                .json({
+
+                    error:
+                        error?.response?.data ??
+                        error?.message ??
+                        "Delta Exchange fetch failed"
                 });
         }
 

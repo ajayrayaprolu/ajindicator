@@ -64,6 +64,11 @@ import {
     searchIndstocksOptions
 } from "../indstocks/symbols.js";
 
+import {
+    resolveDeltaOptionContract,
+    isDeltaDatasource
+} from "../deltaexchange/DeltaOptionResolver.ts";
+
 export type OptionDatasource =
     | "FYERS"
     | "ALICEBLUE"
@@ -399,6 +404,46 @@ export function supportsOptionContracts(
         provider === "FYERS" ||
         provider === "ALICEBLUE" ||
         provider === "ALICE BLUE" ||
-        provider === "INDSTOCKS"
+        provider === "INDSTOCKS" ||
+        isDeltaDatasource(provider)
     );
+}
+
+/**
+ * v2 (async) resolver. Delta Exchange keeps its option master on the
+ * server (GET /v2/products), so resolving it needs an await - callers
+ * that can await should use this; the sync resolveOptionContract above
+ * keeps working unchanged for every existing datasource.
+ *
+ * Delta resolves through the downloaded product master; everything
+ * else falls through to the original sync resolution.
+ */
+export async function resolveOptionContractAsync(
+    datasource: OptionDatasource,
+    input: OptionContractIdentity
+): Promise<ResolvedOptionContract | null> {
+
+    const provider =
+        normalizeDatasource(datasource);
+
+    if (isDeltaDatasource(provider)) {
+        const contract = await resolveDeltaOptionContract({
+            underlying: input.underlying,
+            expiry: input.expiry,
+            strike: input.strike,
+            optionType: input.optionType
+        });
+
+        if (!contract) {
+            return null;
+        }
+
+        return {
+            datasource: "DELTAEXCHANGE",
+            canonical: normalizeIdentity(input),
+            ...contract
+        } as ResolvedOptionContract;
+    }
+
+    return resolveOptionContract(datasource, input);
 }
