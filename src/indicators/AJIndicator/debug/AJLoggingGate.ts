@@ -90,7 +90,18 @@ export class AJLoggingGate {
     // GLOBAL STATE
     //--------------------------------------------------
 
-    private static enabled = false;
+    // Backed on globalThis: this module can be emitted into more than one
+    // bundle chunk (source mirror and shared core package resolve as two
+    // copies). A plain static would give each copy its own flag, so the
+    // Debug Logging toggle set on one copy would never be observed by
+    // engines running on the other. One global slot = one gate.
+    private static get enabled(): boolean {
+        return (globalThis as unknown as Record<string, unknown>).__AJLoggingGateEnabled__ === true;
+    }
+
+    private static set enabled(value: boolean) {
+        (globalThis as unknown as Record<string, unknown>).__AJLoggingGateEnabled__ = Boolean(value);
+    }
 
     //--------------------------------------------------
     // ENABLE / DISABLE
