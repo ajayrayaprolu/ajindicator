@@ -238,10 +238,13 @@ export class OptionContractResolver {
                 ? "CE"
                 : "PE";
 
+        // AJ FIX: match house convention — Option Focus ITM is
+        // TWO steps from ATM (like the reference platform's
+        // "BEST CE STRIKE"), not one.
         const itm =
             optionType === "CE"
-                ? atm - step
-                : atm + step;
+                ? atm - (step * 2)
+                : atm + (step * 2);
 
         const otm =
             optionType === "CE"

@@ -156,10 +156,10 @@ import {
     createIndstocksFeed
 } from "./indstocks/INDstocksFeed.js";
 
-//import {
-//    initializeIndstocksSymbols,
-//    startSymbolRefresh as startIndstocksSymbolRefresh
-//} from "./indstocks/symbols.js";
+import {
+    initializeIndstocksSymbols,
+    startSymbolRefresh as startIndstocksSymbolRefresh
+} from "./indstocks/symbols.js";
 
 import {
     loadContractMaster,
@@ -2448,40 +2448,22 @@ catch (error) {
         error
     );
 }
-//==========================================================
-//try {
-//    const indstocksSymbolStatus =
-//        await initializeIndstocksSymbols({
-//            downloadIfMissing: true
-//        });
-//
-//    startIndstocksSymbolRefresh();
-//
-//    console.log(
-//        "[INDSTOCKS SYMBOLS] Initialized:",
-//        indstocksSymbolStatus
-//    );
-//}
-//catch (error) {
-//    console.error(
-//        "[INDSTOCKS SYMBOLS] Initialization failed:",
-//        error?.message ??
-//        error
-//    );
-//}
-//=========================================================
 try {
-    const indstocksSymbolsLoaded =
-        loadContractMaster();
+    const indstocksSymbolStatus =
+        await initializeIndstocksSymbols({
+            downloadIfMissing: true
+        });
+
+    startIndstocksSymbolRefresh();
 
     console.log(
-        "[INDSTOCKS SYMBOLS] Local cache loaded:",
-        indstocksSymbolsLoaded
+        "[INDSTOCKS SYMBOLS] Initialized:",
+        indstocksSymbolStatus
     );
 }
 catch (error) {
     console.error(
-        "[INDSTOCKS SYMBOLS] Local cache initialization failed:",
+        "[INDSTOCKS SYMBOLS] Initialization failed:",
         error?.message ??
         error
     );

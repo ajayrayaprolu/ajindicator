@@ -1816,15 +1816,17 @@ export class AJDecisionEngine {
 									? 100
 									: 50;
 
-							// For a CE chart: ITM is one step BELOW,
-							// OTM one step ABOVE. For a PE chart: the
-							// reverse. ATM stays the chart strike.
+							// For a CE chart: ITM is TWO steps BELOW,
+							// OTM one step ABOVE (house convention,
+							// matching the reference platform). For a
+							// PE chart: the reverse. ATM stays the
+							// chart strike.
 							const isPE =
 								String(chartOptionType).toUpperCase() === "PE";
 
 							const itmStrike = isPE
-								? chartStrike + step
-								: chartStrike - step;
+								? chartStrike + (step * 2)
+								: chartStrike - (step * 2);
 
 							const otmStrike = isPE
 								? chartStrike - step

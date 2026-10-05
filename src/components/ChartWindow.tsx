@@ -847,7 +847,7 @@ function normalizeOptionExpiry(
         );
 
     if (compact) {
-        return `${Number(compact[1])}${compact[2]}`;
+        return `${String(Number(compact[1])).padStart(2, "0")}${compact[2]}`;
     }
 
     // MM/DD/YYYY [HH:MM]
@@ -863,7 +863,7 @@ function normalizeOptionExpiry(
             ];
 
         if (month) {
-            return `${Number(usDate[2])}${month}`;
+            return `${String(Number(usDate[2])).padStart(2, "0")}${month}`;
         }
     }
 
@@ -880,7 +880,7 @@ function normalizeOptionExpiry(
             ];
 
         if (month) {
-            return `${Number(isoDate[3])}${month}`;
+            return `${String(Number(isoDate[3])).padStart(2, "0")}${month}`;
         }
     }
 
@@ -897,7 +897,7 @@ function normalizeOptionExpiry(
             ];
 
         if (month) {
-            return `${Number(indianDate[1])}${month}`;
+            return `${String(Number(indianDate[1])).padStart(2, "0")}${month}`;
         }
     }
 
