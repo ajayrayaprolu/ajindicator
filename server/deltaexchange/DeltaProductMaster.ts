@@ -220,6 +220,76 @@ export async function getDeltaOptionContract(
 }
 
 //==========================================
+// CANDLE LIQUIDITY
+//
+// Delta India serves candle history only for liquid
+// series; some listed contracts return an empty result
+// or flat mark-only prints (open=high=low=close,
+// volume=0). A candidate is measured by how many
+// recent candles it actually serves - a deep, varied
+// history means real trades. Result is cached briefly
+// so chart loads do not hammer the endpoint.
+//==========================================
+
+const candleDepthCache = new Map<string, {
+    depth: number;
+    at: number;
+}>();
+const CANDLE_DEPTH_CACHE_MS = 10 * 60 * 1000;   // 10 min
+
+export async function deltaCandleDepth(
+    symbol: string
+): Promise<number> {
+
+    const cached = candleDepthCache.get(symbol);
+    if (
+        cached &&
+        Date.now() - cached.at < CANDLE_DEPTH_CACHE_MS
+    ) {
+        return cached.depth;
+    }
+
+    try {
+
+        const end = Math.floor(Date.now() / 1000);
+        const start = end - 3 * 86400;
+
+        const response = await axios.get(
+            `${REST_API}/v2/history/candles`,
+            {
+                timeout: 10000,
+                params: {
+                    symbol,
+                    resolution: "5m",
+                    start,
+                    end
+                }
+            }
+        );
+
+        const rows = response?.data?.result;
+        const list = Array.isArray(rows) ? rows : [];
+
+        // Depth = candles with real variation or volume.
+        // Flat mark-only prints do not count.
+        const depth = list.filter((c: any) =>
+            Number(c.high) !== Number(c.low) ||
+            Number(c.volume) > 0
+        ).length;
+
+        candleDepthCache.set(symbol, {
+            depth,
+            at: Date.now()
+        });
+
+        return depth;
+
+    } catch {
+        return 0;
+    }
+}
+
+//==========================================
 // NEAREST CONTRACT FALLBACK
 //
 // AJ computes ATM/ITM/OTM strikes arithmetically from the
@@ -302,7 +372,41 @@ export async function getDeltaNearestOptionContract(
             (Number(a?.product_id ?? 0) - Number(b?.product_id ?? 0));
     });
 
-    const p = candidates[0];
+    // Prefer the LIQUID candidate: among the nearest
+    // ranked candidates, pick the one with the deepest
+    // recent candle history. Some listed series return
+    // empty or flat mark-only candles, which chart as
+    // lines and misplace every computed level. Falls
+    // back to the top-ranked candidate if none are
+    // liquid, so the resolver still answers.
+    let p = candidates[0];
+
+    const top = candidates.slice(0, 6);
+
+    if (top.length > 0) {
+
+        const depths = await Promise.all(
+            top.map(c =>
+                deltaCandleDepth(String(c.symbol ?? ""))
+            )
+        );
+
+        let bestIdx = 0;
+        let bestDepth = depths[0] ?? 0;
+
+        for (let i = 1; i < top.length; i++) {
+
+            if (
+                (depths[i] ?? 0) > bestDepth * 2 ||
+                (bestDepth === 0 && (depths[i] ?? 0) > 0)
+            ) {
+                bestIdx = i;
+                bestDepth = depths[i] ?? 0;
+            }
+        }
+
+        p = top[bestIdx];
+    }
 
     return {
         symbol: String(p.symbol ?? ""),
