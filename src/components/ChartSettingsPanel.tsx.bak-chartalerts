@@ -133,9 +133,6 @@ export default function ChartSettingsPanel({
         borderRadius: 6,
         boxShadow: "var(--shadow-heavy)",
         zIndex: 9999,
-        display: "flex",
-        flexDirection: "column",
-        maxHeight: "calc(100% - 48px)",
         overflow: "hidden"
       }}
       onClick={(e) => e.stopPropagation()}
@@ -167,7 +164,7 @@ export default function ChartSettingsPanel({
         </button>
       </div>
 
-      <div style={{ padding: "6px 12px", overflowY: "auto", flex: "1 1 auto", minHeight: 0, overscrollBehavior: "contain" }}>
+      <div style={{ padding: "6px 12px" }}>
         <div
           style={{
             fontSize: 10,

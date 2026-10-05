@@ -138,7 +138,6 @@ import { RuntimeParameters } from "@/runtime/config/RuntimeParameters";
 import { useTheme } from "@/theme/ThemeContext";
 import ChartSettingsPanel from "../components/ChartSettingsPanel";
 import { AlertStore } from "../store/AlertStore";
-import { TelegramNotifier } from "../services/TelegramNotifier";
 
 //========================================================
 const CHART_THEME_COLORS: Record<"dark" | "light", {
@@ -1567,40 +1566,6 @@ export default function ChartEngine({
         });
 
     }, [latestClose, symbol]);
-    //--------------------------------------------------
-    // TELEGRAM: trade-suggested / target-hit messages
-    // (option charts only - TelegramNotifier ignores the rest)
-    //--------------------------------------------------
-
-    useEffect(() => {
-
-        if (!indicators.ajindicator) {
-            return;
-        }
-
-        const panel = hostResult?.runtimePanel;
-
-        const last =
-            candles.length > 0
-                ? candles[candles.length - 1]
-                : null;
-
-        TelegramNotifier.onTick({
-            symbol,
-            entry: Number(panel?.entryPrice),
-            stopLoss: Number(panel?.stopLoss),
-            tps: [
-                Number(panel?.tp1),
-                Number(panel?.tp2),
-                Number(panel?.tp3)
-            ],
-            executionAllowed: panel?.executionAllowed === true,
-            price: latestClose,
-            high: last ? Number(last.high) : null,
-            low: last ? Number(last.low) : null
-        });
-
-    }, [hostResult, candles, latestClose, symbol, indicators.ajindicator]);
 
     //--------------------------------------------------
     // DRAW CANDLES

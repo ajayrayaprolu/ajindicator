@@ -138,7 +138,6 @@ import { RuntimeParameters } from "@/runtime/config/RuntimeParameters";
 import { useTheme } from "@/theme/ThemeContext";
 import ChartSettingsPanel from "../components/ChartSettingsPanel";
 import { AlertStore } from "../store/AlertStore";
-import { TelegramNotifier } from "../services/TelegramNotifier";
 
 //========================================================
 const CHART_THEME_COLORS: Record<"dark" | "light", {
@@ -413,9 +412,6 @@ export default function ChartEngine({
 
     const fmtAlertPrice =
         (p: number) => p >= 100 ? p.toFixed(2) : p.toFixed(4);
-
-    const [alertCount, setAlertCount] =
-        useState(0);
 
     const [hoverTooltip, setHoverTooltip] =
         useState<{ x: number; y: number; text: string } | null>(null);
@@ -1247,83 +1243,22 @@ export default function ChartEngine({
 
     }, [resolvedChartTimezone]);
     //--------------------------------------------------
-    // ALERTS: hover price axis to add / delete
+    // ALERTS: crosshair "+ Alert" button
     //
-    // "+ Alert @ price" shows ONLY while the mouse is on the price
-    // bar (right axis). Moving into the chart pane hides it, so it
-    // never follows the mouse across the chart. Next to an existing
-    // alert the button becomes "Delete alert". Double-clicking an
-    // alert line also deletes it.
+    // Moves a small button next to the price under the
+    // crosshair. Updated through a ref so mouse moves never
+    // re-render ChartEngine.
     //--------------------------------------------------
 
     useEffect(() => {
 
-        const el = chartRef.current;
+        const chartApi = chart.current;
 
-        if (!el) {
+        if (!chartApi) {
             return;
         }
 
-        const hideButton = () => {
-
-            window.clearTimeout(alertHideTimerRef.current);
-
-            if (alertBtnRef.current) {
-                alertBtnRef.current.style.display = "none";
-            }
-
-        };
-
-        const scheduleHide = () => {
-
-            window.clearTimeout(alertHideTimerRef.current);
-
-            alertHideTimerRef.current =
-                window.setTimeout(() => {
-
-                    if (!alertBtnHoveredRef.current) {
-                        hideButton();
-                    }
-
-                }, 350);
-
-        };
-
-        const toChartPoint = (e: MouseEvent) => {
-
-            const rect = el.getBoundingClientRect();
-
-            return {
-                x: e.clientX - rect.left - el.clientLeft,
-                y: e.clientY - rect.top - el.clientTop
-            };
-
-        };
-
-        const axisWidth = (): number => {
-
-            try {
-
-                const w =
-                    chart.current?.priceScale("right").width();
-
-                return w && w > 0 ? w : 70;
-
-            } catch {
-
-                return 70;
-
-            }
-
-        };
-
-        const showButton = (
-            mode: "add" | "delete",
-            y: number,
-            label: string,
-            price: number | null,
-            alertId: string
-        ) => {
+        const handler = (param: any) => {
 
             const btn = alertBtnRef.current;
 
@@ -1331,144 +1266,52 @@ export default function ChartEngine({
                 return;
             }
 
+            if (!param.point || !candleSeries.current) {
+
+                window.clearTimeout(alertHideTimerRef.current);
+
+                alertHideTimerRef.current =
+                    window.setTimeout(() => {
+                        if (!alertBtnHoveredRef.current && alertBtnRef.current) {
+                            alertBtnRef.current.style.display = "none";
+                        }
+                    }, 300);
+
+                return;
+            }
+
+            const price =
+                candleSeries.current.coordinateToPrice(param.point.y);
+
+            if (price == null) {
+                return;
+            }
+
             window.clearTimeout(alertHideTimerRef.current);
 
-            btn.dataset.mode = mode;
-            btn.dataset.alertId = alertId;
-            alertHoverPriceRef.current = price;
+            alertHoverPriceRef.current = Number(price);
 
-            btn.textContent = label;
-            btn.style.right = (axisWidth() + 6) + "px";
-            btn.style.top = Math.max(0, y - 11) + "px";
+            btn.textContent = "+ Alert @ " + fmtAlertPrice(Number(price));
+            btn.style.top = Math.max(0, param.point.y - 11) + "px";
             btn.style.display = "block";
 
         };
 
-        const alertNear = (y: number) => {
-
-            const series = candleSeries.current;
-
-            if (!series) {
-                return undefined;
-            }
-
-            return AlertStore.getActive(symbol).find((a) => {
-
-                const ay = series.priceToCoordinate(a.price);
-
-                return ay != null && Math.abs(Number(ay) - y) <= 9;
-
-            });
-
-        };
-
-        const onMouseMove = (e: MouseEvent) => {
-
-            const series = candleSeries.current;
-            const btn = alertBtnRef.current;
-
-            if (!series || !btn) {
-                return;
-            }
-
-            // mouse is on the button itself: keep it where it is
-            if (btn.contains(e.target as Node)) {
-                return;
-            }
-
-            const pt = toChartPoint(e);
-
-            const onAxis =
-                pt.x >= el.clientWidth - axisWidth() &&
-                pt.x <= el.clientWidth;
-
-            if (!onAxis) {
-                scheduleHide();
-                return;
-            }
-
-            const near = alertNear(pt.y);
-
-            if (near) {
-
-                showButton(
-                    "delete",
-                    Number(series.priceToCoordinate(near.price)),
-                    "\u2715 Delete alert @ " + fmtAlertPrice(near.price),
-                    null,
-                    near.id
-                );
-
-                return;
-            }
-
-            const price = series.coordinateToPrice(pt.y);
-
-            if (price == null) {
-                scheduleHide();
-                return;
-            }
-
-            showButton(
-                "add",
-                pt.y,
-                "+ Alert @ " + fmtAlertPrice(Number(price)),
-                Number(price),
-                ""
-            );
-
-        };
-
-        const onDoubleClick = (e: MouseEvent) => {
-
-            const pt = toChartPoint(e);
-
-            const hit = alertNear(pt.y);
-
-            if (!hit) {
-                return;
-            }
-
-            // keep the chart's own double-click (resize + fit) from firing
-            e.stopPropagation();
-
-            AlertStore.remove(hit.id);
-
-            hideButton();
-
-        };
-
-        el.addEventListener("mousemove", onMouseMove);
-        el.addEventListener("mouseleave", scheduleHide);
-        el.addEventListener("dblclick", onDoubleClick);
+        chartApi.subscribeCrosshairMove(handler);
 
         return () => {
 
             window.clearTimeout(alertHideTimerRef.current);
 
-            el.removeEventListener("mousemove", onMouseMove);
-            el.removeEventListener("mouseleave", scheduleHide);
-            el.removeEventListener("dblclick", onDoubleClick);
+            try {
+                chartApi.unsubscribeCrosshairMove(handler);
+            } catch {
+                // chart already removed
+            }
 
         };
 
-    }, [symbol]);
-
-    //--------------------------------------------------
-    // ALERTS: count for the clear-all button
-    //--------------------------------------------------
-
-    useEffect(() => {
-
-        const update = () => {
-            setAlertCount(AlertStore.getActive(symbol).length);
-        };
-
-        update();
-
-        return AlertStore.subscribe(update);
-
-    }, [symbol]);
+    }, []);
 
     //--------------------------------------------------
     // ALERTS: sync price lines
@@ -1567,40 +1410,6 @@ export default function ChartEngine({
         });
 
     }, [latestClose, symbol]);
-    //--------------------------------------------------
-    // TELEGRAM: trade-suggested / target-hit messages
-    // (option charts only - TelegramNotifier ignores the rest)
-    //--------------------------------------------------
-
-    useEffect(() => {
-
-        if (!indicators.ajindicator) {
-            return;
-        }
-
-        const panel = hostResult?.runtimePanel;
-
-        const last =
-            candles.length > 0
-                ? candles[candles.length - 1]
-                : null;
-
-        TelegramNotifier.onTick({
-            symbol,
-            entry: Number(panel?.entryPrice),
-            stopLoss: Number(panel?.stopLoss),
-            tps: [
-                Number(panel?.tp1),
-                Number(panel?.tp2),
-                Number(panel?.tp3)
-            ],
-            executionAllowed: panel?.executionAllowed === true,
-            price: latestClose,
-            high: last ? Number(last.high) : null,
-            low: last ? Number(last.low) : null
-        });
-
-    }, [hostResult, candles, latestClose, symbol, indicators.ajindicator]);
 
     //--------------------------------------------------
     // DRAW CANDLES
@@ -2583,7 +2392,7 @@ export default function ChartEngine({
                 )}
 				
                 {/*==================================================
-                    ADD / DELETE ALERT BUTTON (price axis only)
+                    ADD ALERT BUTTON (follows crosshair price)
                 ==================================================*/}
 
                 <button
@@ -2602,21 +2411,6 @@ export default function ChartEngine({
 
                         e.stopPropagation();
 
-                        const btn = e.currentTarget;
-
-                        alertBtnHoveredRef.current = false;
-
-                        if (btn.dataset.mode === "delete") {
-
-                            if (btn.dataset.alertId) {
-                                AlertStore.remove(btn.dataset.alertId);
-                            }
-
-                            btn.style.display = "none";
-
-                            return;
-                        }
-
                         const price = alertHoverPriceRef.current;
 
                         if (price == null || !Number.isFinite(price)) {
@@ -2634,9 +2428,12 @@ export default function ChartEngine({
                                     : "above"
                         });
 
-                        btn.style.display = "none";
+                        if (alertBtnRef.current) {
+                            alertBtnRef.current.style.display = "none";
+                        }
 
                     }}
+                    title="Add price alert at this level"
                     style={{
                         position: "absolute",
                         right: 70,
@@ -2655,49 +2452,6 @@ export default function ChartEngine({
                         whiteSpace: "nowrap"
                     }}
                 />
-
-                {alertCount > 0 && (
-                    <button
-                        onClick={(e) => {
-
-                            e.stopPropagation();
-
-                            if (
-                                window.confirm(
-                                    "Delete all " + alertCount + " alert(s) on " + symbol + "?"
-                                )
-                            ) {
-                                AlertStore.getActive(symbol).forEach((a) => {
-                                    AlertStore.remove(a.id);
-                                });
-                            }
-
-                        }}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        title="Delete all alerts on this symbol"
-                        style={{
-                            position: "absolute",
-                            bottom: 8,
-                            right: 40,
-                            height: 26,
-                            padding: "0 8px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 4,
-                            background: "var(--bg-panel)",
-                            color: "var(--warning-text)",
-                            border: "1px solid var(--border-primary)",
-                            borderRadius: 4,
-                            cursor: "pointer",
-                            fontSize: 12,
-                            fontWeight: 700,
-                            zIndex: 999,
-                            boxShadow: "var(--shadow)"
-                        }}
-                    >
-                        {"\uD83D\uDDD1"} {alertCount}
-                    </button>
-                )}
                 {hoverTooltip && (
 
                     <div
