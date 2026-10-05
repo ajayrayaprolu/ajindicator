@@ -16,9 +16,24 @@ const DEFAULT_CANDLE_COLORS: CandleColors = {
 
 export { DEFAULT_CANDLE_COLORS };
 
+const DEFAULT_CHART_TIMEZONE = "Asia/Kolkata";
+
+const SUPPORTED_TIMEZONES: { value: string; label: string }[] = [
+  { value: "Asia/Kolkata", label: "(UTC+05:30) Kolkata / IST" },
+  { value: "Etc/UTC", label: "(UTC+00:00) UTC" },
+  { value: "Asia/Dubai", label: "(UTC+04:00) Dubai" },
+  { value: "Asia/Singapore", label: "(UTC+08:00) Singapore" },
+  { value: "Asia/Hong_Kong", label: "(UTC+08:00) Hong Kong" },
+  { value: "Asia/Tokyo", label: "(UTC+09:00) Tokyo" },
+  { value: "Europe/London", label: "(UTC+00:00/+01:00) London" },
+  { value: "America/New_York", label: "(UTC-05:00/-04:00) New York" }
+];
+
 interface Props {
   colors?: CandleColors;
   onChange: (colors: CandleColors) => void;
+  timezone?: string;
+  onTimezoneChange?: (timezone: string) => void;
   onClose: () => void;
 }
 
@@ -94,10 +109,13 @@ function ColorRow({
 export default function ChartSettingsPanel({
   colors,
   onChange,
+  timezone,
+  onTimezoneChange,
   onClose
 }: Props) {
 
   const current: CandleColors = colors ?? DEFAULT_CANDLE_COLORS;
+  const currentTimezone: string = timezone ?? DEFAULT_CHART_TIMEZONE;
 
   function update(partial: Partial<CandleColors>) {
     onChange({ ...current, ...partial });
@@ -183,6 +201,61 @@ export default function ChartSettingsPanel({
           onUpChange={(v) => update({ wickUpColor: v })}
           onDownChange={(v) => update({ wickDownColor: v })}
         />
+
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: "var(--text-muted)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            padding: "10px 0 2px"
+          }}
+        >
+          Time Zone
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "8px 0",
+            borderBottom: "1px solid var(--border-secondary)"
+          }}
+        >
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--text-primary)"
+            }}
+          >
+            Chart time zone
+          </span>
+
+          <select
+            value={currentTimezone}
+            onChange={(e) => onTimezoneChange?.(e.target.value)}
+            style={{
+              flex: "0 0 auto",
+              maxWidth: 170,
+              background: "var(--bg-panel-secondary)",
+              color: "var(--text-primary)",
+              border: "1px solid var(--border-primary)",
+              borderRadius: 4,
+              padding: "4px 6px",
+              fontSize: 12,
+              cursor: "pointer"
+            }}
+          >
+            {SUPPORTED_TIMEZONES.map((tz) => (
+              <option key={tz.value} value={tz.value}>
+                {tz.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div style={{ padding: "10px 0" }}>
           <button

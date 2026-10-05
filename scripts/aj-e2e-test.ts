@@ -13,6 +13,8 @@
  */
 import * as fs from "fs";
 import * as path from "path";
+import * as httpMod from "http";
+import * as httpsMod from "https";
 import { AJRuntimeContextBuilder } from "../src/indicators/AJIndicator/AJRuntimeContextBuilder";
 import { AJPayloadBuilder } from "../src/indicators/AJIndicator/AJPayloadBuilder";
 import { AJDecisionEngine } from "../src/indicators/AJIndicator/AJDecisionEngine";
@@ -53,6 +55,98 @@ if (process.env.AJ_DEBUG !== "1") {
 
 const SYMBOL = "NIFTY";
 const TF = "5m";
+
+// AJ ADD: LIVE mode — pull real candles from the running backend
+// (same REST endpoints the chart uses). Run with:
+//   npx tsx scripts/aj-e2e-test.ts live [datasource]
+// datasource: fyers (default) | indstocks | aliceblue | zerodha
+const LIVE = process.argv[2]?.toLowerCase() === "live";
+const LIVE_SOURCE = (process.argv[3] ?? "fyers").toLowerCase();
+
+// AJ FIX: fetch via https module fallback — global fetch needs
+// Node 18+ and can fail on some TLS/proxy setups.
+function httpGetJson(url: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+        const mod = url.startsWith("http://")
+            ? httpMod
+            : httpsMod;
+        const req = mod.get(url, { headers: { Accept: "application/json" }, timeout: 20000 }, (res: any) => {
+            if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+                httpGetJson(res.headers.location).then(resolve, reject);
+                return;
+            }
+            let body = "";
+            res.setEncoding("utf8");
+            res.on("data", (chunk: string) => (body += chunk));
+            res.on("end", () => {
+                if (res.statusCode !== 200) {
+                    reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 200)}`));
+                    return;
+                }
+                try { resolve(JSON.parse(body)); }
+                catch (e: any) { reject(new Error("Bad JSON from server: " + e.message)); }
+            });
+        });
+        req.on("timeout", () => req.destroy(new Error("Request timed out after 20s")));
+        req.on("error", reject);
+    });
+}
+
+async function loadLiveCandles(): Promise<Candle[]> {
+    const base = process.env.AJ_API_BASE ?? "https://ajtrade.in";
+    const url =
+        LIVE_SOURCE === "fyers"
+            ? `${base}/api/fyers/history?symbol=NIFTY&timeframe=${TF}`
+            : LIVE_SOURCE === "indstocks"
+                ? `${base}/api/indstocks/history?symbol=NIFTY&timeframe=${TF}`
+                : LIVE_SOURCE === "zerodha"
+                    ? `${base}/api/zerodha/history?symbol=NIFTY&timeframe=${TF}`
+                    : `${base}/api/aliceblue/history?symbol=NIFTY&timeframe=${TF}`;
+
+    console.log(`LIVE MODE: fetching NIFTY ${TF} from ${LIVE_SOURCE} (${url}) ...`);
+
+    let data: any;
+    try {
+        // Try global fetch (Node 18+) first
+        data = await (async () => {
+            const res = await fetch(url as any);
+            if (!res.ok) {
+                throw new Error(`Live history request failed: HTTP ${res.status} — is the backend running at ${base}?`);
+            }
+            return res.json();
+        })();
+    } catch (fetchErr: any) {
+        console.log(`global fetch failed (${String(fetchErr?.message ?? fetchErr).slice(0, 80)}) — retrying with https module ...`);
+        data = await httpGetJson(url);
+    }
+    const raw: any[] =
+        Array.isArray(data) ? data : Array.isArray(data?.candles) ? data.candles : [];
+
+    if (raw.length === 0) {
+        throw new Error("Live feed returned 0 candles — check backend feed status.");
+    }
+
+    // Normalize: each row is {time|timestamp, open, high, low, close, volume}
+    const candles: Candle[] = raw
+        .map((r: any) => {
+            const t = Number(r.time ?? r.timestamp ?? r.t);
+            const timeSec = t > 1e12 ? Math.floor(t / 1000) : t; // ms → s
+            return {
+                time: timeSec,
+                open: Number(r.open),
+                high: Number(r.high ?? r.h ?? r.open),
+                low: Number(r.low ?? r.l ?? r.open),
+                close: Number(r.close ?? r.c ?? r.close),
+                volume: Number(r.volume ?? r.vol ?? r.v ?? 0)
+            } as Candle;
+        })
+        .filter(c => Number.isFinite(c.time) && Number.isFinite(c.close))
+        .sort((a, b) => a.time - b.time);
+
+    const last = candles[candles.length - 1];
+    console.log(`Loaded ${candles.length} live candles. Last close: ${last.close} at ${new Date(last.time * 1000).toISOString()}`);
+    return candles;
+}
 
 function makeCandles(scenario: "trend" | "reversal" | "chop", n = 260): Candle[] {
     const out: Candle[] = [];
@@ -178,10 +272,27 @@ function runScenario(name: string, candles: Candle[]) {
     }
 }
 
-console.log(`AJ v2 E2E TEST — ${new Date().toISOString()}`);
-console.log(`Log file: ${LOG_PATH}`);
-runScenario("TREND+PULLBACK", makeCandles("trend"));
-runScenario("REVERSAL(CHOCH)", makeCandles("reversal"));
-runScenario("CHOPPY-RANGE", makeCandles("chop"));
-console.log("\nDone. Full output saved to scripts/aj-e2e-output.txt");
-logStream.end();
+(async () => {
+    console.log(`AJ v2 E2E TEST — ${new Date().toISOString()}`);
+    console.log(`Log file: ${LOG_PATH}`);
+
+    if (LIVE) {
+        //--------------------------------------------------
+        // LIVE MODE: real candles through the same pipeline
+        //--------------------------------------------------
+        try {
+            const live = await loadLiveCandles();
+            runScenario("LIVE:" + LIVE_SOURCE.toUpperCase(), live);
+        } catch (e: any) {
+            console.log("LIVE MODE FAILED: " + String(e?.message ?? e));
+            console.log("Fallback: run without 'live' for synthetic scenarios.");
+        }
+    } else {
+        runScenario("TREND+PULLBACK", makeCandles("trend"));
+        runScenario("REVERSAL(CHOCH)", makeCandles("reversal"));
+        runScenario("CHOPPY-RANGE", makeCandles("chop"));
+    }
+
+    console.log("\nDone. Full output saved to scripts/aj-e2e-output.txt");
+    logStream.end();
+})();

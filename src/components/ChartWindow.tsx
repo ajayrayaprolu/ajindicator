@@ -403,6 +403,10 @@ interface Props {
         wickUpColor: string;
         wickDownColor: string;
     }) => void;
+
+    chartTimezone?: string;
+
+    onChartTimezoneChange?: (timezone: string) => void;
 }
 
 //======================================================
@@ -1092,6 +1096,8 @@ export default function ChartWindow({
     onActivate,
     candleColors,
     onCandleColorsChange,
+    chartTimezone,
+    onChartTimezoneChange,
 }: Props) {
 	
 	//--------------------------------------------------
@@ -4397,6 +4403,8 @@ useEffect(() => {
 								hostResult={hostResult}
 								candleColors={candleColors}
 								onCandleColorsChange={onCandleColorsChange}
+								chartTimezone={chartTimezone}
+								onChartTimezoneChange={onChartTimezoneChange}
 							/>
 						</ChartErrorBoundary>
 					)

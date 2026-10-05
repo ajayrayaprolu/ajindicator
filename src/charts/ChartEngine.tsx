@@ -1,4 +1,4 @@
-﻿/**************************************************************************************************
+/**************************************************************************************************
 // 
 // - File:
 // - ChartEngine.tsx
@@ -341,6 +341,10 @@ export interface ChartEngineProps {
         wickUpColor: string;
         wickDownColor: string;
     }) => void;
+
+    chartTimezone?: string;
+
+    onChartTimezoneChange?: (timezone: string) => void;
 }
 
 
@@ -354,7 +358,9 @@ export default function ChartEngine({
     indicators,
     hostResult,
     candleColors,
-    onCandleColorsChange
+    onCandleColorsChange,
+    chartTimezone,
+    onChartTimezoneChange
 
 }: ChartEngineProps) {
 	
@@ -380,6 +386,9 @@ export default function ChartEngine({
             wickUpColor: "#26a69a",
             wickDownColor: "#ef5350"
         };
+
+    const resolvedChartTimezone =
+        chartTimezone ?? "Asia/Kolkata";
 
     const [hoverTooltip, setHoverTooltip] =
         useState<{ x: number; y: number; text: string } | null>(null);
@@ -773,7 +782,33 @@ export default function ChartEngine({
                         rightOffset:8,
                         fixLeftEdge:false,
                         fixRightEdge:false,
-                        lockVisibleTimeRangeOnResize:true
+                        lockVisibleTimeRangeOnResize:true,
+
+                        tickMarkFormatter:(time:number)=>{
+
+                            return new Intl.DateTimeFormat(
+
+                                "en-IN",
+
+                                {
+
+                                    timeZone:resolvedChartTimezone,
+
+                                    hour:"2-digit",
+
+                                    minute:"2-digit",
+
+                                    hour12:false
+
+                                }
+
+                            ).format(
+
+                                new Date(time*1000)
+
+                            );
+
+                        }
                     },
 
                     localization:{
@@ -788,7 +823,7 @@ export default function ChartEngine({
 
                                 {
 
-                                    timeZone:"Asia/Kolkata",
+                                    timeZone:resolvedChartTimezone,
 
                                     year:"numeric",
 
@@ -1097,7 +1132,94 @@ export default function ChartEngine({
         };
 
     }, []);
-	
+
+    //--------------------------------------------------
+    // SYNC TIMEZONE
+    //
+    // The CREATE CHART effect above only runs once on
+    // mount, so switching the timezone from the settings
+    // panel afterwards needs its own effect that updates
+    // the live chart instead of tearing it down.
+    //--------------------------------------------------
+
+    useEffect(() => {
+
+        if (!chart.current) {
+            return;
+        }
+
+        chart.current.applyOptions({
+
+            timeScale: {
+
+                tickMarkFormatter:(time:number)=>{
+
+                    return new Intl.DateTimeFormat(
+
+                        "en-IN",
+
+                        {
+
+                            timeZone:resolvedChartTimezone,
+
+                            hour:"2-digit",
+
+                            minute:"2-digit",
+
+                            hour12:false
+
+                        }
+
+                    ).format(
+
+                        new Date(time*1000)
+
+                    );
+
+                }
+
+            },
+
+            localization:{
+
+                timeFormatter:(time:number)=>{
+
+                    return new Intl.DateTimeFormat(
+
+                        "en-IN",
+
+                        {
+
+                            timeZone:resolvedChartTimezone,
+
+                            year:"numeric",
+
+                            month:"2-digit",
+
+                            day:"2-digit",
+
+                            hour:"2-digit",
+
+                            minute:"2-digit",
+
+                            hour12:false
+
+                        }
+
+                    ).format(
+
+                        new Date(time*1000)
+
+                    );
+
+                }
+
+            }
+
+        });
+
+    }, [resolvedChartTimezone]);
+
     //--------------------------------------------------
     // DRAW CANDLES
     //--------------------------------------------------
@@ -2069,6 +2191,10 @@ export default function ChartEngine({
                         colors={candleColors}
                         onChange={(newColors) => {
                             onCandleColorsChange?.(newColors);
+                        }}
+                        timezone={resolvedChartTimezone}
+                        onTimezoneChange={(tz) => {
+                            onChartTimezoneChange?.(tz);
                         }}
                         onClose={() => setShowChartSettings(false)}
                     />
