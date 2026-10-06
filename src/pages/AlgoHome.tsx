@@ -2,14 +2,19 @@
 // src/pages/AlgoHome.tsx
 // AJ Institutional — Algo Home Dashboard
 //
-// Phase 1:
-// - Static / interactive dashboard only.
+// Phase 2:
+// - Reuses existing broker symbol-search APIs.
+// - FYERS:     /api/fyers/symbols/search
+// - INDSTOCKS: /api/indstocks/symbols/search
+// - Preserves canonical instrument metadata.
+// - No duplicate market-data implementation.
+// - No duplicate candle implementation.
+// - No duplicate indicator calculations.
 // - No broker order calls.
-// - No changes to Terminal / ChartWindow / feed implementations.
-// - Get Charts opens the existing terminal in a separate tab.
+// - Existing Terminal / ChartWindow remain untouched.
 // ============================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ArrowDownRight,
@@ -20,21 +25,40 @@ import {
   ChevronRight,
   Circle,
   Clock3,
-  ExternalLink,
   Layers3,
-  LineChart,
   Pause,
   Play,
+  Search,
   ShieldCheck,
   Square,
   Target,
   TrendingUp,
   Wallet,
+  X,
   Zap,
 } from "lucide-react";
 
 type Feed = "fyers" | "indstocks";
 type ActivityTab = "positions" | "orders" | "history";
+
+type Instrument = {
+  symbol: string;
+  tradingSymbol?: string;
+  displayName?: string;
+
+  underlying?: string;
+  expiry?: string;
+  strike?: number | string;
+  optionType?: string;
+
+  exchange?: string;
+  feedSource?: string;
+  tokenIdentifier?: string;
+
+  instrumentType?: string;
+
+  [key: string]: unknown;
+};
 
 type Position = {
   symbol: string;
@@ -98,38 +122,458 @@ const history = [
   ["07 Sep", "NIFTY 25,300 CE", "BUY → TARGET", "+₹2,190"],
 ];
 
+const fallbackInstruments: Instrument[] = [];
+
 function money(value: number) {
   return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
 }
 
 function openTerminal() {
   const url = `${window.location.origin}${window.location.pathname}?terminal=1`;
-  window.open(url, "_blank", "noopener,noreferrer");
+
+  window.open(
+    url,
+    "_blank",
+    "noopener,noreferrer",
+  );
 }
 
 function selectFeed(feed: Feed) {
-  const url = `${window.location.origin}${window.location.pathname}?feed=${feed}`;
+  const url =
+    `${window.location.origin}` +
+    `${window.location.pathname}?feed=${feed}`;
+
   window.location.assign(url);
 }
 
-export default function AlgoHome() {
-  const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const initialFeed =
-    params.get("feed") === "indstocks" ? "indstocks" : "fyers";
+/**
+ * Existing broker search responses can differ slightly between
+ * adapters. We normalize the outer response here without creating
+ * another symbol master.
+ */
+function extractSearchItems(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
 
-  const [feed, setFeed] = useState<Feed>(initialFeed);
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const value = payload as Record<string, unknown>;
+
+  const candidates = [
+    value.data,
+    value.results,
+    value.items,
+    value.symbols,
+    value.instruments,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate;
+    }
+
+    if (
+      candidate &&
+      typeof candidate === "object"
+    ) {
+      const nested = candidate as Record<string, unknown>;
+
+      for (const nestedValue of [
+        nested.data,
+        nested.results,
+        nested.items,
+        nested.symbols,
+        nested.instruments,
+      ]) {
+        if (Array.isArray(nestedValue)) {
+          return nestedValue;
+        }
+      }
+    }
+  }
+
+  return [];
+}
+
+/**
+ * Convert the existing broker search result into the canonical
+ * metadata shape required by AlgoHome.
+ *
+ * Important:
+ * We do not reconstruct option symbols from display text.
+ * Unknown broker-specific fields are retained through ...item.
+ */
+function normalizeInstrument(
+  value: unknown,
+  feed: Feed,
+): Instrument | null {
+  if (typeof value === "string") {
+    return {
+      symbol: value,
+      tradingSymbol: value,
+      displayName: value,
+      feedSource: feed,
+    };
+  }
+
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const item = value as Record<string, unknown>;
+
+  const symbol =
+    firstString(
+      item.symbol,
+      item.tradingsymbol,
+      item.tradingSymbol,
+      item.displaySymbol,
+      item.name,
+    );
+
+  if (!symbol) {
+    return null;
+  }
+
+  const tradingSymbol =
+    firstString(
+      item.tradingSymbol,
+      item.tradingsymbol,
+      item.symbol,
+    );
+
+  const displayName =
+    firstString(
+      item.displayName,
+      item.display_name,
+      item.description,
+      item.name,
+      tradingSymbol,
+      symbol,
+    );
+
+  const underlying =
+    firstString(
+      item.underlying,
+      item.underlyingSymbol,
+      item.underlying_symbol,
+      item.baseSymbol,
+    );
+
+  const expiry =
+    firstString(
+      item.expiry,
+      item.expiryDate,
+      item.expiry_date,
+    );
+
+  const strike =
+    firstValue(
+      item.strike,
+      item.strikePrice,
+      item.strike_price,
+    );
+
+  const optionType =
+    firstString(
+      item.optionType,
+      item.option_type,
+      item.optiontype,
+      item.right,
+    );
+
+  const exchange =
+    firstString(
+      item.exchange,
+      item.exchangeSegment,
+      item.exchange_segment,
+    );
+
+  const tokenIdentifier =
+    firstString(
+      item.tokenIdentifier,
+      item.token,
+      item.instrumentToken,
+      item.instrument_token,
+    );
+
+  return {
+    ...item,
+    symbol,
+    tradingSymbol,
+    displayName,
+    underlying,
+    expiry,
+    strike,
+    optionType,
+    exchange,
+    feedSource:
+      firstString(
+        item.feedSource,
+        item.feed_source,
+      ) ?? feed,
+    tokenIdentifier,
+  };
+}
+
+function firstString(
+  ...values: unknown[]
+): string | undefined {
+  for (const value of values) {
+    if (
+      typeof value === "string" &&
+      value.trim().length > 0
+    ) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function firstValue(
+  ...values: unknown[]
+): string | number | undefined {
+  for (const value of values) {
+    if (
+      typeof value === "number" ||
+      typeof value === "string"
+    ) {
+      if (String(value).trim().length > 0) {
+        return value;
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function instrumentLabel(
+  instrument: Instrument,
+) {
+  return (
+    instrument.tradingSymbol ||
+    instrument.symbol ||
+    instrument.displayName ||
+    "Unknown Instrument"
+  );
+}
+
+function instrumentSecondaryLabel(
+  instrument: Instrument,
+) {
+  const parts: string[] = [];
+
+  if (instrument.exchange) {
+    parts.push(instrument.exchange);
+  }
+
+  if (instrument.optionType) {
+    parts.push(String(instrument.optionType));
+  }
+
+  if (
+    instrument.strike !== undefined &&
+    instrument.strike !== null
+  ) {
+    parts.push(`Strike ${instrument.strike}`);
+  }
+
+  if (instrument.expiry) {
+    parts.push(String(instrument.expiry));
+  }
+
+  return parts.join(" · ");
+}
+
+export default function AlgoHome() {
+  const params = useMemo(
+    () =>
+      new URLSearchParams(
+        window.location.search,
+      ),
+    [],
+  );
+
+  const initialFeed: Feed =
+    params.get("feed") === "indstocks"
+      ? "indstocks"
+      : "fyers";
+
+  const [feed, setFeed] =
+    useState<Feed>(initialFeed);
+
   const [activityTab, setActivityTab] =
     useState<ActivityTab>("positions");
-  const [autoTrade, setAutoTrade] = useState(true);
-  const [strategyPaused, setStrategyPaused] = useState(false);
 
-  const handleFeed = (nextFeed: Feed) => {
+  const [autoTrade, setAutoTrade] =
+    useState(true);
+
+  const [strategyPaused, setStrategyPaused] =
+    useState(false);
+
+  const [searchText, setSearchText] =
+    useState("");
+
+  const [searchResults, setSearchResults] =
+    useState<Instrument[]>(fallbackInstruments);
+
+  const [selectedInstrument, setSelectedInstrument] =
+    useState<Instrument | null>(null);
+
+  const [searching, setSearching] =
+    useState(false);
+
+  const [searchError, setSearchError] =
+    useState("");
+
+  const searchAbortRef =
+    useRef<AbortController | null>(null);
+
+  const livePositions =
+    positions.filter(
+      (item) => item.status === "OPEN",
+    );
+
+  const unrealized =
+    livePositions.reduce(
+      (sum, item) => sum + item.pnl,
+      0,
+    );
+
+  /**
+   * Phase 2 broker symbol search.
+   *
+   * This calls the existing broker endpoint.
+   * AlgoHome does not maintain its own symbol database.
+   */
+  useEffect(() => {
+    const query = searchText.trim();
+
+    if (query.length < 2) {
+      setSearchResults([]);
+      setSearchError("");
+      setSearching(false);
+      return;
+    }
+
+    const controller =
+      new AbortController();
+
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = controller;
+
+    const timer = window.setTimeout(
+      async () => {
+        try {
+          setSearching(true);
+          setSearchError("");
+
+          const endpoint =
+            feed === "fyers"
+              ? "/api/fyers/symbols/search"
+              : "/api/indstocks/symbols/search";
+
+          const url =
+            `${endpoint}?q=${encodeURIComponent(query)}`;
+
+          const response =
+            await fetch(url, {
+              method: "GET",
+              headers: {
+                Accept: "application/json",
+              },
+              signal: controller.signal,
+            });
+
+          if (!response.ok) {
+            throw new Error(
+              `Search request failed (${response.status})`,
+            );
+          }
+
+          const payload =
+            await response.json();
+
+          const items =
+            extractSearchItems(payload)
+              .map((item) =>
+                normalizeInstrument(
+                  item,
+                  feed,
+                ),
+              )
+              .filter(
+                (
+                  item,
+                ): item is Instrument =>
+                  item !== null,
+              );
+
+          setSearchResults(items);
+        } catch (error) {
+          if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+          ) {
+            return;
+          }
+
+          setSearchResults([]);
+
+          setSearchError(
+            error instanceof Error
+              ? error.message
+              : "Unable to search instruments.",
+          );
+        } finally {
+          setSearching(false);
+        }
+      },
+      280,
+    );
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchText, feed]);
+
+  const handleFeed = (
+    nextFeed: Feed,
+  ) => {
     setFeed(nextFeed);
+    setSearchText("");
+    setSearchResults([]);
+    setSelectedInstrument(null);
     selectFeed(nextFeed);
   };
 
-  const livePositions = positions.filter((item) => item.status === "OPEN");
-  const unrealized = livePositions.reduce((sum, item) => sum + item.pnl, 0);
+  const handleInstrumentSelect = (
+    instrument: Instrument,
+  ) => {
+    setSelectedInstrument(instrument);
+    setSearchText(
+      instrumentLabel(instrument),
+    );
+    setSearchResults([]);
+  };
+
+  const clearInstrument = () => {
+    setSelectedInstrument(null);
+    setSearchText("");
+    setSearchResults([]);
+  };
+
+  const selectedLabel =
+    selectedInstrument
+      ? instrumentLabel(
+          selectedInstrument,
+        )
+      : "No instrument selected";
 
   return (
     <main className="aj-home">
@@ -458,11 +902,14 @@ export default function AlgoHome() {
           color: #4ade80;
           font-size: 11px;
           font-weight: 750;
+          display: flex;
+          align-items: center;
+          gap: 3px;
         }
 
         .aj-grid {
           display: grid;
-          grid-template-columns: 1.2fr .8fr;
+          grid-template-columns: .8fr 1.2fr;
           gap: 18px;
           margin-bottom: 18px;
         }
@@ -509,7 +956,6 @@ export default function AlgoHome() {
           display: flex;
           flex-wrap: wrap;
           gap: 7px;
-          margin-bottom: 18px;
         }
 
         .aj-indicator {
@@ -525,49 +971,171 @@ export default function AlgoHome() {
           font-weight: 750;
         }
 
-        .aj-chart-placeholder {
-          min-height: 230px;
-          border-radius: 14px;
-          border: 1px dashed rgba(96,165,250,.20);
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .aj-search {
           position: relative;
-          overflow: hidden;
-          background:
-            linear-gradient(rgba(148,163,184,.045) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(148,163,184,.045) 1px, transparent 1px),
-            rgba(2,6,23,.3);
-          background-size: 38px 38px;
+          margin-bottom: 15px;
         }
 
-        .aj-chart-line {
-          width: 72%;
-          height: 110px;
-          border-top: 3px solid #60a5fa;
-          transform: rotate(-5deg) skewX(-13deg);
-          opacity: .7;
-          filter: drop-shadow(0 8px 12px rgba(59,130,246,.18));
-        }
-
-        .aj-buy-marker {
-          position: absolute;
-          left: 58%;
-          top: 38%;
+        .aj-search-input-wrap {
           display: flex;
           align-items: center;
-          gap: 7px;
-          color: #4ade80;
+          gap: 9px;
+          min-height: 45px;
+          padding: 0 13px;
+          border: 1px solid rgba(96,165,250,.24);
+          border-radius: 12px;
+          background: rgba(2,6,23,.42);
+        }
+
+        .aj-search-input-wrap:focus-within {
+          border-color: rgba(59,130,246,.65);
+          box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+        }
+
+        .aj-search-icon {
+          color: #64748b;
+          flex: 0 0 auto;
+        }
+
+        .aj-search-input {
+          width: 100%;
+          border: 0;
+          outline: 0;
+          color: #e5edf8;
+          background: transparent;
+          font-size: 12px;
+        }
+
+        .aj-search-input::placeholder {
+          color: #56647a;
+        }
+
+        .aj-search-clear {
+          border: 0;
+          color: #64748b;
+          background: transparent;
+          cursor: pointer;
+          padding: 3px;
+          display: grid;
+          place-items: center;
+        }
+
+        .aj-search-results {
+          position: absolute;
+          z-index: 30;
+          left: 0;
+          right: 0;
+          top: 52px;
+          max-height: 290px;
+          overflow-y: auto;
+          border: 1px solid rgba(96,165,250,.20);
+          border-radius: 13px;
+          background: rgba(7,13,28,.98);
+          box-shadow: 0 25px 60px rgba(0,0,0,.42);
+        }
+
+        .aj-search-result {
+          width: 100%;
+          display: block;
+          text-align: left;
+          border: 0;
+          border-bottom: 1px solid rgba(148,163,184,.07);
+          padding: 12px 13px;
+          color: #cbd5e1;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .aj-search-result:last-child {
+          border-bottom: 0;
+        }
+
+        .aj-search-result:hover {
+          background: rgba(37,99,235,.10);
+        }
+
+        .aj-result-symbol {
+          color: white;
+          font-size: 12px;
+          font-weight: 850;
+        }
+
+        .aj-result-meta {
+          margin-top: 4px;
+          color: #68778f;
           font-size: 10px;
+        }
+
+        .aj-search-status {
+          padding: 12px 13px;
+          color: #68778f;
+          font-size: 10px;
+        }
+
+        .aj-selected-instrument {
+          display: grid;
+          gap: 8px;
+          padding: 14px;
+          margin-bottom: 16px;
+          border: 1px solid rgba(96,165,250,.18);
+          border-radius: 13px;
+          background: linear-gradient(145deg, rgba(37,99,235,.10), rgba(2,6,23,.25));
+        }
+
+        .aj-selected-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .aj-selected-symbol {
+          color: white;
+          font-size: 15px;
           font-weight: 900;
         }
 
-        .aj-marker-dot {
-          width: 9px;
-          height: 9px;
-          border-radius: 50%;
-          background: #4ade80;
-          box-shadow: 0 0 0 5px rgba(74,222,128,.09);
+        .aj-selected-meta {
+          margin-top: 4px;
+          color: #74839b;
+          font-size: 10px;
+        }
+
+        .aj-selected-remove {
+          border: 0;
+          color: #64748b;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .aj-canonical-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 7px;
+          margin-top: 4px;
+        }
+
+        .aj-canonical-item {
+          padding: 8px;
+          border-radius: 8px;
+          background: rgba(2,6,23,.34);
+        }
+
+        .aj-canonical-label {
+          color: #58677e;
+          font-size: 8px;
+          text-transform: uppercase;
+          font-weight: 800;
+        }
+
+        .aj-canonical-value {
+          margin-top: 3px;
+          color: #b8c5d8;
+          font-size: 10px;
+          font-weight: 750;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .aj-execution {
@@ -774,16 +1342,20 @@ export default function AlgoHome() {
           .aj-bottom-grid {
             grid-template-columns: 1fr;
           }
+
           .aj-stats {
             grid-template-columns: repeat(2,1fr);
           }
+
           .aj-strategy-list {
             grid-template-columns: 1fr;
           }
+
           .aj-topbar-inner {
             flex-wrap: wrap;
             padding: 10px 0;
           }
+
           .aj-feed-tabs {
             order: 3;
             width: 100%;
@@ -794,41 +1366,76 @@ export default function AlgoHome() {
           .aj-shell {
             width: min(100% - 20px, 1500px);
           }
+
           .aj-stats {
             grid-template-columns: 1fr;
           }
+
           .aj-flow {
             flex-direction: column;
             align-items: stretch;
           }
+
           .aj-top-actions {
             width: 100%;
           }
+
           .aj-status {
             flex: 1;
+          }
+
+          .aj-canonical-grid {
+            grid-template-columns: 1fr 1fr;
           }
         }
       `}</style>
 
+      {/* ======================================================
+          TOP BAR
+          ====================================================== */}
+
       <header className="aj-topbar">
         <div className="aj-shell aj-topbar-inner">
+
           <div className="aj-brand">
-            <div className="aj-brand-mark">AJ</div>
+            <div className="aj-brand-mark">
+              AJ
+            </div>
+
             <div>
-              <div className="aj-brand-title">AJ Institutional</div>
-              <div className="aj-brand-sub">Algo Trading Control Center</div>
+              <div className="aj-brand-title">
+                AJ Institutional
+              </div>
+
+              <div className="aj-brand-sub">
+                Algo Trading Control Center
+              </div>
             </div>
           </div>
 
-          <div className="aj-feed-tabs" aria-label="Market feeds">
-            {(["fyers", "indstocks"] as Feed[]).map((item) => (
+          <div
+            className="aj-feed-tabs"
+            aria-label="Market feeds"
+          >
+            {(
+              ["fyers", "indstocks"] as Feed[]
+            ).map((item) => (
               <button
                 key={item}
                 type="button"
-                className={`aj-feed-tab ${feed === item ? "active" : ""}`}
-                onClick={() => handleFeed(item)}
+                className={`aj-feed-tab ${
+                  feed === item
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  handleFeed(item)
+                }
               >
-                <div className="aj-feed-name">{FEED_LABELS[item]}</div>
+                <div className="aj-feed-name">
+                  {FEED_LABELS[item]}
+                </div>
+
                 <div className="aj-feed-status">
                   <span className="aj-live-dot" />
                   Connected · Live
@@ -842,345 +1449,1391 @@ export default function AlgoHome() {
               <span className="aj-live-dot" />
               {FEED_LABELS[feed]} Broker Connected
             </div>
-            <button className="aj-icon-button" title="Notifications">
+
+            <button
+              className="aj-icon-button"
+              title="Notifications"
+              type="button"
+            >
               <Bell size={17} />
             </button>
-            <button className="aj-icon-button" title="Account">
+
+            <button
+              className="aj-icon-button"
+              title="Account"
+              type="button"
+            >
               <Wallet size={17} />
             </button>
           </div>
+
         </div>
       </header>
 
       <div className="aj-shell">
+
+        {/* ====================================================
+            HERO
+            ==================================================== */}
+
         <section className="aj-hero">
+
           <div className="aj-panel aj-hero-main">
-            <div className="aj-eyebrow">AUTOMATED EXECUTION · {FEED_LABELS[feed]}</div>
+
+            <div className="aj-eyebrow">
+              AUTOMATED EXECUTION · {FEED_LABELS[feed]}
+            </div>
+
             <h1 className="aj-h1">
               Turn your indicator signal into a managed trade.
             </h1>
+
             <div className="aj-muted">
-              Your indicator remains the decision source. AJ handles entry,
-              option selection, position monitoring, targets, stop-loss and exit.
+              Your indicator remains the decision source.
+              AJ handles entry, option selection, position
+              monitoring, targets, stop-loss and exit.
             </div>
 
             <div className="aj-flow">
+
               <div className="aj-flow-step">
-                <span className="aj-flow-number">1</span>
+                <span className="aj-flow-number">
+                  1
+                </span>
                 Indicator signal
               </div>
-              <ChevronRight size={15} color="#52627b" />
+
+              <ChevronRight
+                size={15}
+                color="#52627b"
+              />
+
               <div className="aj-flow-step">
-                <span className="aj-flow-number">2</span>
+                <span className="aj-flow-number">
+                  2
+                </span>
                 Wait for entry
               </div>
-              <ChevronRight size={15} color="#52627b" />
+
+              <ChevronRight
+                size={15}
+                color="#52627b"
+              />
+
               <div className="aj-flow-step">
-                <span className="aj-flow-number">3</span>
+                <span className="aj-flow-number">
+                  3
+                </span>
                 Buy option
               </div>
-              <ChevronRight size={15} color="#52627b" />
+
+              <ChevronRight
+                size={15}
+                color="#52627b"
+              />
+
               <div className="aj-flow-step">
-                <span className="aj-flow-number">4</span>
+                <span className="aj-flow-number">
+                  4
+                </span>
                 Target / SL
               </div>
+
             </div>
 
-            <div style={{ display: "flex", gap: 9, marginTop: 22, flexWrap: "wrap" }}>
-              <button type="button" className="aj-primary" onClick={openTerminal}>
-                <ExternalLink size={15} style={{ verticalAlign: "middle", marginRight: 7 }} />
+            <div
+              style={{
+                display: "flex",
+                gap: 9,
+                marginTop: 22,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                type="button"
+                className="aj-primary"
+                onClick={openTerminal}
+              >
                 Get Charts
               </button>
 
               <button
                 type="button"
                 className="aj-secondary"
-                onClick={() => setAutoTrade((value) => !value)}
+                onClick={() =>
+                  setAutoTrade(
+                    (value) => !value,
+                  )
+                }
               >
-                {autoTrade ? <Zap size={15} /> : <Square size={15} />}
-                Auto Trade: {autoTrade ? "ARMED" : "OFF"}
+                {autoTrade ? (
+                  <Zap size={15} />
+                ) : (
+                  <Square size={15} />
+                )}
+
+                Auto Trade:{" "}
+                {autoTrade
+                  ? "ARMED"
+                  : "OFF"}
               </button>
             </div>
+
           </div>
 
+          {/* Current Signal remains independent from
+              instrument execution details. */}
+
           <div className="aj-panel aj-hero-side">
+
             <div className="aj-side-title">
-              <h3>Current Signal</h3>
-              <span className="aj-small-pill">MONITORING</span>
+
+              <h3>
+                Current Signal
+              </h3>
+
+              <span className="aj-small-pill">
+                MONITORING
+              </span>
+
             </div>
 
             <div className="aj-signal-box">
-              <div className="aj-eyebrow">NIFTY MOMENTUM · 5 MIN</div>
-              <div style={{ fontSize: 25, fontWeight: 900, margin: "9px 0" }}>
+
+              <div className="aj-eyebrow">
+                INDICATOR SIGNAL
+              </div>
+
+              <div
+                style={{
+                  fontSize: 25,
+                  fontWeight: 900,
+                  margin: "9px 0",
+                }}
+              >
                 BUY SIGNAL
               </div>
+
               <div className="aj-signal-row">
-                <span className="aj-muted">Underlying</span>
-                <span className="aj-signal-value">NIFTY</span>
-              </div>
-              <div className="aj-signal-row">
-                <span className="aj-muted">Signal time</span>
-                <span className="aj-signal-value">10:15:42</span>
-              </div>
-              <div className="aj-signal-row">
-                <span className="aj-muted">State</span>
-                <span style={{ color: "#fbbf24", fontWeight: 850 }}>
+                <span className="aj-muted">
+                  State
+                </span>
+
+                <span
+                  style={{
+                    color: "#fbbf24",
+                    fontWeight: 850,
+                  }}
+                >
                   Waiting for entry
                 </span>
               </div>
+
+              <div className="aj-signal-row">
+                <span className="aj-muted">
+                  Time
+                </span>
+
+                <span className="aj-signal-value">
+                  10:15:42
+                </span>
+              </div>
+
+              <div className="aj-signal-row">
+                <span className="aj-muted">
+                  Direction
+                </span>
+
+                <span
+                  className="aj-positive"
+                >
+                  BUY
+                </span>
+              </div>
+
             </div>
 
-            <div style={{ marginTop: 14, display: "flex", gap: 7, alignItems: "center", color: "#75839b", fontSize: 10 }}>
+            <div
+              style={{
+                marginTop: 14,
+                display: "flex",
+                gap: 7,
+                alignItems: "center",
+                color: "#75839b",
+                fontSize: 10,
+              }}
+            >
               <ShieldCheck size={14} />
+
               No order is sent by this prototype.
             </div>
+
           </div>
+
         </section>
+
+        {/* ====================================================
+            MARKET SNAPSHOT
+            ==================================================== */}
 
         <section className="aj-stats">
+
           <div className="aj-panel aj-stat">
-            <div className="aj-stat-label">NIFTY</div>
-            <div className="aj-stat-value">25,480.25</div>
-            <div className="aj-stat-change"><ArrowUpRight size={12} /> +0.72%</div>
+            <div className="aj-stat-label">
+              NIFTY
+            </div>
+
+            <div className="aj-stat-value">
+              25,480.25
+            </div>
+
+            <div className="aj-stat-change">
+              <ArrowUpRight size={12} />
+              +0.72%
+            </div>
           </div>
+
           <div className="aj-panel aj-stat">
-            <div className="aj-stat-label">BANK NIFTY</div>
-            <div className="aj-stat-value">57,210.40</div>
-            <div className="aj-stat-change"><ArrowUpRight size={12} /> +0.48%</div>
+            <div className="aj-stat-label">
+              BANK NIFTY
+            </div>
+
+            <div className="aj-stat-value">
+              57,210.40
+            </div>
+
+            <div className="aj-stat-change">
+              <ArrowUpRight size={12} />
+              +0.48%
+            </div>
           </div>
+
           <div className="aj-panel aj-stat">
-            <div className="aj-stat-label">INDIA VIX</div>
-            <div className="aj-stat-value">13.82</div>
-            <div className="aj-stat-change"><ArrowDownRight size={12} /> -2.10%</div>
+            <div className="aj-stat-label">
+              INDIA VIX
+            </div>
+
+            <div className="aj-stat-value">
+              13.82
+            </div>
+
+            <div className="aj-stat-change">
+              <ArrowDownRight size={12} />
+              -2.10%
+            </div>
           </div>
+
           <div className="aj-panel aj-stat">
-            <div className="aj-stat-label">UNREALIZED P&L</div>
-            <div className={`aj-stat-value ${unrealized >= 0 ? "aj-positive" : "aj-negative"}`}>
+            <div className="aj-stat-label">
+              UNREALIZED P&L
+            </div>
+
+            <div
+              className={`aj-stat-value ${
+                unrealized >= 0
+                  ? "aj-positive"
+                  : "aj-negative"
+              }`}
+            >
               {money(unrealized)}
             </div>
-            <div className="aj-stat-change">3 open positions</div>
+
+            <div className="aj-stat-change">
+              3 open positions
+            </div>
           </div>
+
         </section>
 
+        {/* ====================================================
+            PHASE 2 CORE AREA
+            ==================================================== */}
+
         <section className="aj-grid">
+
+          {/* ==================================================
+              SIGNAL / INDICATOR STATUS
+              ================================================== */}
+
           <div className="aj-panel aj-card">
+
             <div className="aj-card-header">
+
               <div>
-                <h2 className="aj-card-title">Active Algo · NIFTY Momentum</h2>
+                <h2 className="aj-card-title">
+                  Signal Engine
+                </h2>
+
                 <div className="aj-card-subtitle">
-                  {FEED_LABELS[feed]} · 5 minute · Option Buy
+                  Existing AJ indicator pipeline
                 </div>
               </div>
+
               <div className="aj-strategy-state">
-                <Circle size={9} fill="currentColor" />
-                {strategyPaused ? "PAUSED" : "WAITING FOR ENTRY"}
+                <Circle
+                  size={9}
+                  fill="currentColor"
+                />
+
+                {strategyPaused
+                  ? "PAUSED"
+                  : "WAITING FOR ENTRY"}
               </div>
+
             </div>
 
             <div className="aj-indicators">
-              {["EMA 21", "EMA 50", "RSI", "Supertrend", "Price Action"].map((name) => (
-                <span className="aj-indicator" key={name}>
-                  <CheckCircle2 size={12} color="#4ade80" />
+
+              {[
+                "AJIndicator",
+                "SuperTrend",
+                "EMA 21",
+                "EMA 50",
+                "RSI",
+                "Price Action",
+              ].map((name) => (
+                <span
+                  className="aj-indicator"
+                  key={name}
+                >
+                  <CheckCircle2
+                    size={12}
+                    color="#4ade80"
+                  />
+
                   {name}
+
+                  <span
+                    style={{
+                      color: "#4ade80",
+                      fontSize: 9,
+                    }}
+                  >
+                    READY
+                  </span>
                 </span>
               ))}
+
             </div>
 
-            <div className="aj-chart-placeholder">
-              <div className="aj-chart-line" />
-              <div className="aj-buy-marker">
-                <span className="aj-marker-dot" />
-                BUY SIGNAL
+            <div
+              style={{
+                marginTop: 20,
+                padding: 16,
+                borderRadius: 13,
+                border:
+                  "1px solid rgba(96,165,250,.12)",
+                background:
+                  "rgba(2,6,23,.30)",
+              }}
+            >
+
+              <div className="aj-eyebrow">
+                SIGNAL LIFECYCLE
               </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  marginTop: 13,
+                }}
+              >
+
+                {[
+                  ["Signal", "DETECTED", true],
+                  ["Entry", "WAITING", false],
+                  ["Position", "PENDING", false],
+                  ["Targets", "PENDING", false],
+                  ["Exit", "PENDING", false],
+                ].map(
+                  ([label, state, active]) => (
+                    <div
+                      key={String(label)}
+                      style={{
+                        display: "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems: "center",
+                        padding:
+                          "8px 10px",
+                        borderRadius: 8,
+                        background:
+                          "rgba(15,23,42,.45)",
+                        fontSize: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: "#71809a",
+                        }}
+                      >
+                        {label}
+                      </span>
+
+                      <span
+                        style={{
+                          color: active
+                            ? "#4ade80"
+                            : "#64748b",
+                          fontWeight: 850,
+                        }}
+                      >
+                        {state}
+                      </span>
+                    </div>
+                  ),
+                )}
+
+              </div>
+
             </div>
 
-            <div className="aj-action-row" style={{ marginTop: 14 }}>
-              <button type="button" className="aj-secondary" onClick={openTerminal}>
-                <LineChart size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
-                View Chart
-              </button>
+            <div
+              className="aj-action-row"
+              style={{
+                marginTop: 15,
+              }}
+            >
+
               <button
                 type="button"
                 className="aj-secondary"
-                onClick={() => setStrategyPaused((value) => !value)}
+                onClick={() =>
+                  setStrategyPaused(
+                    (value) => !value,
+                  )
+                }
               >
-                {strategyPaused ? <Play size={14} /> : <Pause size={14} />}
-                {strategyPaused ? "Resume" : "Pause"}
+                {strategyPaused ? (
+                  <Play size={14} />
+                ) : (
+                  <Pause size={14} />
+                )}
+
+                {strategyPaused
+                  ? "Resume"
+                  : "Pause"}
               </button>
-              <button type="button" className="aj-secondary">
-                <Square size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
-                Stop
-              </button>
-            </div>
-          </div>
 
-          <div className="aj-panel aj-card">
-            <div className="aj-card-header">
-              <div>
-                <h2 className="aj-card-title">Option Execution</h2>
-                <div className="aj-card-subtitle">Execution plan — demonstration only</div>
-              </div>
-              <Target size={19} color="#60a5fa" />
-            </div>
-
-            <div className="aj-execution">
-              <div className="aj-exec-row"><span className="aj-exec-label">Underlying</span><span className="aj-exec-value">NIFTY</span></div>
-              <div className="aj-exec-row"><span className="aj-exec-label">Direction</span><span className="aj-exec-value" style={{ color: "#4ade80" }}>BUY</span></div>
-              <div className="aj-exec-row"><span className="aj-exec-label">Contract</span><span className="aj-exec-value">25,500 CE</span></div>
-              <div className="aj-exec-row"><span className="aj-exec-label">Expiry</span><span className="aj-exec-value">09 Sep 2026</span></div>
-              <div className="aj-exec-row"><span className="aj-exec-label">Quantity</span><span className="aj-exec-value">75</span></div>
-              <div className="aj-exec-row"><span className="aj-exec-label">Entry</span><span className="aj-exec-value">₹124.50</span></div>
-            </div>
-
-            <div className="aj-targets">
-              <div className="aj-target hit"><span>Target 1 · ₹145</span><span>✓ HIT</span></div>
-              <div className="aj-target wait"><span>Target 2 · ₹160</span><span>WAITING</span></div>
-              <div className="aj-target wait"><span>Final Target · ₹175</span><span>WAITING</span></div>
-              <div className="aj-target stop"><span>Stop Loss · ₹110</span><span>PROTECTED</span></div>
-            </div>
-
-            <button type="button" className="aj-primary" style={{ width: "100%" }} onClick={() => setAutoTrade((value) => !value)}>
-              <Bot size={15} style={{ verticalAlign: "middle", marginRight: 7 }} />
-              {autoTrade ? "Auto Trade Armed" : "Auto Trade Off"}
-            </button>
-          </div>
-        </section>
-
-        <section className="aj-panel aj-activity">
-          <div className="aj-tabs">
-            {([
-              ["positions", "Positions"],
-              ["orders", "Orders"],
-              ["history", "Order History"],
-            ] as [ActivityTab, string][]).map(([key, label]) => (
               <button
                 type="button"
-                key={key}
-                className={`aj-tab ${activityTab === key ? "active" : ""}`}
-                onClick={() => setActivityTab(key)}
+                className="aj-secondary"
+                onClick={() =>
+                  setAutoTrade(false)
+                }
               >
-                {label}
+                <Square size={14} />
+
+                Exit / Close
               </button>
-            ))}
-            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", color: "#56647a", fontSize: 10 }}>
+
+            </div>
+
+          </div>
+
+          {/* ==================================================
+              OPTION EXECUTION
+              Instrument search and canonical metadata live here.
+              ================================================== */}
+
+          <div className="aj-panel aj-card">
+
+            <div className="aj-card-header">
+
+              <div>
+                <h2 className="aj-card-title">
+                  Option Execution
+                </h2>
+
+                <div className="aj-card-subtitle">
+                  {FEED_LABELS[feed]} · Signal driven
+                  execution plan
+                </div>
+              </div>
+
+              <Target
+                size={19}
+                color="#60a5fa"
+              />
+
+            </div>
+
+            {/* ================================================
+                EXISTING BROKER SYMBOL SEARCH
+                ================================================ */}
+
+            <div className="aj-search">
+
+              <div className="aj-search-input-wrap">
+
+                <Search
+                  size={16}
+                  className="aj-search-icon"
+                />
+
+                <input
+                  className="aj-search-input"
+                  value={searchText}
+                  onChange={(event) =>
+                    setSearchText(
+                      event.target.value,
+                    )
+                  }
+                  placeholder={
+                    `Search ${
+                      feed === "fyers"
+                        ? "NIFTY / BANKNIFTY / RELIANCE..."
+                        : "INDSTOCKS instruments..."
+                    }`
+                  }
+                  autoComplete="off"
+                />
+
+                {searchText && (
+                  <button
+                    type="button"
+                    className="aj-search-clear"
+                    onClick={
+                      clearInstrument
+                    }
+                    title="Clear"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+
+              </div>
+
+              {(searching ||
+                searchError ||
+                searchResults.length > 0) && (
+                <div className="aj-search-results">
+
+                  {searching && (
+                    <div className="aj-search-status">
+                      Searching{" "}
+                      {FEED_LABELS[feed]} instruments...
+                    </div>
+                  )}
+
+                  {!searching &&
+                    searchError && (
+                      <div
+                        className="aj-search-status"
+                        style={{
+                          color: "#fca5a5",
+                        }}
+                      >
+                        {searchError}
+                      </div>
+                    )}
+
+                  {!searching &&
+                    !searchError &&
+                    searchResults.map(
+                      (instrument, index) => (
+                        <button
+                          type="button"
+                          className="aj-search-result"
+                          key={`${instrument.symbol}-${index}`}
+                          onClick={() =>
+                            handleInstrumentSelect(
+                              instrument,
+                            )
+                          }
+                        >
+                          <div className="aj-result-symbol">
+                            {instrumentLabel(
+                              instrument,
+                            )}
+                          </div>
+
+                          <div className="aj-result-meta">
+                            {instrumentSecondaryLabel(
+                              instrument,
+                            ) ||
+                              instrument.displayName ||
+                              FEED_LABELS[
+                                feed
+                              ]}
+                          </div>
+                        </button>
+                      ),
+                    )}
+
+                  {!searching &&
+                    !searchError &&
+                    searchText.trim()
+                      .length >= 2 &&
+                    searchResults.length === 0 && (
+                      <div className="aj-search-status">
+                        No instrument found.
+                      </div>
+                    )}
+
+                </div>
+              )}
+
+            </div>
+
+            {/* ================================================
+                SELECTED CANONICAL INSTRUMENT
+                ================================================ */}
+
+            {selectedInstrument ? (
+              <div className="aj-selected-instrument">
+
+                <div className="aj-selected-top">
+
+                  <div>
+                    <div className="aj-selected-symbol">
+                      {selectedLabel}
+                    </div>
+
+                    <div className="aj-selected-meta">
+                      {instrumentSecondaryLabel(
+                        selectedInstrument,
+                      ) ||
+                        FEED_LABELS[feed]}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="aj-selected-remove"
+                    onClick={
+                      clearInstrument
+                    }
+                    title="Remove instrument"
+                  >
+                    <X size={15} />
+                  </button>
+
+                </div>
+
+                <div className="aj-canonical-grid">
+
+                  <div className="aj-canonical-item">
+                    <div className="aj-canonical-label">
+                      Symbol
+                    </div>
+
+                    <div className="aj-canonical-value">
+                      {selectedInstrument.symbol ||
+                        "—"}
+                    </div>
+                  </div>
+
+                  <div className="aj-canonical-item">
+                    <div className="aj-canonical-label">
+                      Trading Symbol
+                    </div>
+
+                    <div className="aj-canonical-value">
+                      {selectedInstrument.tradingSymbol ||
+                        "—"}
+                    </div>
+                  </div>
+
+                  <div className="aj-canonical-item">
+                    <div className="aj-canonical-label">
+                      Underlying
+                    </div>
+
+                    <div className="aj-canonical-value">
+                      {selectedInstrument.underlying ||
+                        "—"}
+                    </div>
+                  </div>
+
+                  <div className="aj-canonical-item">
+                    <div className="aj-canonical-label">
+                      Expiry
+                    </div>
+
+                    <div className="aj-canonical-value">
+                      {selectedInstrument.expiry ||
+                        "—"}
+                    </div>
+                  </div>
+
+                  <div className="aj-canonical-item">
+                    <div className="aj-canonical-label">
+                      Strike
+                    </div>
+
+                    <div className="aj-canonical-value">
+                      {selectedInstrument.strike ??
+                        "—"}
+                    </div>
+                  </div>
+
+                  <div className="aj-canonical-item">
+                    <div className="aj-canonical-label">
+                      Option Type
+                    </div>
+
+                    <div className="aj-canonical-value">
+                      {selectedInstrument.optionType ||
+                        "—"}
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: 13,
+                  borderRadius: 12,
+                  border:
+                    "1px dashed rgba(148,163,184,.14)",
+                  color: "#68778f",
+                  fontSize: 10,
+                }}
+              >
+                Search and select the instrument
+                that this signal will operate on.
+              </div>
+            )}
+
+            {/* ================================================
+                EXECUTION PLAN
+                ================================================ */}
+
+            <div className="aj-execution">
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Feed
+                </span>
+
+                <span className="aj-exec-value">
+                  {FEED_LABELS[feed]}
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Signal Timeframe
+                </span>
+
+                <span className="aj-exec-value">
+                  5 minute
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Indicator
+                </span>
+
+                <span className="aj-exec-value">
+                  AJIndicator · SuperTrend
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Underlying
+                </span>
+
+                <span className="aj-exec-value">
+                  {selectedInstrument?.underlying ||
+                    selectedInstrument?.symbol ||
+                    "—"}
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Direction
+                </span>
+
+                <span
+                  className="aj-exec-value"
+                  style={{
+                    color: "#4ade80",
+                  }}
+                >
+                  BUY
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Contract
+                </span>
+
+                <span className="aj-exec-value">
+                  {selectedInstrument
+                    ? instrumentLabel(
+                        selectedInstrument,
+                      )
+                    : "Waiting for instrument"}
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Quantity
+                </span>
+
+                <span className="aj-exec-value">
+                  75
+                </span>
+              </div>
+
+              <div className="aj-exec-row">
+                <span className="aj-exec-label">
+                  Entry
+                </span>
+
+                <span className="aj-exec-value">
+                  ₹124.50
+                </span>
+              </div>
+
+            </div>
+
+            {/* ================================================
+                TARGET / STOP LIFECYCLE
+                ================================================ */}
+
+            <div className="aj-targets">
+
+              <div className="aj-target hit">
+                <span>
+                  Target 1 · ₹145
+                </span>
+
+                <span>
+                  ✓ HIT
+                </span>
+              </div>
+
+              <div className="aj-target wait">
+                <span>
+                  Target 2 · ₹160
+                </span>
+
+                <span>
+                  WAITING
+                </span>
+              </div>
+
+              <div className="aj-target wait">
+                <span>
+                  Final Target · ₹175
+                </span>
+
+                <span>
+                  WAITING
+                </span>
+              </div>
+
+              <div className="aj-target stop">
+                <span>
+                  Stop Loss · ₹110
+                </span>
+
+                <span>
+                  PROTECTED
+                </span>
+              </div>
+
+            </div>
+
+            <div className="aj-action-row">
+
+              <button
+                type="button"
+                className="aj-primary"
+                style={{
+                  flex: 1,
+                }}
+                onClick={() =>
+                  setAutoTrade(
+                    (value) => !value,
+                  )
+                }
+              >
+                <Bot
+                  size={15}
+                  style={{
+                    verticalAlign:
+                      "middle",
+                    marginRight: 7,
+                  }}
+                />
+
+                {autoTrade
+                  ? "Auto Trade Armed"
+                  : "Auto Trade Off"}
+              </button>
+
+              <button
+                type="button"
+                className="aj-secondary"
+                onClick={() =>
+                  setStrategyPaused(
+                    (value) => !value,
+                  )
+                }
+              >
+                {strategyPaused ? (
+                  <Play size={14} />
+                ) : (
+                  <Pause size={14} />
+                )}
+
+                {strategyPaused
+                  ? "Resume"
+                  : "Pause"}
+              </button>
+
+              <button
+                type="button"
+                className="aj-secondary"
+                onClick={() =>
+                  setAutoTrade(false)
+                }
+              >
+                <Square size={14} />
+                Exit / Close
+              </button>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* ====================================================
+            POSITIONS / ORDERS / HISTORY
+            ==================================================== */}
+
+        <section className="aj-panel aj-activity">
+
+          <div className="aj-tabs">
+
+            {(
+              [
+                ["positions", "Positions"],
+                ["orders", "Orders"],
+                ["history", "Order History"],
+              ] as [
+                ActivityTab,
+                string,
+              ][]
+            ).map(
+              ([key, label]) => (
+                <button
+                  type="button"
+                  key={key}
+                  className={`aj-tab ${
+                    activityTab === key
+                      ? "active"
+                      : ""
+                  }`}
+                  onClick={() =>
+                    setActivityTab(key)
+                  }
+                >
+                  {label}
+                </button>
+              ),
+            )}
+
+            <div
+              style={{
+                marginLeft: "auto",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "0 10px",
+                color: "#56647a",
+                fontSize: 10,
+              }}
+            >
               <Clock3 size={12} />
               Live monitoring
             </div>
+
           </div>
 
           <div className="aj-table-wrap">
+
             {activityTab === "positions" && (
               <table className="aj-table">
+
                 <thead>
                   <tr>
-                    <th>Symbol</th><th>Side</th><th>Qty</th><th>Avg Fill</th>
-                    <th>LTP</th><th>Profit</th><th>Strategy</th><th>Status</th>
+                    <th>Symbol</th>
+                    <th>Side</th>
+                    <th>Qty</th>
+                    <th>Avg Fill</th>
+                    <th>LTP</th>
+                    <th>Profit</th>
+                    <th>Strategy</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {positions.map((item) => (
-                    <tr key={item.symbol}>
-                      <td style={{ color: "white", fontWeight: 800 }}>{item.symbol}</td>
-                      <td className="aj-positive">{item.side}</td>
-                      <td>{item.qty}</td>
-                      <td>₹{item.avg.toFixed(2)}</td>
-                      <td>₹{item.ltp.toFixed(2)}</td>
-                      <td className={item.pnl >= 0 ? "aj-positive" : "aj-negative"}>{money(item.pnl)}</td>
-                      <td>{item.strategy}</td>
-                      <td>{item.status}</td>
-                    </tr>
-                  ))}
+                  {positions.map(
+                    (item) => (
+                      <tr
+                        key={item.symbol}
+                      >
+                        <td
+                          style={{
+                            color:
+                              "white",
+                            fontWeight:
+                              800,
+                          }}
+                        >
+                          {item.symbol}
+                        </td>
+
+                        <td className="aj-positive">
+                          {item.side}
+                        </td>
+
+                        <td>
+                          {item.qty}
+                        </td>
+
+                        <td>
+                          ₹
+                          {item.avg.toFixed(
+                            2,
+                          )}
+                        </td>
+
+                        <td>
+                          ₹
+                          {item.ltp.toFixed(
+                            2,
+                          )}
+                        </td>
+
+                        <td
+                          className={
+                            item.pnl >= 0
+                              ? "aj-positive"
+                              : "aj-negative"
+                          }
+                        >
+                          {money(
+                            item.pnl,
+                          )}
+                        </td>
+
+                        <td>
+                          {item.strategy}
+                        </td>
+
+                        <td>
+                          {item.status}
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
+
               </table>
             )}
 
             {activityTab === "orders" && (
               <table className="aj-table">
+
                 <thead>
-                  <tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th></tr>
+                  <tr>
+                    <th>Time</th>
+                    <th>Symbol</th>
+                    <th>Side</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                  </tr>
                 </thead>
+
                 <tbody>
-                  {orders.map((row) => (
-                    <tr key={`${row[0]}-${row[1]}`}>
-                      {row.map((cell, index) => (
-                        <td key={index} className={cell === "FILLED" ? "aj-positive" : ""}>{cell}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {orders.map(
+                    (row) => (
+                      <tr
+                        key={`${row[0]}-${row[1]}`}
+                      >
+                        {row.map(
+                          (
+                            cell,
+                            index,
+                          ) => (
+                            <td
+                              key={index}
+                              className={
+                                cell ===
+                                "FILLED"
+                                  ? "aj-positive"
+                                  : ""
+                              }
+                            >
+                              {cell}
+                            </td>
+                          ),
+                        )}
+                      </tr>
+                    ),
+                  )}
                 </tbody>
+
               </table>
             )}
 
             {activityTab === "history" && (
               <table className="aj-table">
+
                 <thead>
-                  <tr><th>Date</th><th>Symbol</th><th>Lifecycle</th><th>Net P&L</th></tr>
+                  <tr>
+                    <th>Date</th>
+                    <th>Symbol</th>
+                    <th>Lifecycle</th>
+                    <th>Net P&L</th>
+                  </tr>
                 </thead>
+
                 <tbody>
-                  {history.map((row) => (
-                    <tr key={`${row[0]}-${row[1]}`}>
-                      <td>{row[0]}</td>
-                      <td style={{ color: "white", fontWeight: 800 }}>{row[1]}</td>
-                      <td>{row[2]}</td>
-                      <td className={row[3].startsWith("-") ? "aj-negative" : "aj-positive"}>{row[3]}</td>
-                    </tr>
-                  ))}
+                  {history.map(
+                    (row) => (
+                      <tr
+                        key={`${row[0]}-${row[1]}`}
+                      >
+                        <td>
+                          {row[0]}
+                        </td>
+
+                        <td
+                          style={{
+                            color:
+                              "white",
+                            fontWeight:
+                              800,
+                          }}
+                        >
+                          {row[1]}
+                        </td>
+
+                        <td>
+                          {row[2]}
+                        </td>
+
+                        <td
+                          className={
+                            row[3].startsWith(
+                              "-",
+                            )
+                              ? "aj-negative"
+                              : "aj-positive"
+                          }
+                        >
+                          {row[3]}
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
+
               </table>
             )}
+
           </div>
+
         </section>
 
+        {/* ====================================================
+            PERFORMANCE / STRATEGY LIBRARY
+            ==================================================== */}
+
         <section className="aj-bottom-grid">
+
           <div className="aj-panel aj-card">
+
             <div className="aj-card-header">
+
               <div>
-                <h2 className="aj-card-title">Performance</h2>
-                <div className="aj-card-subtitle">Prototype metrics — not live account data</div>
+                <h2 className="aj-card-title">
+                  Performance
+                </h2>
+
+                <div className="aj-card-subtitle">
+                  Prototype metrics — not live
+                  account data
+                </div>
               </div>
-              <TrendingUp size={18} color="#60a5fa" />
+
+              <TrendingUp
+                size={18}
+                color="#60a5fa"
+              />
+
             </div>
 
             <div className="aj-performance">
-              <div className="aj-metric"><span>Realized P&L</span><strong className="aj-positive">₹8,420</strong></div>
-              <div className="aj-metric"><span>Unrealized P&L</span><strong className="aj-positive">{money(unrealized)}</strong></div>
-              <div className="aj-metric"><span>Win Rate</span><strong>68%</strong></div>
-              <div className="aj-metric"><span>Profit Factor</span><strong>1.92</strong></div>
-              <div className="aj-metric"><span>Active Positions</span><strong>3</strong></div>
-              <div className="aj-metric"><span>Today Trades</span><strong>7</strong></div>
+
+              <div className="aj-metric">
+                <span>
+                  Realized P&L
+                </span>
+
+                <strong className="aj-positive">
+                  ₹8,420
+                </strong>
+              </div>
+
+              <div className="aj-metric">
+                <span>
+                  Unrealized P&L
+                </span>
+
+                <strong className="aj-positive">
+                  {money(unrealized)}
+                </strong>
+              </div>
+
+              <div className="aj-metric">
+                <span>
+                  Win Rate
+                </span>
+
+                <strong>
+                  68%
+                </strong>
+              </div>
+
+              <div className="aj-metric">
+                <span>
+                  Profit Factor
+                </span>
+
+                <strong>
+                  1.92
+                </strong>
+              </div>
+
+              <div className="aj-metric">
+                <span>
+                  Active Positions
+                </span>
+
+                <strong>
+                  3
+                </strong>
+              </div>
+
+              <div className="aj-metric">
+                <span>
+                  Today Trades
+                </span>
+
+                <strong>
+                  7
+                </strong>
+              </div>
+
             </div>
+
           </div>
 
           <div className="aj-panel aj-card">
+
             <div className="aj-card-header">
+
               <div>
-                <h2 className="aj-card-title">Strategy Library</h2>
-                <div className="aj-card-subtitle">Your native AJ strategies will live here</div>
+                <h2 className="aj-card-title">
+                  Strategy Library
+                </h2>
+
+                <div className="aj-card-subtitle">
+                  Your native AJ strategies will
+                  live here
+                </div>
               </div>
-              <Layers3 size={18} color="#60a5fa" />
+
+              <Layers3
+                size={18}
+                color="#60a5fa"
+              />
+
             </div>
 
             <div className="aj-strategy-list">
+
               {[
-                ["NIFTY Momentum", "5m · Option Buy · 68% win rate"],
-                ["BankNifty Breakout", "5m · Option Buy · 61% win rate"],
-                ["Stock Option Buy", "15m · Signal driven · 64% win rate"],
-              ].map(([name, meta]) => (
-                <div className="aj-strategy" key={name}>
-                  <div className="aj-strategy-name">{name}</div>
-                  <div className="aj-strategy-meta">{meta}</div>
-                  <div style={{ marginTop: 13, color: "#60a5fa", fontSize: 10, fontWeight: 850 }}>
-                    Configure strategy <ChevronRight size={12} style={{ verticalAlign: "middle" }} />
+                [
+                  "NIFTY Momentum",
+                  "5m · Option Buy · 68% win rate",
+                ],
+                [
+                  "BankNifty Breakout",
+                  "5m · Option Buy · 61% win rate",
+                ],
+                [
+                  "Stock Option Buy",
+                  "15m · Signal driven · 64% win rate",
+                ],
+              ].map(
+                ([name, meta]) => (
+                  <div
+                    className="aj-strategy"
+                    key={name}
+                  >
+                    <div className="aj-strategy-name">
+                      {name}
+                    </div>
+
+                    <div className="aj-strategy-meta">
+                      {meta}
+                    </div>
+
+                    <div
+                      style={{
+                        marginTop: 13,
+                        color: "#60a5fa",
+                        fontSize: 10,
+                        fontWeight: 850,
+                      }}
+                    >
+                      Configure strategy{" "}
+                      <ChevronRight
+                        size={12}
+                        style={{
+                          verticalAlign:
+                            "middle",
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))}
+                ),
+              )}
+
             </div>
+
           </div>
+
         </section>
 
         <div className="aj-footer">
-          AJ Institutional · {FEED_LABELS[feed]} · Phase 1 Algo Dashboard · No live orders are submitted by this prototype.
+          AJ Institutional ·{" "}
+          {FEED_LABELS[feed]} · Phase 2 Algo
+          Dashboard · No live orders are
+          submitted by this prototype.
         </div>
+
       </div>
     </main>
   );
