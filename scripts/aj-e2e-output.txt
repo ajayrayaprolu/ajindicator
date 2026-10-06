@@ -1,10 +1,8 @@
-AJ v2 E2E TEST — 2026-10-06T08:56:39.135Z
+AJ v2 E2E TEST — 2026-10-06T14:29:43.182Z
 Log file: C:\AI-Institutional\scripts\aj-e2e-output.txt
-LIVE MODE: fetching NIFTY 5m from indstocks (https://ajtrade.in/api/indstocks/history?symbol=NIFTY%2006OCT%2022550PE&timeframe=5m) ...
-(node:33056) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
-(Use `node --trace-warnings ...` to show where the warning was created)
-global fetch failed (Live history request failed: HTTP 502 — is the backend running at https://ajtrad) — retrying with https module ...
-LIVE MODE FAILED: HTTP 502: 
+LIVE MODE: fetching NIFTY 5m from indstocks (<pasted url>) ...
+global fetch failed (Failed to parse URL from <pasted url>) — retrying with https module ...
+LIVE MODE FAILED: Invalid URL
 Fallback: run without 'live' for synthetic scenarios.
 
 Done. Full output saved to scripts/aj-e2e-output.txt
