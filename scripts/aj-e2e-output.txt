@@ -1,57 +1,10 @@
-AJ v2 E2E TEST — 2026-10-05T05:02:15.939Z
+AJ v2 E2E TEST — 2026-10-06T08:56:39.135Z
 Log file: C:\AI-Institutional\scripts\aj-e2e-output.txt
-LIVE MODE: fetching NIFTY 5m from indstocks (https://ajtrade.in/api/indstocks/history?symbol=NIFTY&timeframe=5m) ...
-(node:26536) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+LIVE MODE: fetching NIFTY 5m from indstocks (https://ajtrade.in/api/indstocks/history?symbol=NIFTY%2006OCT%2022550PE&timeframe=5m) ...
+(node:33056) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
 (Use `node --trace-warnings ...` to show where the warning was created)
-Loaded 301 live candles. Last close: 22526.5 at 2026-10-05T05:00:00.000Z
-
-==============================================================================
- SCENARIO: LIVE:INDSTOCKS  (301 bars)
-==============================================================================
-BAR  STATE      MODE            SCORE  CONF  AUTH   REASON
-------------------------------------------------------------------------------
-  60 ARMED      SCORE (INTELLI  100    62    PASS   Weak trend
-  62 CONFIRMED  SCORE (INTELLI  100    64    PASS   Weak trend
-  80 CONFIRMED  SCORE (INTELLI  40     47    WAIT   Weak trend
-  88 EXECUTED   SCORE (INTELLI  85     64    PASS   Weak trend
-  90 EXECUTED   SCORE (INTELLI  75     63    PASS   Weak trend
-  92 EXECUTED   SCORE (INTELLI  75     63    PASS   Weak trend
- 100 EXECUTED   SCORE (INTELLI  45     51    WAIT   Weak trend
- 102 EXECUTED   SCORE (INTELLI  90     62    PASS   Weak trend
- 109 EXECUTED   SCORE (INTELLI  100    61    PASS   Weak trend
- 110 EXECUTED   SCORE (INTELLI  100    61    PASS   Weak trend
- 112 EXECUTED   SCORE (INTELLI  100    61    PASS   Weak trend
- 113 EXECUTED   SCORE (INTELLI  100    60    PASS   Weak trend
- 120 EXECUTED   SCORE (INTELLI  50     29    WAIT   Weak trend
- 137 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
- 140 EXECUTED   SCORE (INTELLI  35     30    WAIT   Weak trend
- 160 EXECUTED   SCORE (INTELLI  100    53    WAIT   Weak trend
- 180 EXECUTED   SCORE (INTELLI  35     16    WAIT   Weak trend
- 196 EXECUTED   SCORE (INTELLI  100    60    PASS   Weak trend
- 199 EXECUTED   SCORE (INTELLI  100    61    PASS   Weak trend
- 200 EXECUTED   SCORE (INTELLI  100    72    WAIT   Weak trend
- 210 EXECUTED   SCORE (INTELLI  100    62    PASS   Weak trend
- 220 EXECUTED   SCORE (INTELLI  40     60    WAIT   Weak trend
- 240 EXECUTED   SCORE (INTELLI  35     25    WAIT   Weak trend
- 244 EXECUTED   SCORE (INTELLI  100    70    PASS   Weak trend
- 246 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
- 250 EXECUTED   SCORE (INTELLI  90     60    PASS   Weak trend
- 252 EXECUTED   SCORE (INTELLI  100    62    PASS   Weak trend
- 253 EXECUTED   SCORE (INTELLI  100    62    PASS   Weak trend
- 260 EXECUTED   SCORE (INTELLI  50     30    WAIT   Weak trend
- 267 EXECUTED   SCORE (INTELLI  100    65    PASS   Weak trend
- 279 EXECUTED   SCORE (INTELLI  75     62    PASS   Weak trend
- 280 EXECUTED   SCORE (INTELLI  75     62    WAIT   Weak trend
- 282 EXECUTED   SCORE (INTELLI  85     62    PASS   Weak trend
- 285 EXECUTED   SCORE (INTELLI  85     62    PASS   Weak trend
- 286 EXECUTED   SCORE (INTELLI  85     62    PASS   Weak trend
- 300 EXECUTED   SCORE (INTELLI  45     49    WAIT   Weak trend
-------------------------------------------------------------------------------
-RESULT: 5 trade(s) detected:
-  bar 88 LONG (CE) entry=22683.75 SL=22713.44 TP1=22639.22 TP2=22609.54 (score=85 conf=64 state=EXECUTED)
-  bar 102 SHORT (PE) entry=22683.75 SL=22713.44 TP1=22639.22 TP2=22609.54 (score=90 conf=62 state=EXECUTED)
-  bar 137 LONG (CE) entry=22683.75 SL=22713.44 TP1=22639.22 TP2=22609.54 (score=100 conf=64 state=EXECUTED)
-  bar 196 SHORT (PE) entry=22683.75 SL=22713.44 TP1=22639.22 TP2=22609.54 (score=100 conf=60 state=EXECUTED)
-  bar 279 LONG (CE) entry=22683.75 SL=22713.44 TP1=22639.22 TP2=22609.54 (score=75 conf=62 state=EXECUTED)
+global fetch failed (Live history request failed: HTTP 502 — is the backend running at https://ajtrad) — retrying with https module ...
+LIVE MODE FAILED: HTTP 502: 
+Fallback: run without 'live' for synthetic scenarios.
 
 Done. Full output saved to scripts/aj-e2e-output.txt

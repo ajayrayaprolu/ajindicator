@@ -54,6 +54,26 @@ if (process.env.AJ_DEBUG !== "1") {
 }
 
 const SYMBOL = process.argv[4] ?? "NIFTY"; // AJ DIAG: optional 4th arg, e.g. "NIFTY 06OCT 22550PE"
+// AJ TG: Telegram dry-run. The REAL TelegramNotifier runs on every bar's engine
+// result; its fetch("/api/telegram/...") is intercepted, so NOTHING is sent.
+const TG_SENT: any[] = [];
+let tg: any = null;
+let tgBar = 0;
+
+async function initTelegramDryRun() {
+    const realFetch = globalThis.fetch.bind(globalThis);
+    (globalThis as any).fetch = async (url: any, init?: any) => {
+        if (String(url).startsWith("/api/telegram")) {
+            const payload = JSON.parse(init.body);
+            TG_SENT.push({ bar: tgBar, ...payload });
+            console.log(`     TELEGRAM >> bar ${tgBar} ${JSON.stringify(payload)}`);
+            return { ok: true } as any;
+        }
+        return realFetch(url, init);
+    };
+    const mod = await import("../src/services/TelegramNotifier");
+    tg = mod.TelegramNotifier;
+}
 const TF = "5m";
 
 // AJ ADD: LIVE mode — pull real candles from the running backend
@@ -94,7 +114,7 @@ function httpGetJson(url: string): Promise<any> {
 
 async function loadLiveCandles(): Promise<Candle[]> {
     const base = process.env.AJ_API_BASE ?? "https://ajtrade.in";
-    const url =
+    let url =
         LIVE_SOURCE === "fyers"
             ? `${base}/api/fyers/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`
             : LIVE_SOURCE === "indstocks"
@@ -103,6 +123,9 @@ async function loadLiveCandles(): Promise<Candle[]> {
                     ? `${base}/api/zerodha/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`
                     : `${base}/api/aliceblue/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`;
 
+    if (process.env.AJ_HISTORY_URL) {
+        url = process.env.AJ_HISTORY_URL; // AJ: exact URL copied from the browser's Network tab
+    }
     console.log(`LIVE MODE: fetching NIFTY ${TF} from ${LIVE_SOURCE} (${url}) ...`);
 
     let data: any;
@@ -217,6 +240,18 @@ function runScenario(name: string, candles: Candle[]) {
             const score = Math.round(result?.tradeScore ?? ajRuntime?.tradeScore ?? 0);
             const conf = Math.round(result?.confidence ?? ajRuntime?.executionConfidence ?? 0);
             const auth = result?.executionAllowed ? "PASS" : "WAIT";
+            // AJ TG: same fields ChartEngine reads from runtimePanel
+            tgBar = i;
+            tg?.onTick({
+                symbol: SYMBOL,
+                entry: Number(result?.entryPrice),
+                stopLoss: Number(result?.stopLoss),
+                tps: [Number(result?.tp1), Number(result?.tp2), Number(result?.tp3)],
+                executionAllowed: result?.executionAllowed === true,
+                price: cur.close,
+                high: cur.high,
+                low: cur.low
+            });
             const reason =
                 result?.authority?.rejectionReasons?.[0] ??
                 result?.authority?.reason ??
@@ -279,6 +314,10 @@ function runScenario(name: string, candles: Candle[]) {
     console.log("-".repeat(78));
     if (errCount > 0) console.log(`(skipped ${errCount} bars due to errors)`);
     console.log("STATE DWELL (bars): " + JSON.stringify(stateBars));
+    console.log(`TELEGRAM DRY-RUN: ${TG_SENT.length} message(s) would have been sent for this run`);
+    if (!/(CE|PE)$/i.test(SYMBOL)) {
+        console.log("(spot symbol: Telegram only fires on option charts - pass one as the 4th argument)");
+    }
     if (trades.length === 0) {
         console.log("RESULT: NO TRADES in this scenario.");
         console.log("Next check: the last printed row's REASON is the gate that blocked.");
@@ -300,6 +339,7 @@ function runScenario(name: string, candles: Candle[]) {
 (async () => {
     console.log(`AJ v2 E2E TEST — ${new Date().toISOString()}`);
     console.log(`Log file: ${LOG_PATH}`);
+    await initTelegramDryRun();
 
     if (LIVE) {
         //--------------------------------------------------

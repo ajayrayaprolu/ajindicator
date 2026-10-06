@@ -121,47 +121,6 @@ class TelegramNotifierImpl {
         return this.post({ type: "TEST" });
     }
 
-    // Same request as sendTest(), but returns a short reason for the Test button.
-    async testDetailed(): Promise<string> {
-
-        try {
-
-            const response = await fetch(ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ type: "TEST" })
-            });
-
-            if (response.ok) {
-                return "sent \u2713";
-            }
-
-            let detail = "";
-
-            try {
-                const body = await response.json();
-                detail = body?.error ? " - " + String(body.error) : "";
-            } catch {
-                // no JSON body: the reply came from a proxy, not from our route
-            }
-
-            let hint = "";
-
-            if (response.status === 404) {
-                hint = " (route not mounted - restart the server)";
-            } else if (response.status === 502 && detail === "") {
-                hint = " (server not reachable - is it running?)";
-            }
-
-            return "failed: HTTP " + response.status + detail + hint;
-
-        } catch {
-
-            return "failed: could not reach the server";
-
-        }
-
-    }
     onTick(t: TelegramTick) {
 
         if (!this.isEnabled()) {

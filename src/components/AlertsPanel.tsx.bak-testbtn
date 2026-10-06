@@ -75,7 +75,8 @@ export default function AlertsPanel() {
                 <button
                     onClick={async () => {
                         setTgStatus("sending...");
-                        setTgStatus(await TelegramNotifier.testDetailed());
+                        const ok = await TelegramNotifier.sendTest();
+                        setTgStatus(ok ? "sent \u2713" : "failed - check server setup");
                     }}
                     style={{
                         background: "transparent", border: "1px solid #333", color: "#999",

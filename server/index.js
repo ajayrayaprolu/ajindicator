@@ -175,6 +175,7 @@ import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
 import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
 import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
 import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
+import telegramRoute from "./telegramRoute.js";
 
 //================================================
 const AJTRADE_FRONTEND_ORIGIN =
@@ -182,6 +183,7 @@ const AJTRADE_FRONTEND_ORIGIN =
 
 const app = express();
 
+app.use("/api/telegram", telegramRoute);
 app.use(cors());
 app.use(express.json());
 
