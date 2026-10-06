@@ -45,8 +45,6 @@ export interface TelegramTick {
 interface TradeRecord {
     symbol: string;
     opt: OptionParts;
-    contract: string;
-    planKey: string;
     entry: number;
     stopLoss: number;
     tps: number[];
@@ -74,9 +72,6 @@ export function parseOptionSymbol(symbol: string): OptionParts | null {
     };
 }
 
-function contractKey(o: OptionParts): string {
-    return [o.underlying, o.expiry, o.strike, o.optionType].join("|");
-}
 function loadTrades(): Record<string, TradeRecord> {
     try {
         const raw = window.localStorage.getItem(TRADES_KEY);
@@ -148,7 +143,7 @@ class TelegramNotifierImpl {
         );
 
         Object.values(this.trades)
-            .filter((r) => r.contract === contractKey(opt) && !r.closed)
+            .filter((r) => r.symbol === t.symbol && !r.closed)
             .forEach((rec) => {
 
                 if (!rec.sent.entry) {
@@ -204,32 +199,18 @@ class TelegramNotifierImpl {
             return;
         }
 
-        const contract = contractKey(opt);
+        const key = [
+            opt.underlying, opt.expiry, opt.strike, opt.optionType,
+            t.entry, t.stopLoss, tp1
+        ].join("|");
 
-        const planKey = [t.entry, t.stopLoss, tp1].join("|");
-
-        const history =
-            Object.values(this.trades)
-                .filter((r) => r.contract === contract);
-
-        // one live trade per contract (also stops the IndStocks chart and
-        // the Fyers chart of the same option from each sending an entry)
-        if (history.some((r) => !r.closed)) {
+        if (this.trades[key]) {
             return;
         }
-
-        // the same locked plan already traded and closed - don't re-send it
-        if (history.some((r) => r.planKey === planKey)) {
-            return;
-        }
-
-        const key = contract + "|" + Date.now();
 
         const rec: TradeRecord = {
             symbol: t.symbol,
             opt,
-            contract,
-            planKey,
             entry: t.entry,
             stopLoss: t.stopLoss,
             tps: t.tps.map((v) => (Number.isFinite(v) ? v : 0)),

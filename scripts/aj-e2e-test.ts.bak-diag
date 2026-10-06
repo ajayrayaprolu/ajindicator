@@ -53,7 +53,7 @@ if (process.env.AJ_DEBUG !== "1") {
     };
 }
 
-const SYMBOL = process.argv[4] ?? "NIFTY"; // AJ DIAG: optional 4th arg, e.g. "NIFTY 06OCT 22550PE"
+const SYMBOL = "NIFTY";
 const TF = "5m";
 
 // AJ ADD: LIVE mode — pull real candles from the running backend
@@ -96,12 +96,12 @@ async function loadLiveCandles(): Promise<Candle[]> {
     const base = process.env.AJ_API_BASE ?? "https://ajtrade.in";
     const url =
         LIVE_SOURCE === "fyers"
-            ? `${base}/api/fyers/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`
+            ? `${base}/api/fyers/history?symbol=NIFTY&timeframe=${TF}`
             : LIVE_SOURCE === "indstocks"
-                ? `${base}/api/indstocks/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`
+                ? `${base}/api/indstocks/history?symbol=NIFTY&timeframe=${TF}`
                 : LIVE_SOURCE === "zerodha"
-                    ? `${base}/api/zerodha/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`
-                    : `${base}/api/aliceblue/history?symbol=${encodeURIComponent(SYMBOL)}&timeframe=${TF}`;
+                    ? `${base}/api/zerodha/history?symbol=NIFTY&timeframe=${TF}`
+                    : `${base}/api/aliceblue/history?symbol=NIFTY&timeframe=${TF}`;
 
     console.log(`LIVE MODE: fetching NIFTY ${TF} from ${LIVE_SOURCE} (${url}) ...`);
 
@@ -187,8 +187,6 @@ function runScenario(name: string, candles: Candle[]) {
 
     const trades: any[] = [];
     let prevState = "";
-    const stateBars: Record<string, number> = {};
-    let diagKeysPrinted = false;
     let errCount = 0;
     let printedErrs = 0;
 
@@ -213,7 +211,6 @@ function runScenario(name: string, candles: Candle[]) {
             const result: any = new AJDecisionEngine().evaluate(payload);
 
             const state = result?.lifecycleState ?? "SCAN";
-            stateBars[state] = (stateBars[state] ?? 0) + 1;
             const score = Math.round(result?.tradeScore ?? ajRuntime?.tradeScore ?? 0);
             const conf = Math.round(result?.confidence ?? ajRuntime?.executionConfidence ?? 0);
             const auth = result?.executionAllowed ? "PASS" : "WAIT";
@@ -223,19 +220,6 @@ function runScenario(name: string, candles: Candle[]) {
                 ajRuntime?.noTradeReason ??
                 (result?.executionAllowed ? "TRADE" : "-");
             const mode = String(result?.tradeMode ?? ajRuntime?.tradeEngineMode ?? "?").slice(0, 14);
-            // AJ DIAG: once, show the shape of the engine result
-            if (!diagKeysPrinted) {
-                diagKeysPrinted = true;
-                console.warn("     DIAG result keys: " + Object.keys(result ?? {}).join(","));
-                console.warn("     DIAG authority keys: " + Object.keys(result?.authority ?? {}).join(","));
-            }
-
-            // AJ DIAG: scored >= 75 but NOT allowed -> dump the authority verdict
-            if (!result?.executionAllowed && score >= 75 && i % 5 === 0) {
-                let dump = "[unserializable]";
-                try { dump = JSON.stringify(result?.authority ?? {}).slice(0, 700); } catch { /* circular */ }
-                console.warn("     DIAG blocked bar " + i + " (score " + score + ", conf " + conf + "): " + dump);
-            }
 
             if (state !== prevState || i % 20 === 0 || i === candles.length - 1 || result?.executionAllowed) {
                 console.log(`${String(i).padStart(4)} ${String(state).padEnd(10)} ${mode.padEnd(15)} ${String(score).padEnd(6)} ${String(conf).padEnd(5)} ${auth.padEnd(6)} ${String(reason).slice(0, 40)}`);
@@ -278,20 +262,11 @@ function runScenario(name: string, candles: Candle[]) {
 
     console.log("-".repeat(78));
     if (errCount > 0) console.log(`(skipped ${errCount} bars due to errors)`);
-    console.log("STATE DWELL (bars): " + JSON.stringify(stateBars));
     if (trades.length === 0) {
         console.log("RESULT: NO TRADES in this scenario.");
         console.log("Next check: the last printed row's REASON is the gate that blocked.");
     } else {
         console.log(`RESULT: ${trades.length} trade(s) detected:`);
-        console.log("PLAN SANITY (LONG needs SL < entry < TP1; SHORT needs SL > entry > TP1):");
-        for (const t of trades) {
-            const ok = t.dir > 0
-                ? t.sl < t.entry && t.tp1 > t.entry
-                : t.sl > t.entry && t.tp1 < t.entry;
-            console.log(`  bar ${t.bar} ${t.dir > 0 ? "LONG" : "SHORT"} -> ${ok ? "OK" : "BAD (SL/TP on the wrong side for this direction)"}`);
-        }
-        console.log(`Distinct entry prices: ${new Set(trades.map((x: any) => x.entry)).size} of ${trades.length} trade(s)`);
         for (const t of trades)
             console.log(`  bar ${t.bar} ${t.dir > 0 ? "LONG (CE)" : "SHORT (PE)"} entry=${t.entry?.toFixed(2)} SL=${t.sl?.toFixed(2)} TP1=${t.tp1?.toFixed(2)} TP2=${t.tp2?.toFixed(2)} (score=${t.score} conf=${t.conf} state=${t.state})`);
     }
