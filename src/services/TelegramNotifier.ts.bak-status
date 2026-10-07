@@ -100,14 +100,6 @@ class TelegramNotifierImpl {
 
     private trades: Record<string, TradeRecord> = loadTrades();
     private idleSeen: Set<string> = new Set();
-    private lastTick: Record<string, {
-        executionAllowed: boolean;
-        entry: number;
-        stopLoss: number;
-        tp1: number;
-        price: number;
-        at: number;
-    }> = {};
 
     isEnabled(): boolean {
         try {
@@ -170,63 +162,7 @@ class TelegramNotifierImpl {
         }
 
     }
-    // One line per option chart seen so far (shown in the Alerts panel).
-    getStatus(): { symbol: string; line: string }[] {
-
-        const num = (n: number) =>
-            Number.isFinite(n) && n > 0 ? String(Number(n.toFixed(2))) : "-";
-
-        return Object.keys(this.lastTick)
-            .filter((symbol) => parseOptionSymbol(symbol) !== null)
-            .sort()
-            .map((symbol) => {
-
-                const k = this.lastTick[symbol];
-                const opt = parseOptionSymbol(symbol);
-
-                const trade = opt
-                    ? Object.values(this.trades).find(
-                        (r) => r.contract === contractKey(opt) && !r.closed
-                    )
-                    : undefined;
-
-                const hits = trade
-                    ? (["t1", "t2", "t3"] as Stage[]).filter((s) => trade.sent[s]).length
-                    : 0;
-
-                const state = !this.isEnabled()
-                    ? "Telegram switch is OFF"
-                    : trade
-                        ? "ENTRY sent, targets hit " + hits + "/3"
-                        : k.executionAllowed
-                            ? "signal ON (not announced)"
-                            : "no signal";
-
-                const ago = Math.max(0, Math.round((Date.now() - k.at) / 1000));
-
-                return {
-                    symbol,
-                    line:
-                        state +
-                        " | entry " + num(k.entry) +
-                        " | SL " + num(k.stopLoss) +
-                        " | TP1 " + num(k.tp1) +
-                        " | price " + num(k.price) +
-                        " | " + ago + "s ago"
-                };
-
-            });
-
-    }
     onTick(t: TelegramTick) {
-        this.lastTick[t.symbol] = {
-            executionAllowed: t.executionAllowed,
-            entry: t.entry,
-            stopLoss: t.stopLoss,
-            tp1: t.tps[0],
-            price: t.price ?? NaN,
-            at: Date.now()
-        };
 
         if (!this.isEnabled()) {
             return;
