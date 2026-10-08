@@ -24,7 +24,6 @@ export default function AlertsPanel() {
     const [tick, forceRender] = useState(0);
     const [tgOn, setTgOn] = useState(TelegramNotifier.isEnabled());
     const [tgStatus, setTgStatus] = useState("");
-    const [tgOpen, setTgOpen] = useState(false);
     useEffect(() => {
         const timer = window.setInterval(() => forceRender((n) => n + 1), 2000);
         return () => window.clearInterval(timer);
@@ -62,7 +61,7 @@ export default function AlertsPanel() {
 
             <div
                 style={{
-                    display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                    display: "flex", alignItems: "center", gap: 8,
                     padding: "6px 10px", borderBottom: "1px solid #333",
                     flexShrink: 0, fontSize: 11
                 }}
@@ -90,22 +89,12 @@ export default function AlertsPanel() {
                 >
                     Test
                 </button>
-                <button
-                    onClick={() => setTgOpen((open) => !open)}
-                    style={{
-                        background: "transparent", border: "1px solid #333", color: "#999",
-                        borderRadius: 4, cursor: "pointer", fontSize: 11, padding: "2px 8px"
-                    }}
-                >
-                    {tgOpen ? "Hide details" : "Details"}
-                </button>
                 <span style={{ color: "#888" }}>{tgStatus}</span>
             </div>
             <div
                 style={{
                     padding: "4px 10px", borderBottom: "1px solid #333", flexShrink: 0,
-                    fontSize: 10, color: "#888", maxHeight: 96, overflowY: "auto",
-                    display: tgOpen ? "block" : "none"
+                    fontSize: 10, color: "#888", maxHeight: 96, overflowY: "auto"
                 }}
             >
                 {tgWatch.length === 0 && (

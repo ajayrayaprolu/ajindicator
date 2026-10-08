@@ -7,6 +7,7 @@
  *
  * It stubs window/localStorage/fetch, replays ticks through
  * src/services/TelegramNotifier.ts and checks what WOULD be sent.
+ * (In the app, "executionAllowed" below means: lifecycle state is EXECUTED/MANAGE.)
  */
 
 const posts: any[] = [];
@@ -130,7 +131,7 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 5));
     check("12. the same plan is not re-announced after it closed", posts.length === n1 + 1);
 
     //-----------------------------------------------------------------
-    console.log("\n--- stale plans are never announced ---");
+    console.log("\n--- stale plans are never announced; moved-away plans are ---");
     //-----------------------------------------------------------------
 
     const n2 = posts.length;
@@ -141,11 +142,14 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 5));
     await tick(PAST_TP1);
     check("13. plan whose price is already past TP1 is not announced", posts.length === n2);
 
-    const DRIFTED = { symbol: "NIFTY 06OCT 22700CE", entry: 100, stopLoss: 80, tps: [130, 150, 170],
+    // The trigger is the engine reaching EXECUTED, so the entry is fresh even when the
+    // price has moved away from the plan entry (the engine freezes the plan when it ARMS).
+    const MOVED = { symbol: "NIFTY 06OCT 22700CE", entry: 100, stopLoss: 80, tps: [130, 150, 170],
         executionAllowed: true, price: 120, high: 121, low: 119 };
-    await tick({ ...DRIFTED, executionAllowed: false, entry: 0 });
-    await tick(DRIFTED);
-    check("14. plan whose price drifted >5% from entry is not announced", posts.length === n2);
+    await tick({ ...MOVED, executionAllowed: false, entry: 0 });
+    await tick(MOVED);
+    check("14. plan whose price moved away from the entry (still between SL and TP1) IS announced",
+        posts.length === n2 + 1 && posts[n2].type === "ENTRY", JSON.stringify(posts[n2]));
 
     console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : failures + " CHECK(S) FAILED"}  (${posts.length} message(s) would have been sent)`);
     process.exit(failures === 0 ? 0 : 1);

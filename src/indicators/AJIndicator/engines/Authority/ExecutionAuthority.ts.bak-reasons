@@ -865,8 +865,6 @@ export class ExecutionAuthority {
 		
 		const authorityApproved =
 			mandatoryGatesPassed;
-		// AJ DIAG: everything pushed so far is informational (never blocks a trade).
-		const informationalReasonCount = rejectionReasons.length;
 		
 		if (authorityApproved) {
 		
@@ -919,11 +917,6 @@ export class ExecutionAuthority {
 		// direct dump instead of guessing further.
 		//--------------------------------------------------
 
-		// AJ DIAG: put the reasons that really BLOCK the trade (mandatory gates) first,
-		// so the dashboard / e2e REASON shows the true blocker instead of "Weak trend".
-		// Display order only - approval logic above is untouched.
-		const blockingReasons = rejectionReasons.splice(informationalReasonCount);
-		rejectionReasons.unshift(...blockingReasons);
 		AJLoggingGate.group("[RV-15 AUTHORITY GATE]");
 
 		AJLoggingGate.table({

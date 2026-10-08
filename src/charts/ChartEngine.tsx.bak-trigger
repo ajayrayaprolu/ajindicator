@@ -1594,12 +1594,7 @@ export default function ChartEngine({
                 Number(panel?.tp2),
                 Number(panel?.tp3)
             ],
-            // "trade given" = the engine's lifecycle reached EXECUTED (the same moment
-            // as the BUY marker). NOT executionAllowed: that is already true while the
-            // engine is only ARMED / CONFIRMED.
-            executionAllowed:
-                panel?.engineState === "EXECUTED" ||
-                panel?.engineState === "MANAGE",
+            executionAllowed: panel?.executionAllowed === true,
             price: latestClose,
             high: last ? Number(last.high) : null,
             low: last ? Number(last.low) : null

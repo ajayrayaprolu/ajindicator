@@ -199,7 +199,7 @@ class TelegramNotifierImpl {
                     : trade
                         ? "ENTRY sent, targets hit " + hits + "/3"
                         : k.executionAllowed
-                            ? "in trade (not announced)"
+                            ? "signal ON (not announced)"
                             : "no signal";
 
                 const ago = Math.max(0, Math.round((Date.now() - k.at) / 1000));
@@ -334,7 +334,7 @@ class TelegramNotifierImpl {
         const key = contract + "|" + Date.now();
         // A plan that is already active the first time this page sees the
         // contract (page just loaded), or whose price is already past its
-        // SL / TP1, is history - record
+        // SL / TP1 or more than 5% away from the entry, is history - record
         // it silently (closed) so it is never announced, now or when
         // executionAllowed flaps off and on again.
         const priceNow = t.price;
@@ -346,8 +346,8 @@ class TelegramNotifierImpl {
                 Number.isFinite(priceNow) &&
                 (
                     priceNow <= t.stopLoss ||
-                    priceNow >= tp1
-                    // (no drift rule: EXECUTED is the trigger, so the signal is fresh)
+                    priceNow >= tp1 ||
+                    Math.abs(priceNow - t.entry) / t.entry > 0.05
                 )
             );
 

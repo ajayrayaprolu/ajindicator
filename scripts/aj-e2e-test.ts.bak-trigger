@@ -247,7 +247,7 @@ function runScenario(name: string, candles: Candle[]) {
                 entry: Number(result?.entryPrice),
                 stopLoss: Number(result?.stopLoss),
                 tps: [Number(result?.tp1), Number(result?.tp2), Number(result?.tp3)],
-                executionAllowed: result?.lifecycleState === "EXECUTED" || result?.lifecycleState === "MANAGE",
+                executionAllowed: result?.executionAllowed === true,
                 price: cur.close,
                 high: cur.high,
                 low: cur.low
