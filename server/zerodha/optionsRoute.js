@@ -1,5 +1,9 @@
+//====================================
+// server/zerodha/optionsRoute.js
+//====================================
+
 import express from "express";
-import { getAllInstruments } from "./instruments.js";
+import { getAllInstruments } from "./instruments/instruments.js";
 
 const router = express.Router();
 

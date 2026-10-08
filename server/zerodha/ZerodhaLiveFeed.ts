@@ -23,7 +23,7 @@ import type { Candle } from "../types/Candle";
 import type { IDataFeed } from "../types/IDataFeed";
 import axios from "axios";
 import { getInstrument } from "./InstrumentMapper";
-import { AJLoggingGate } from "@/indicators/AJIndicator/debug/AJLoggingGate";
+import { AJLoggingGate } from "../indicators/AJIndicator/debug/AJLoggingGate";
 //------------------------------------------------------
 // TYPES
 //------------------------------------------------------

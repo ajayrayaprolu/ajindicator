@@ -2243,6 +2243,32 @@ export class AJDecisionEngine {
 		// display stays "PE/CE buy long" as designed.
 		//--------------------------------------------------
 		
+		//--------------------------------------------------
+		// AJ DISPLAY: AUTH label (text only - authorityDecision / executionAllowed unchanged)
+		//
+		// 1) Option charts are always BOUGHT (CE or PE), so an approval is
+		//    shown as BUY APPROVED even when the INDEX bias is bearish.
+		// 2) ExecutionAuthority answers "may a NEW trade open?", so it says
+		//    WAIT for as long as a trade is running (mandatory gate
+		//    "trade already running"). While the lifecycle is EXECUTED or
+		//    MANAGE the approval that opened the trade still stands, so show it.
+		//--------------------------------------------------
+		const authTradeActive =
+			stateResult.engineState === "EXECUTED" ||
+			stateResult.engineState === "MANAGE";
+
+		const authCurrentText =
+			String((authorityResult as any).authorityText ?? "");
+
+		if (execIsOptionChart && /APPROVED$/.test(authCurrentText)) {
+			(authorityResult as any).authorityText = "BUY APPROVED";
+		}
+		else if (authTradeActive && authCurrentText === "WAIT") {
+			(authorityResult as any).authorityText =
+				(execIsOptionChart || execDirection > 0)
+					? "BUY APPROVED"
+					: "SELL APPROVED";
+		}
 		const tradeDirection =
 			execDirection;
 		

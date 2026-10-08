@@ -23,16 +23,16 @@ import { WebSocketServer } from "ws";
 import { registerFeed } from "./feeds/FeedRegistry.js";
 import feedManager from "./feeds/FeedManager.js";
 
-import { searchSymbols } from "./instruments/SymbolSearch.js";
+import { searchSymbols } from "./zerodha/SymbolSearch.js";
 
 import {
     initializeInstrumentDatabase
-} from "./instruments/InstrumentDatabase.js";
+} from "./zerodha/instruments/InstrumentDatabase.js";
 
 import {
     initializeInstrumentSynchronizer,
     startInstrumentSynchronization
-} from "./instruments/InstrumentSynchronizer.js";
+} from "./zerodha/instruments/InstrumentSynchronizer.js";
 
 import {
     registerLoginRoutes
@@ -48,7 +48,7 @@ import {
     instrumentCount,
     getInstrument,
     getByTradingSymbol
-} from "./zerodha/instruments.js";
+} from "./zerodha/instruments/instruments.js";
 
 import {
     getHistoricalData

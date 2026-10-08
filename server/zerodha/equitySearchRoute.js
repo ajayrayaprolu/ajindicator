@@ -1,5 +1,9 @@
+//=======================================
+// server/zerodha/equitySearchRoute.js
+//======================================
+
 import express from "express";
-import { searchInstrument, getAllInstruments } from "./instruments.js";
+import { searchInstrument, getAllInstruments } from "./instruments/instruments.js";
 
 const router = express.Router();
 

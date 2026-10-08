@@ -31,12 +31,12 @@ import axios from "axios";
 import {
     refreshInstrumentCache
 }
-from "./instruments.js";
+from "./instruments/instruments.js";
 
 import {
     synchronizeInstrumentMaster
 }
-from "../instruments/InstrumentSynchronizer.js";
+from "./instruments/InstrumentSynchronizer.js";
 
 
 //======================================================

@@ -1,6 +1,6 @@
 //======================================================
 // server/zerodha/kiteBinaryParser.js
-//
+//======================================================
 // Pure binary tick parser for Zerodha's Kite WebSocket
 // streaming protocol (v3). No transport/socket code here
 // on purpose — this is unit-testable in isolation before

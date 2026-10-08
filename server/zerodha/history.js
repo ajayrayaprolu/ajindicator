@@ -1,13 +1,10 @@
 //======================================================
 // server/zerodha/history.js
-// Part 1
-//
+//======================================================
 // Timeframe Mapping
 // Date Range Calculation
 // Instrument Resolution
 // Request Preparation
-//
-// Part 2 will contain:
 //
 // - Kite Historical API call
 // - Candle conversion
@@ -29,7 +26,7 @@ import {
 
     getInstrument
 
-} from "./instruments.js";
+} from "./instruments/instruments.js";
 
 //======================================================
 // KITE API
