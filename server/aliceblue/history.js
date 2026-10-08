@@ -43,13 +43,19 @@
 //
 //======================================================
 
-import fs from "fs";
-import path from "path";
 import axios from "axios";
 
 import {
     getSessionId
 } from "./token.js";
+
+import {
+    loadCandles,
+    saveCandles,
+    getCandleFreshness,
+    loadTrackedKeys,
+    getDatabasePath
+} from "./data/AliceBlueCandleDatabase.js";
 
 const ALICEBLUE_BASE =
     "https://a3.aliceblueonline.com";

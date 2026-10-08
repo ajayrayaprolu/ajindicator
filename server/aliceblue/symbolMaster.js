@@ -20,6 +20,13 @@ import fs from "fs";
 import path from "path";
 import axios from "axios";
 
+import {
+    loadContracts,
+    saveContracts,
+    getContractCount,
+    getDatabasePath
+} from "./data/AliceBlueContractDatabase.js";
+
 //======================================================
 // CONFIGURATION
 //======================================================
@@ -37,6 +44,9 @@ const MASTER_FILE =
         DATA_DIR,
         "contract-master.json"
     );
+
+const CONTRACT_DATABASE_FILE =
+    getDatabasePath();
 
 // Alice Blue contract-master endpoint.
 //
@@ -1002,29 +1012,32 @@ export async function downloadContractMaster() {
             );
         }
 
-        contracts =
-            normalized;
-
-        buildIndexes();
-
-        fs.writeFileSync(
-            MASTER_FILE,
-            JSON.stringify(
-                {
-                    provider: "ALICEBLUE",
-                    downloadedAt:
-                        new Date().toISOString(),
-                    count:
-                        contracts.length,
-                    contracts
-                },
-                null,
-                2
-            ),
-            "utf8"
-        );
-
-        loaded = true;
+		contracts =
+			normalized;
+		
+		//--------------------------------------------------
+		// Persist normalized Alice Blue contracts in SQLite.
+		//
+		// Runtime reads come from SQLite.
+		// The legacy JSON file is intentionally retained
+		// for now as a migration/rollback artifact only.
+		//--------------------------------------------------
+		
+		saveContracts(
+			contracts
+		);
+		
+		buildIndexes();
+		
+		loaded =
+			true;
+		
+		lastRefresh =
+			Date.now();
+		
+		console.log(
+			`[ALICEBLUE SYMBOLS] SQLite contract database updated: ${getContractCount()} contracts`
+		);
 
         lastRefresh =
             Date.now();
@@ -1041,22 +1054,22 @@ export async function downloadContractMaster() {
                 "NSE"
             );
 
-        return {
-
-            success: true,
-
-            count:
-                contracts.length,
-
-            file:
-                MASTER_FILE,
-
-            downloadedAt:
-                new Date(
-                    lastRefresh
-                ).toISOString()
-
-        };
+		return {
+		
+			success: true,
+		
+			count:
+				contracts.length,
+		
+			file:
+				CONTRACT_DATABASE_FILE,
+		
+			downloadedAt:
+				new Date(
+					lastRefresh
+				).toISOString()
+		
+		};
 
     }
     catch (error) {
@@ -1081,59 +1094,132 @@ export function loadContractMaster() {
 
     ensureDataDirectory();
 
-    if (
-        !fs.existsSync(
-            MASTER_FILE
-        )
-    ) {
-
-        return false;
-
-    }
-
     try {
 
-        const text =
-            fs.readFileSync(
-                MASTER_FILE,
-                "utf8"
-            );
-
-        const parsed =
-            JSON.parse(
-                text
-            );
-
         const cachedContracts =
-            Array.isArray(
-                parsed
-                    ?.contracts
+            loadContracts();
+
+        if (
+            !Array.isArray(
+                cachedContracts
+            ) ||
+            cachedContracts.length === 0
+        ) {
+
+            console.warn(
+                "[ALICEBLUE SYMBOLS] SQLite contract database is empty."
+            );
+
+            return false;
+
+        }
+
+        //--------------------------------------------------
+        // SQLite stores normalized contract columns.
+        //
+        // Reconstruct the runtime contract objects directly.
+        // Do NOT run normalizeContract() here.
+        //
+        // This preserves the existing protection against
+        // double-normalization of already-normalized data.
+        //--------------------------------------------------
+
+        contracts =
+            cachedContracts.map(
+                contract => {
+
+                    let raw =
+                        contract.raw;
+
+                    if (
+                        typeof raw === "string"
+                    ) {
+
+                        try {
+
+                            raw =
+                                JSON.parse(
+                                    raw
+                                );
+
+                        }
+                        catch {
+
+                            // Preserve malformed raw
+                            // payload as-is rather than
+                            // failing the entire catalog.
+
+                        }
+
+                    }
+
+                    return {
+
+                        exchange:
+                            contract.exchange ?? "",
+
+                        exchangeSegment:
+                            contract.exchange_segment ?? "",
+
+                        token:
+                            String(
+                                contract.token ?? ""
+                            ),
+
+                        symbol:
+                            contract.symbol ?? "",
+
+                        tradingSymbol:
+                            contract.trading_symbol ?? "",
+
+                        formattedName:
+                            contract.formatted_name ?? "",
+
+                        instrumentType:
+                            contract.instrument_type ?? "",
+
+                        groupName:
+                            contract.group_name ?? "",
+
+                        expiry:
+                            contract.expiry ?? null,
+
+                        strike:
+                            contract.strike !== null &&
+                            contract.strike !== undefined
+                                ? Number(
+                                    contract.strike
+                                )
+                                : undefined,
+
+                        optionType:
+                            contract.option_type ?? "",
+
+                        lotSize:
+                            contract.lot_size !== null &&
+                            contract.lot_size !== undefined
+                                ? Number(
+                                    contract.lot_size
+                                )
+                                : undefined,
+
+                        tickSize:
+                            contract.tick_size !== null &&
+                            contract.tick_size !== undefined
+                                ? Number(
+                                    contract.tick_size
+                                )
+                                : undefined,
+
+                        raw
+
+                    };
+
+                }
             )
-                ? parsed.contracts
-                : Array.isArray(
-                    parsed
-                )
-                    ? parsed
-                    : [];
-
-        //--------------------------------------------------
-        // IMPORTANT: contract-master.json already stores
-        // NORMALIZED contracts (written by
-        // downloadContractMaster() after normalizeContract()
-        // already ran once). Running normalizeContract()
-        // again here — treating already-normalized objects
-        // as if they were fresh raw AliceBlue payloads —
-        // double-normalizes them: each restart nests another
-        // nowdead "raw" layer and silently degrades fields
-        // like formattedName (e.g. "NIFTY 50" -> "NIFTY").
-        // Use the cached objects directly instead.
-        //--------------------------------------------------
-
-        const normalized =
-            cachedContracts.filter(
+            .filter(
                 contract =>
                     contract &&
-                    typeof contract === "object" &&
                     (
                         contract.token ||
                         contract.tradingSymbol
@@ -1141,29 +1227,44 @@ export function loadContractMaster() {
             );
 
         if (
-            normalized.length === 0
+            contracts.length === 0
         ) {
 
             return false;
 
         }
 
-        contracts =
-            normalized;
-
         buildIndexes();
 
-        loaded = true;
+        loaded =
+            true;
 
-        lastRefresh =
-            parsed?.downloadedAt
-                ? Date.parse(
-                    parsed.downloadedAt
-                ) || 0
-                : 0;
+        //--------------------------------------------------
+        // SQLite does not currently maintain the previous
+        // JSON downloadedAt metadata. Use the database
+        // modification time as the refresh timestamp.
+        //--------------------------------------------------
+
+        try {
+
+            const stat =
+                fs.statSync(
+                    CONTRACT_DATABASE_FILE
+                );
+
+            lastRefresh =
+                stat.mtimeMs;
+
+        }
+        catch {
+
+            lastRefresh =
+                Date.now();
+
+        }
 
         console.log(
-            `[ALICEBLUE SYMBOLS] Loaded ${contracts.length} contracts from local cache.`
+            `[ALICEBLUE SYMBOLS] Loaded ${contracts.length} contracts from SQLite.`
         );
 
         return true;
@@ -1173,7 +1274,7 @@ export function loadContractMaster() {
     catch (error) {
 
         console.error(
-            "[ALICEBLUE SYMBOLS] Local cache load failed:",
+            "[ALICEBLUE SYMBOLS] SQLite contract cache load failed:",
             error?.message ??
             error
         );
@@ -2384,8 +2485,8 @@ export function getAliceBlueSymbolStatus() {
                 ).toISOString()
                 : null,
 
-        cacheFile:
-            MASTER_FILE,
+		cacheFile:
+			CONTRACT_DATABASE_FILE,
 
         refreshIntervalMs:
             REFRESH_INTERVAL_MS

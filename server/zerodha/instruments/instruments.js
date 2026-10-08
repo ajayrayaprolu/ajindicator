@@ -1,5 +1,5 @@
 //======================================================
-// server/zerodha/intruments/instruments.js
+// server/zerodha/instruments/instruments.js
 //
 // Responsibilities
 //
@@ -7,17 +7,20 @@
 // ✓ Parse CSV
 // ✓ Build in-memory cache
 // ✓ Build fast lookup indexes
+// ✓ Load instrument cache from SQLite
+// ✓ No JSON file dependency
 //
 //======================================================
 
-import fs from "fs";
-import path from "path";
 import axios from "axios";
 
 import {
     getAuthorizationHeader
-}
-from "../token.js";
+} from "../token.js";
+
+import {
+    getInstrumentDatabase
+} from "./InstrumentDatabase.js";
 
 //======================================================
 // CACHE
@@ -38,16 +41,103 @@ const exchangeTradingSymbolIndex =
     new Map();
 
 //======================================================
-// PATH
+// LOAD FROM SQLITE
 //======================================================
 
-const CACHE_FILE =
-    path.join(
-        process.cwd(),
-        "server",
-        "zerodha",
-        "instruments.json"
+function loadFromDatabase() {
+
+    const db =
+        getInstrumentDatabase();
+
+    const rows =
+        db.prepare(`
+            SELECT
+                exchange,
+                segment,
+                symbol,
+                trading_symbol,
+                display_name,
+                instrument_type,
+                expiry,
+                strike,
+                option_type,
+                underlying,
+                token_identifier,
+                feed_source,
+                active_status,
+                last_updated
+            FROM instruments
+            WHERE feed_source = 'zerodha'
+            ORDER BY id
+        `).all();
+
+    instruments =
+        rows.map(
+            row => ({
+
+                instrument_token:
+                    row.token_identifier == null
+                        ? null
+                        : Number(
+                            row.token_identifier
+                        ),
+
+                exchange_token:
+                    0,
+
+                tradingsymbol:
+                    row.trading_symbol,
+
+                name:
+                    row.display_name ?? "",
+
+                exchange:
+                    row.exchange,
+
+                segment:
+                    row.segment,
+
+                instrument_type:
+                    row.instrument_type ?? "",
+
+                expiry:
+                    row.expiry ?? "",
+
+                strike:
+                    row.strike == null
+                        ? 0
+                        : Number(
+                            row.strike
+                        ),
+
+                option_type:
+                    row.option_type ?? null,
+
+                tick_size:
+                    0,
+
+                lot_size:
+                    0,
+
+                underlying:
+                    row.underlying ?? "",
+
+                active_status:
+                    row.active_status
+
+            })
+        );
+
+    buildIndexes();
+
+    console.log(
+        "[ZERODHA]",
+        "SQLite instrument cache loaded:",
+        instruments.length
     );
+
+    return instruments.length;
+}
 
 //======================================================
 // DOWNLOAD MASTER
@@ -105,8 +195,6 @@ export async function downloadInstruments() {
 
     buildIndexes();
 
-    saveCache();
-
     console.log(
         "Loaded:",
         instruments.length,
@@ -134,7 +222,7 @@ function parseCSV(
     const rows =
         csv
             .trim()
-            .split("\n");
+            .split(/\r?\n/);
 
     const headers =
         rows[0]
@@ -196,6 +284,18 @@ function parseCSV(
                 item.lot_size
             );
 
+        if (
+            item.strike !== undefined &&
+            item.strike !== ""
+        ) {
+
+            item.strike =
+                Number(
+                    item.strike
+                );
+
+        }
+
         output.push(
             item
         );
@@ -232,63 +332,75 @@ function buildIndexes() {
         // TOKEN
         //--------------------------------------------------
 
-        tokenIndex.set(
+        if (
+            item.instrument_token != null
+        ) {
 
-            item.instrument_token,
+            tokenIndex.set(
 
-            item
+                Number(
+                    item.instrument_token
+                ),
 
-        );
+                item
+
+            );
+
+        }
 
         //--------------------------------------------------
         // SYMBOL
         //--------------------------------------------------
 
-        tradingSymbolIndex.set(
+        const tradingSymbol =
+            String(
+                item.tradingsymbol ?? ""
+            ).toUpperCase();
 
-            item.tradingsymbol,
+        if (tradingSymbol) {
 
-            item
+            tradingSymbolIndex.set(
+                tradingSymbol,
+                item
+            );
 
-        );
+        }
 
         //--------------------------------------------------
         // EXCHANGE
         //--------------------------------------------------
 
+        const exchange =
+            String(
+                item.exchange ?? ""
+            ).toUpperCase();
+
         if (
-
             !exchangeIndex.has(
-
-                item.exchange
-
+                exchange
             )
-
         ) {
 
             exchangeIndex.set(
-
-                item.exchange,
-
+                exchange,
                 []
-
             );
 
         }
 
         exchangeIndex
             .get(
-                item.exchange
+                exchange
             )
             .push(item);
 
         //--------------------------------------------------
-        // NSE:RELIANCE
+        // EXCHANGE + SYMBOL
         //--------------------------------------------------
 
         exchangeTradingSymbolIndex.set(
 
-            `${item.exchange}:${item.tradingsymbol}`,
+            `${exchange}:${tradingSymbol}`,
 
             item
 
@@ -299,75 +411,35 @@ function buildIndexes() {
 }
 
 //======================================================
-// SAVE CACHE
-//======================================================
-
-function saveCache() {
-
-    fs.writeFileSync(
-
-        CACHE_FILE,
-
-        JSON.stringify(
-
-            instruments,
-
-            null,
-
-            2
-
-        ),
-
-        "utf8"
-
-    );
-
-}
-
-//======================================================
-// LOAD CACHE
+// LOAD CACHE FROM SQLITE
 //======================================================
 
 export function loadCache() {
 
-    if (
+    try {
 
-        !fs.existsSync(
-            CACHE_FILE
-        )
+        const count =
+            loadFromDatabase();
 
-    ) {
+        return count > 0;
+
+    }
+
+    catch (error) {
+
+        console.warn(
+            "[ZERODHA]",
+            "Unable to load SQLite instrument cache:",
+            error?.message
+        );
+
+        instruments = [];
+
+        buildIndexes();
 
         return false;
 
     }
-
-    instruments =
-        JSON.parse(
-
-            fs.readFileSync(
-
-                CACHE_FILE,
-
-                "utf8"
-
-            )
-
-        );
-
-    buildIndexes();
-
-    console.log(
-
-        "[ZERODHA]",
-
-        "Instrument cache loaded:",
-
-        instruments.length
-
-    );
-
-    return true;
 
 }
 
@@ -386,24 +458,6 @@ export function getAllInstruments() {
     return instruments;
 
 }
-
-//======================================================
-// END OF PART 1
-//======================================================
-
-//
-// Continue immediately with
-// server/zerodha/instruments.js Part 2
-//======================================================
-// server/zerodha/instruments.js
-// Part 2
-//
-// Lookup APIs
-// Search helpers
-// Startup initialization
-//
-// Continues from Part 1
-//======================================================
 
 //======================================================
 // LOOKUP BY TOKEN
@@ -454,13 +508,6 @@ export function getByTradingSymbol(
 
 //======================================================
 // LOOKUP BY EXCHANGE + SYMBOL
-//
-// Example:
-//
-// NSE + RELIANCE
-// NSE + INFY
-// BSE + SBIN
-// NFO + NIFTY25JULFUT
 //======================================================
 
 export function getInstrument(
@@ -489,14 +536,6 @@ export function getInstrument(
 
 //======================================================
 // GET ALL IN EXCHANGE
-//
-// Example:
-//
-// NSE
-// BSE
-// NFO
-// CDS
-// MCX
 //======================================================
 
 export function getExchangeInstruments(
@@ -522,14 +561,6 @@ export function getExchangeInstruments(
 
 //======================================================
 // SIMPLE TEXT SEARCH
-//
-// Searches:
-//
-// trading symbol
-// exchange
-// company name
-//
-// Used by SymbolMapper / UI
 //======================================================
 
 export function searchInstrument(
@@ -588,19 +619,18 @@ export async function refreshInstrumentCache() {
 //======================================================
 // INITIALIZE
 //
-// Called once when Node server starts.
-//
 // Order:
 //
-// 1. Load local cache
-// 2. If cache missing
+// 1. Load existing SQLite cache
+// 2. If SQLite cache missing/empty
 //    download from Zerodha
+//
 //======================================================
 
 export async function initializeInstrumentCache() {
 
     //--------------------------------------------------
-    // Existing cache?
+    // Existing SQLite cache?
     //--------------------------------------------------
 
     if (loadCache()) {
@@ -610,7 +640,7 @@ export async function initializeInstrumentCache() {
     }
 
     console.log(
-        "[ZERODHA] No local cache found."
+        "[ZERODHA] No local SQLite instrument cache found."
     );
 
     //--------------------------------------------------

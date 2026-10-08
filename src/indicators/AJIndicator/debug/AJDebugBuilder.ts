@@ -560,8 +560,15 @@ export class AJDebugBuilder {
 					? "ACTIVE"
 					: "NA",
 			
+			// AJ DISPLAY: authorityStatus - same rule as the AUTH row
 			authorityStatus:
-				((pipelineTrace as any)?.authority?.message)
+				(
+					typeof (authority as any)?.authorityText === "string" &&
+					(authority as any).authorityText !== ""
+						? (authority as any).authorityText
+						: undefined
+				)
+				?? ((pipelineTrace as any)?.authority?.message)
 				?? blockReason,
 
             lines:[]
@@ -657,7 +664,16 @@ export class AJDebugBuilder {
 				? (authority.rejectionReasons?.[0] ?? "No reason reported")
 				: "";
 
+		// AJ DISPLAY: AUTH row - prefer the engine's FINAL authorityText (corrected by
+		// AJDecisionEngine after the pipeline trace was written); fall back to the old chain.
 		const authorityText =
+			(
+				typeof (authority as any)?.authorityText === "string" &&
+				(authority as any).authorityText !== ""
+					? (authority as any).authorityText
+					: undefined
+			)
+			??
 			((pipelineTrace as any)?.authority?.message)
 			??
 			(

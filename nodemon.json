@@ -19,7 +19,6 @@
                    "server/fyers/session.json",
                    "server/aliceblue/session.json",
                    "server/**/candle-cache/**",
-                   "server/zerodha/instruments.json",
                    "server/zerodha/session.json"
                ],
     "delay":  1000

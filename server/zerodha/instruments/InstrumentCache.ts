@@ -1,8 +1,10 @@
 //=========================================
-// server/zerodha/instruments/ZerodhaInstrumentCache.ts
+// server/zerodha/instruments/InstrumentCache.ts
 //=========================================
+
 import axios from "axios";
 import { AJLoggingGate } from "./indicators/AJIndicator/debug/AJLoggingGate";
+
 //=========================================================
 
 export interface ZerodhaInstrument {
@@ -19,7 +21,7 @@ export interface ZerodhaInstrument {
     lot_size: number;
 }
 
-export class ZerodhaInstrumentCache {
+export class InstrumentCache {
 
     //--------------------------------------------------
     // CACHE
@@ -58,18 +60,18 @@ export class ZerodhaInstrumentCache {
 
         const response =
             await axios.get(
-                "https://localhost:3001/api/zerodha/instruments"
+                "/api/zerodha/instruments"
             );
 
         this.instruments =
             response.data?.instruments ?? [];
-		
-		AJLoggingGate.log(
-			"[ZERODHA CACHE]",
-			"Server returned",
-			this.instruments.length,
-			"instruments"
-		);
+
+        AJLoggingGate.log(
+            "[ZERODHA CACHE]",
+            "Server returned",
+            this.instruments.length,
+            "instruments"
+        );
 
         this.buildIndexes();
 
@@ -88,10 +90,18 @@ export class ZerodhaInstrumentCache {
     //--------------------------------------------------
 
     private static buildIndexes() {
+
         this.tokenIndex.clear();
+
         this.symbolIndex.clear();
+
         this.exchangeSymbolIndex.clear();
-        for (const instrument of this.instruments) {
+
+        for (
+            const instrument
+            of this.instruments
+        ) {
+
             this.tokenIndex.set(
                 instrument.instrument_token,
                 instrument
@@ -106,7 +116,9 @@ export class ZerodhaInstrumentCache {
                 `${instrument.exchange}:${instrument.tradingsymbol}`.toUpperCase(),
                 instrument
             );
+
         }
+
     }
 
     //--------------------------------------------------
@@ -116,16 +128,19 @@ export class ZerodhaInstrumentCache {
     static getByToken(
         token: number
     ) {
+
         return (
             this.tokenIndex.get(token)
             ||
             null
         );
+
     }
 
     static getByTradingSymbol(
         symbol: string
     ) {
+
         return (
             this.symbolIndex.get(
                 symbol.toUpperCase()
@@ -133,12 +148,14 @@ export class ZerodhaInstrumentCache {
             ||
             null
         );
+
     }
 
     static getByExchangeSymbol(
         exchange: string,
         symbol: string
     ) {
+
         return (
             this.exchangeSymbolIndex.get(
                 `${exchange}:${symbol}`.toUpperCase()
@@ -146,6 +163,7 @@ export class ZerodhaInstrumentCache {
             ||
             null
         );
+
     }
 
     //--------------------------------------------------
@@ -153,13 +171,23 @@ export class ZerodhaInstrumentCache {
     //--------------------------------------------------
 
     static getAll() {
+
         return this.instruments;
+
     }
 
     //--------------------------------------------------
     // COUNT
     //--------------------------------------------------
+
     static count() {
+
         return this.instruments.length;
+
     }
+
 }
+
+//======================================================
+// END OF FILE
+//======================================================

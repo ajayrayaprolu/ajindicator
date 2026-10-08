@@ -43,7 +43,6 @@ import {
 } from "./zerodha/token.js";
 
 import {
-    initializeInstrumentCache,
     getAllInstruments,
     instrumentCount,
     getInstrument,
@@ -53,6 +52,12 @@ import {
 import {
     getHistoricalData
 } from "./zerodha/history.js";
+
+import {
+    upsertCandles as upsertZerodhaCandles,
+    zerodhaCandleDatabasePath
+} from "./zerodha/data/ZerodhaCandleDatabase.js";
+
 
 //==========================
 // YAHOO import
@@ -224,9 +229,13 @@ registerFeed(
 await feedManager.setFeed("yahoo");
 await feedManager.start();
 
+//console.log(
+//    "[MARKET DATA]",
+//    feedManager.getStatus()
+//);
+
 console.log(
-    "[MARKET DATA]",
-    feedManager.getStatus()
+    "MARKET DATA Available : YAHOO, BINANCE, DELTA EXCHANGE, FYERS, ALICEBLUE, INDSTOCKS"
 );
 
 //====================
@@ -1394,7 +1403,118 @@ app.get(
                     }
                 }
                 if (Array.isArray(fyersCandles) && fyersCandles.length > 0) {
-                    console.log("[ZERODHA HISTORY] FYERS fallback succeeded:", { symbol: fallbackSymbol, count: fyersCandles.length });
+
+                    console.log(
+                        "[ZERODHA HISTORY] FYERS fallback succeeded:",
+                        {
+                            symbol: fallbackSymbol,
+                            count: fyersCandles.length
+                        }
+                    );
+
+                    //--------------------------------------------------
+                    // Persist FYERS fallback candles into Zerodha
+                    // SQLite candle cache.
+                    //--------------------------------------------------
+
+                    const zerodhaCacheInstrument =
+                        getInstrument("NSE", fallbackSymbol) ||
+                        getInstrument("NFO", fallbackSymbol) ||
+                        getInstrument("BSE", fallbackSymbol) ||
+                        getByTradingSymbol(fallbackSymbol);
+
+                    if (zerodhaCacheInstrument?.instrument_token) {
+
+                        const zerodhaInterval =
+                            fallbackTimeframe === "1m" ||
+                            fallbackTimeframe === "1minute"
+                                ? "minute"
+                                : fallbackTimeframe === "3m" ||
+                                  fallbackTimeframe === "3minute"
+                                    ? "3minute"
+                                    : fallbackTimeframe === "5m" ||
+                                      fallbackTimeframe === "5minute"
+                                        ? "5minute"
+                                        : fallbackTimeframe === "10m" ||
+                                          fallbackTimeframe === "10minute"
+                                            ? "10minute"
+                                            : fallbackTimeframe === "15m" ||
+                                              fallbackTimeframe === "15minute"
+                                                ? "15minute"
+                                                : fallbackTimeframe === "30m" ||
+                                                  fallbackTimeframe === "30minute"
+                                                    ? "30minute"
+                                                    : fallbackTimeframe === "1h" ||
+                                                      fallbackTimeframe === "60minute"
+                                                        ? "60minute"
+                                                        : fallbackTimeframe === "1d" ||
+                                                          fallbackTimeframe === "day"
+                                                            ? "day"
+                                                            : "minute";
+
+                        const saved =
+                            upsertZerodhaCandles(
+                                zerodhaCacheInstrument.instrument_token,
+                                zerodhaInterval,
+                                fyersCandles,
+                                {
+                                    exchange:
+                                        zerodhaCacheInstrument.exchange ||
+                                        "NSE",
+
+                                    trading_symbol:
+                                        zerodhaCacheInstrument.tradingsymbol ||
+                                        fallbackSymbol
+                                }
+                            );
+
+// console.log();
+// console.log(
+//     "======================================"
+// );
+// console.log(
+//     "ZERODHA CANDLE SQLITE FALLBACK PERSISTENCE"
+// );
+// console.log(
+//     "======================================"
+// );
+// console.log(
+//     "Database         :",
+//     zerodhaCandleDatabasePath()
+// );
+// console.log(
+//     "Instrument Token :",
+//     zerodhaCacheInstrument.instrument_token
+// );
+// console.log(
+//     "Interval         :",
+//     zerodhaInterval
+// );
+// console.log(
+//     "Received Bars    :",
+//     fyersCandles.length
+// );
+// console.log(
+//     "Upserted Bars    :",
+//     saved
+// );
+// console.log(
+//     "======================================"
+// );
+
+                        if (saved !== fyersCandles.length) {
+                            throw new Error(
+                                `[ZERODHA CANDLE DB] FYERS fallback persistence mismatch: received ${fyersCandles.length} candles but upserted ${saved}.`
+                            );
+                        }
+                    } else {
+
+                        console.warn(
+                            "[ZERODHA CANDLE DB] FYERS fallback succeeded, but Zerodha instrument was not found. SQLite persistence skipped:",
+                            fallbackSymbol
+                        );
+                    }
+
                     return res.json(fyersCandles);
                 }
             } catch (fallbackError) {

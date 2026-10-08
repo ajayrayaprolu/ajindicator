@@ -1,32 +1,43 @@
 //======================================================
 // server/zerodha/history.js
 //======================================================
-// Timeframe Mapping
-// Date Range Calculation
-// Instrument Resolution
-// Request Preparation
+// Zerodha Historical Data
 //
-// - Kite Historical API call
-// - Candle conversion
-// - Diagnostics
-// - export getHistoricalData()
+// Flow:
+//
+// AJ Terminal
+//      ↓
+// Instrument Resolution
+//      ↓
+// SQLite Candle Cache
+//      ↓
+// Cache Miss
+//      ↓
+// Kite Historical API
+//      ↓
+// Candle Conversion
+//      ↓
+// SQLite Upsert
+//      ↓
+// AJ Candle[]
 //======================================================
 
 import axios from "axios";
 
 import {
-
     getAccessToken
-
 } from "./token.js";
 
 import {
-
     getByTradingSymbol,
-
     getInstrument
-
 } from "./instruments/instruments.js";
+
+import {
+    getCandles as getCachedCandles,
+    getCandleCacheStats,
+    upsertCandles
+} from "./data/ZerodhaCandleDatabase.js";
 
 //======================================================
 // KITE API
@@ -37,33 +48,33 @@ const BASE_URL =
 
 //======================================================
 // TIMEFRAME MAP
-//
-// AJ Terminal
-//
-// ↓
-//
-// Kite Historical API
 //======================================================
 
 const intervalMap = {
 
     "1m": "minute",
-    "3m": "3minute",
-    "5m": "5minute",
-    "10m": "10minute",
-    "15m": "15minute",
-    "30m": "30minute",
-    "1h": "60minute",
-    "2h": "60minute",
-    "4h": "60minute",
-    "1d": "day"
 
+    "3m": "3minute",
+
+    "5m": "5minute",
+
+    "10m": "10minute",
+
+    "15m": "15minute",
+
+    "30m": "30minute",
+
+    "1h": "60minute",
+
+    "2h": "60minute",
+
+    "4h": "60minute",
+
+    "1d": "day"
 };
 
 //======================================================
 // HISTORY LOOKBACK
-//
-// Controls from_date
 //======================================================
 
 const historyDays = {
@@ -83,63 +94,88 @@ const historyDays = {
     "60minute": 730,
 
     day: 3650
+};
 
+//======================================================
+// INTERVAL SECONDS
+//
+// Used to determine whether a cache ending slightly
+// before "now" is still fresh enough for the request.
+//======================================================
+
+const intervalSeconds = {
+
+    minute:
+        60,
+
+    "3minute":
+        3 * 60,
+
+    "5minute":
+        5 * 60,
+
+    "10minute":
+        10 * 60,
+
+    "15minute":
+        15 * 60,
+
+    "30minute":
+        30 * 60,
+
+    "60minute":
+        60 * 60,
+
+    day:
+        24 * 60 * 60
 };
 
 //======================================================
 // FORMAT DATE
 //
+// Kite expects:
+//
 // YYYY-MM-DD HH:mm:ss
 //======================================================
 
-function formatDate(
+function formatDate(date) {
 
-    date
-
-) {
-
-    const pad = value =>
-
-        String(value)
-            .padStart(2, "0");
+    const pad =
+        value =>
+            String(value)
+                .padStart(2, "0");
 
     return (
 
-        `${date.getFullYear()}-`
+        `${date.getFullYear()}-` +
 
-        +
+        `${pad(
+            date.getMonth() + 1
+        )}-` +
 
-        `${pad(date.getMonth() + 1)}-`
+        `${pad(
+            date.getDate()
+        )} ` +
 
-        +
+        `${pad(
+            date.getHours()
+        )}:` +
 
-        `${pad(date.getDate())} `
+        `${pad(
+            date.getMinutes()
+        )}:` +
 
-        +
-
-        `${pad(date.getHours())}:`
-
-        +
-
-        `${pad(date.getMinutes())}:`
-
-        +
-
-        `${pad(date.getSeconds())}`
-
+        `${pad(
+            date.getSeconds()
+        )}`
     );
-
 }
 
 //======================================================
 // DATE RANGE
 //======================================================
 
-function getDateRange(
-
-    interval
-
-) {
+function getDateRange(interval) {
 
     const now =
         new Date();
@@ -148,23 +184,13 @@ function getDateRange(
         new Date(now);
 
     const days =
-
         historyDays[
             interval
-        ]
-
-        ||
-
-        30;
+        ] || 30;
 
     from.setDate(
-
-        from.getDate()
-
-        -
-
+        from.getDate() -
         days
-
     );
 
     return {
@@ -173,68 +199,48 @@ function getDateRange(
             formatDate(from),
 
         to:
-            formatDate(now)
+            formatDate(now),
 
+        fromSeconds:
+            Math.floor(
+                from.getTime() / 1000
+            ),
+
+        toSeconds:
+            Math.floor(
+                now.getTime() / 1000
+            )
     };
-
 }
 
 //======================================================
 // RESOLVE INSTRUMENT
-//
-// Registry
-//
-// ↓
-//
-// Cache
 //======================================================
 
-function resolveInstrument(
-
-    symbol
-
-) {
-
-    //--------------------------------------------------
-    // Registry lookup
-    //--------------------------------------------------
+function resolveInstrument(symbol) {
 
     let instrument =
-
         getInstrument(
-
             "NSE",
-
             symbol
-
         );
-
-    //--------------------------------------------------
-    // Cache lookup
-    //--------------------------------------------------
 
     if (!instrument) {
 
         instrument =
-
             getByTradingSymbol(
                 symbol
             );
-
     }
 
     if (!instrument) {
 
         throw new Error(
-
             `Instrument not found: ${symbol}`
-
         );
-
     }
 
     return instrument;
-
 }
 
 //======================================================
@@ -242,55 +248,39 @@ function resolveInstrument(
 //======================================================
 
 function buildRequest(
-
     symbol,
-
     timeframe
-
 ) {
 
     const interval =
-
         intervalMap[
             timeframe
-        ]
-
-        ||
-
-        "minute";
+        ] || "minute";
 
     const instrument =
-
         resolveInstrument(
             symbol
         );
 
     const range =
-
         getDateRange(
             interval
         );
 
     const accessToken =
-
         getAccessToken();
 
     if (!accessToken) {
 
         throw new Error(
-
             "Zerodha access token missing."
-
         );
-
     }
 
     const instrumentToken =
-
         instrument.instrument_token;
 
     const url =
-
         `${BASE_URL}/instruments/historical/${instrumentToken}/${interval}`;
 
     const config = {
@@ -298,12 +288,10 @@ function buildRequest(
         headers: {
 
             Authorization:
-
                 `token ${process.env.ZERODHA_API_KEY}:${accessToken}`,
 
             "X-Kite-Version":
                 "3"
-
         },
 
         params: {
@@ -314,60 +302,16 @@ function buildRequest(
             to:
                 range.to,
 
-            continuous: 0,
+            continuous:
+                0,
 
-            oi: 1
-
+            oi:
+                1
         },
 
-        timeout: 20000
-
+        timeout:
+            20000
     };
-
-    console.log();
-
-    console.log(
-        "===================================="
-    );
-
-    console.log(
-        "ZERODHA REQUEST"
-    );
-
-    console.log(
-        "===================================="
-    );
-
-    console.log(
-        "Symbol           :",
-        symbol
-    );
-
-    console.log(
-        "Instrument Token :",
-        instrumentToken
-    );
-
-    console.log(
-        "Interval         :",
-        interval
-    );
-
-    console.log(
-        "From             :",
-        range.from
-    );
-
-    console.log(
-        "To               :",
-        range.to
-    );
-
-    console.log(
-        "===================================="
-    );
-
-    console.log();
 
     return {
 
@@ -377,43 +321,227 @@ function buildRequest(
 
         instrument,
 
-        interval
+        interval,
 
+        range
     };
-
 }
 
 //======================================================
-// PART 2
+// CACHE FRESHNESS
 //
-// export async function getHistoricalData()
-//======================================================
-//======================================================
-// server/zerodha/history.js
-// Part 2
+// For a request ending at "now", the latest completed
+// candle naturally ends slightly before the current time.
 //
-// Kite Historical API
-// Candle Conversion
-// Diagnostics
-// Export
-//
-// Continues from Part 1
+// Therefore the cache is considered fresh when its latest
+// candle is within one interval of the requested end.
 //======================================================
+
+function isCacheFresh(
+    cacheMaxTime,
+    requestedTo,
+    interval
+) {
+
+    if (
+        !Number.isFinite(
+            cacheMaxTime
+        )
+    ) {
+        return false;
+    }
+
+    const tolerance =
+        intervalSeconds[
+            interval
+        ] || 60;
+
+    return (
+        cacheMaxTime >=
+        requestedTo -
+        tolerance * 2
+    );
+}
+
+//======================================================
+// CACHE LOOKUP
+//======================================================
+
+function tryGetCachedCandles(
+    instrument,
+    interval,
+    range
+) {
+
+    const instrumentToken =
+        instrument.instrument_token;
+
+    const stats =
+        getCandleCacheStats(
+            instrumentToken,
+            interval,
+            range.fromSeconds,
+            range.toSeconds
+        );
+
+    //--------------------------------------------------
+    // Cache must span requested range.
+    //--------------------------------------------------
+
+    if (!stats.complete) {
+        return null;
+    }
+
+    //--------------------------------------------------
+    // For current/live ranges, ensure cache is fresh.
+    //--------------------------------------------------
+
+    if (
+        !isCacheFresh(
+            stats.maxTime,
+            range.toSeconds,
+            interval
+        )
+    ) {
+        return null;
+    }
+
+    const candles =
+        getCachedCandles(
+            instrumentToken,
+            interval,
+            range.fromSeconds,
+            range.toSeconds
+        );
+
+    if (
+        !candles ||
+        candles.length === 0
+    ) {
+        return null;
+    }
+
+    return candles;
+}
+
+//======================================================
+// CONVERT KITE RESPONSE
+//======================================================
+
+function convertKiteCandles(
+    rows,
+    instrument,
+    interval
+) {
+
+    return rows
+        .map(row => {
+
+            if (
+                !Array.isArray(row) ||
+                row.length < 5
+            ) {
+                return null;
+            }
+
+            const timestampMs =
+                new Date(
+                    row[0]
+                ).getTime();
+
+            if (
+                !Number.isFinite(
+                    timestampMs
+                )
+            ) {
+                return null;
+            }
+
+            const open =
+                Number(row[1]);
+
+            const high =
+                Number(row[2]);
+
+            const low =
+                Number(row[3]);
+
+            const close =
+                Number(row[4]);
+
+            const volume =
+                Number(
+                    row[5] ?? 0
+                );
+
+            const oi =
+                Number(
+                    row[6] ?? 0
+                );
+
+            if (
+                !Number.isFinite(open) ||
+                !Number.isFinite(high) ||
+                !Number.isFinite(low) ||
+                !Number.isFinite(close)
+            ) {
+                return null;
+            }
+
+            return {
+
+                time:
+                    Math.floor(
+                        timestampMs / 1000
+                    ),
+
+                open,
+
+                high,
+
+                low,
+
+                close,
+
+                volume:
+                    Number.isFinite(volume)
+                        ? volume
+                        : 0,
+
+                oi:
+                    Number.isFinite(oi)
+                        ? oi
+                        : 0,
+
+                instrument_token:
+                    String(
+                        instrument.instrument_token
+                    ),
+
+                trading_symbol:
+                    instrument.tradingsymbol,
+
+                exchange:
+                    instrument.exchange || "NSE",
+
+                interval
+            };
+
+        })
+        .filter(Boolean);
+}
 
 //======================================================
 // GET HISTORICAL DATA
 //======================================================
 
 export async function getHistoricalData(
-
     symbol,
-
     timeframe = "1m"
-
 ) {
 
     //--------------------------------------------------
-    // Build Request
+    // Build request
     //--------------------------------------------------
 
     const {
@@ -424,277 +552,117 @@ export async function getHistoricalData(
 
         instrument,
 
-        interval
+        interval,
 
-    } = buildRequest(
+        range
 
-        symbol,
-
-        timeframe
-
-    );
-
-    //--------------------------------------------------
-    // Call Kite Historical API
-    //--------------------------------------------------
-
-    const response =
-
-        await axios.get(
-
-            url,
-
-            config
-
+    } =
+        buildRequest(
+            symbol,
+            timeframe
         );
 
     //--------------------------------------------------
-    // Validate Response
+    // CACHE-FIRST
     //--------------------------------------------------
 
-    if (
-
-        !response.data ||
-
-        response.data.status !== "success"
-
-    ) {
-
-        throw new Error(
-
-            response.data?.message ||
-
-            "Invalid Zerodha response."
-
+    const cached =
+        tryGetCachedCandles(
+            instrument,
+            interval,
+            range
         );
 
+    if (cached) {
+
+        return cached;
     }
 
     //--------------------------------------------------
-    // Candle Array
+    // KITE API
+    //--------------------------------------------------
+
+    const response =
+        await axios.get(
+            url,
+            config
+        );
+
+    //--------------------------------------------------
+    // Validate response
+    //--------------------------------------------------
+
+    if (
+        !response.data ||
+        response.data.status !== "success"
+    ) {
+
+        throw new Error(
+            response.data?.message ||
+            "Invalid Zerodha response."
+        );
+    }
+
+    //--------------------------------------------------
+    // Raw candles
     //--------------------------------------------------
 
     const rows =
-
         response.data
-
             ?.data
-
-            ?.candles
-
-        ||
-
-        [];
-
-    //--------------------------------------------------
-    // Diagnostics
-    //--------------------------------------------------
-
-    console.log();
-
-    console.log(
-        "======================================"
-    );
-
-    console.log(
-        "ZERODHA RAW HISTORY RESPONSE"
-    );
-
-    console.log(
-        "======================================"
-    );
-
-    console.log(
-        "Trading Symbol :",
-        instrument.tradingsymbol
-    );
-
-    console.log(
-        "Exchange       :",
-        instrument.exchange
-    );
-
-    console.log(
-        "Interval       :",
-        interval
-    );
-
-    console.log(
-        "Bars           :",
-        rows.length
-    );
+            ?.candles || [];
 
     //--------------------------------------------------
     // Convert
     //--------------------------------------------------
 
     const candles =
+        convertKiteCandles(
+            rows,
+            instrument,
+            interval
+        );
 
-        rows
+    //--------------------------------------------------
+    // Persist SQLite
+    //--------------------------------------------------
 
-            .map(
+    if (candles.length > 0) {
 
-                row => {
+        const saved =
+            upsertCandles(
+                instrument.instrument_token,
+                interval,
+                candles,
+                {
+                    exchange:
+                        instrument.exchange || "NSE",
 
-                    //--------------------------------------------------
-                    // Zerodha format
-                    //
-                    // [
-                    //   timestamp,
-                    //   open,
-                    //   high,
-                    //   low,
-                    //   close,
-                    //   volume,
-                    //   oi?
-                    // ]
-                    //--------------------------------------------------
-
-                    return {
-
-                        time:
-
-                            Math.floor(
-
-                                new Date(
-
-                                    row[0]
-
-                                ).getTime()
-
-                                / 1000
-
-                            ),
-
-                        open:
-                            Number(row[1]),
-
-                        high:
-                            Number(row[2]),
-
-                        low:
-                            Number(row[3]),
-
-                        close:
-                            Number(row[4]),
-
-                        volume:
-                            Number(
-
-                                row[5] ?? 0
-
-                            ),
-
-                        oi:
-                            Number(
-
-                                row[6] ?? 0
-
-                            )
-
-                    };
-
+                    trading_symbol:
+                        instrument.tradingsymbol
                 }
-
-            )
-
-            .filter(
-
-                candle =>
-
-                    !Number.isNaN(
-                        candle.open
-                    )
-
-                    &&
-
-                    !Number.isNaN(
-                        candle.high
-                    )
-
-                    &&
-
-                    !Number.isNaN(
-                        candle.low
-                    )
-
-                    &&
-
-                    !Number.isNaN(
-                        candle.close
-                    )
-
             );
 
-    //--------------------------------------------------
-    // Last 10 Bars
-    //--------------------------------------------------
+        if (
+            saved !==
+            candles.length
+        ) {
 
-    const start =
-
-        Math.max(
-
-            0,
-
-            candles.length - 10
-
-        );
-
-    for (
-
-        let i = start;
-
-        i < candles.length;
-
-        i++
-
-    ) {
+            throw new Error(
+                `[ZERODHA CANDLE DB] Persistence mismatch: received ${candles.length} candles but upserted ${saved}.`
+            );
+        }
 
         console.log(
-
-            `BAR ${i}`,
-
-            {
-
-                time:
-                    candles[i].time,
-
-                open:
-                    candles[i].open,
-
-                high:
-                    candles[i].high,
-
-                low:
-                    candles[i].low,
-
-                close:
-                    candles[i].close,
-
-                volume:
-                    candles[i].volume,
-
-                oi:
-                    candles[i].oi
-
-            }
-
+            "[ZERODHA CANDLE DB] Persistence: PASS"
         );
-
     }
-
-    console.log(
-        "======================================"
-    );
-
-    console.log();
 
     //--------------------------------------------------
     // Return AJ Candle[]
     //--------------------------------------------------
 
     return candles.map(
-
         candle => ({
 
             time:
@@ -714,11 +682,8 @@ export async function getHistoricalData(
 
             volume:
                 candle.volume
-
         })
-
     );
-
 }
 
 //======================================================

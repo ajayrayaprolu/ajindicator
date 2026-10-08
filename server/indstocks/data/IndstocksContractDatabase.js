@@ -85,10 +85,9 @@ function initialize() {
         );
     `);
 
-    console.log(
-        "[INDSTOCKS CONTRACT DB] SQLite initialized:",
-        DATABASE_FILE
-    );
+	console.log(
+		"[INDSTOCKS CONTRACT DB] SQLite initialized"
+	);
 
     return db;
 }
