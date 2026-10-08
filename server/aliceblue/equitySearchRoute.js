@@ -4,7 +4,7 @@
 // GET /api/aliceblue/symbols/search?q=RELIANCE
 //
 // Wraps the EXISTING searchAliceBlueSymbolsForUI() in
-// symbols.js — fully generic, driven entirely by the
+// symbolMaster.js — fully generic, driven entirely by the
 // downloaded contract master. No hardcoded symbol lists.
 //
 // Mount in server/index.js with:
@@ -21,7 +21,7 @@ import {
     getAliceBlueSymbolStatus,
     isIndexContract,
     extractUnderlying
-} from "./symbols.js";
+} from "./symbolMaster.js";
 
 const router = express.Router();
 

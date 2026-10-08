@@ -1,12 +1,12 @@
 //=====================================================================
-// telegramRoute.js  (BACKEND - put it next to your other server routes)
+// /server/telegram/telegramRoute.js  (BACKEND - put it next to your other server routes)
 //
 // Holds the Telegram bot token on the SERVER so it never ships in the
 // browser bundle (ajtrade.in is public - anything in src/ is readable).
 //
 // Mount it in your server entry file:
 //
-//     import telegramRoute from "./telegramRoute.js";
+//     import telegramRoute from "./telegram/telegramRoute.js";
 //     app.use(express.json());                       // if not already present
 //     app.use("/api/telegram", telegramRoute);
 //

@@ -9,44 +9,32 @@
 //   Response: { success:true, data: { "EXCH_SECID": { candles: [{ts,o,h,l,c,v}, ...] } } }
 //======================================================
 
-import fs from "fs";
-import path from "path";
 import axios from "axios";
 import { getAccessToken, refreshToken } from "./token.js";
+import {
+    getCandles,
+    upsertCandles
+} from "./data/IndstocksCandleDatabase.js";
 
 const INDSTOCKS_BASE =
     "https://api.indstocks.com";
 
-const CACHE_DIR =
-    path.resolve(process.cwd(), "server", "indstocks", "data", "candle-cache");
-
-function ensureCacheDir() {
-    if (!fs.existsSync(CACHE_DIR)) {
-        fs.mkdirSync(CACHE_DIR, { recursive: true });
-    }
-}
-
-function cacheKey(exchange, securityId, resolution) {
-    return `${exchange}_${securityId}_${resolution}`;
-}
-
-function cacheFile(key) {
-    return path.join(CACHE_DIR, `${key}.json`);
-}
-
-function readCache(key) {
+function readCache(exchange, securityId, resolution) {
 
     try {
 
-        const file = cacheFile(key);
+        const candles =
+            getCandles(
+                exchange,
+                securityId,
+                resolution,
+                0,
+                Number.MAX_SAFE_INTEGER
+            );
 
-        if (!fs.existsSync(file)) return null;
-
-        const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
-
-        if (!Array.isArray(parsed?.candles) || parsed.candles.length === 0) return null;
-
-        return parsed.candles;
+        return Array.isArray(candles) && candles.length > 0
+            ? candles
+            : null;
 
     } catch {
 
@@ -56,26 +44,30 @@ function readCache(key) {
 
 }
 
-function writeCache(key, candles) {
+function writeCache(exchange, securityId, resolution, candles) {
 
     try {
 
-        ensureCacheDir();
-
-        fs.writeFileSync(
-            cacheFile(key),
-            JSON.stringify({ cachedAt: new Date().toISOString(), count: candles.length, candles }, null, 2),
-            "utf8"
+        upsertCandles(
+            exchange,
+            securityId,
+            resolution,
+            candles
         );
 
     } catch (error) {
 
-        console.warn("[INDSTOCKS HISTORY CACHE] Write failed:", key, error?.message ?? error);
+        console.warn(
+            "[INDSTOCKS HISTORY CACHE] SQLite write failed:",
+            exchange,
+            securityId,
+            resolution,
+            error?.message ?? error
+        );
 
     }
 
 }
-
 //======================================================
 // RESOLUTION
 //
@@ -271,7 +263,6 @@ export async function getIndstocksHistory({
     if (!secId) throw new Error("[INDSTOCKS HISTORY] Security ID is required.");
 
     const resolution = normalizeResolution(timeframe);
-    const key = cacheKey(exch, secId, resolution);
 
     const now = Date.now();
     const DAY_MS = 24 * 60 * 60 * 1000;
@@ -312,7 +303,7 @@ export async function getIndstocksHistory({
         }
 
         if (candles.length > 0) {
-            writeCache(key, candles);
+            writeCache(exch, secId, resolution, candles);
             console.log("[INDSTOCKS HISTORY] LIVE candles:", candles.length);
             return candles;
         }
@@ -325,7 +316,7 @@ export async function getIndstocksHistory({
 
     }
 
-    const cached = readCache(key);
+    const cached = readCache(exch, secId, resolution);
 
     if (cached && cached.length > 0) {
         console.log("[INDSTOCKS HISTORY] Serving cached candles:", cached.length);

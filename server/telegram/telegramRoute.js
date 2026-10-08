@@ -1,7 +1,7 @@
 //=====================================================================
 // telegramRoute.js   (BACKEND)   v2
 //
-// Copy to:  C:\AI-Institutional\server\telegramRoute.js
+// Copy to:  C:\AI-Institutional\server\telegram\telegramRoute.js
 // (Fix-MountTelegram.ps1 does the copy AND mounts it in server\index.js)
 //
 // Holds the Telegram bot token on the SERVER so it never ships in the

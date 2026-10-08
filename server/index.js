@@ -96,7 +96,7 @@ import {
 
 import {
     resolveFyersSymbol
-} from "./fyers/symbols.js";
+} from "./fyers/symbolMaster.js";
 
 import {
     initializeFyersSymbolMaster,
@@ -138,7 +138,7 @@ import {
     initializeAliceBlueSymbols,
     getAliceBlueContractBySymbol,
     startSymbolRefresh
-} from "./aliceblue/symbols.js";
+} from "./aliceblue/symbolMaster.js";
 
 import aliceBlueOptionsRouter from "./aliceblue/optionsRoute.js";
 import deltaExchangeOptionsRouter from "./deltaexchange/optionsRoute.js";
@@ -159,13 +159,13 @@ import {
 import {
     initializeIndstocksSymbols,
     startSymbolRefresh as startIndstocksSymbolRefresh
-} from "./indstocks/symbols.js";
+} from "./indstocks/symbolMaster.js";
 
 import {
     loadContractMaster,
     getAllIndstocksSymbols,
     searchIndstocksOptions
-} from "./indstocks/symbols.js";
+} from "./indstocks/symbolMaster.js";
 
 import {
     getTokenStatus as getIndstocksTokenStatus
@@ -175,7 +175,7 @@ import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
 import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
 import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
 import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
-import telegramRoute from "./telegramRoute.js";
+import telegramRoute from "./telegram/telegramRoute.js";
 
 //================================================
 const AJTRADE_FRONTEND_ORIGIN =
@@ -892,7 +892,7 @@ app.get(
 
                         const { searchAliceBlueOptions } =
                             await import(
-                                "./aliceblue/symbols.js"
+                                "./aliceblue/symbolMaster.js"
                             );
 
                         const matches =
@@ -950,7 +950,7 @@ app.get(
 						const {
 							searchAliceBlueSymbols
 						} = await import(
-							"./aliceblue/symbols.js"
+							"./aliceblue/symbolMaster.js"
 						);
 				
 						const matches =

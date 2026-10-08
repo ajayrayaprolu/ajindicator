@@ -39,7 +39,7 @@ import {
 import {
     resolveAliceBlueToken,
     getAliceBlueInstrumentInfo
-} from "./symbols.js";
+} from "./symbolMaster.js";
 
 //======================================================
 // SYMBOL NORMALIZER

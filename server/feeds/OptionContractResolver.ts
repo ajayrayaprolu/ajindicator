@@ -43,7 +43,7 @@
  *             ▼                    ▼                    ▼ 								(server/feeds/OptionContractResolver)
  *          FYERS               AliceBlue            INDstocks                                          │
  *             │                    │                    │                      				datasource switch
- *      symbolMaster.js       symbols.js            symbols.js                     ┌────────────────────┼────────────────────┐ 
+ *      symbolMaster.js       symbolMaster.js     symbolMaster.js              	   ┌─────────────-──────┼────────────────────┐ 
  *             │                    │                    │                         ▼                    ▼                    ▼
  *			   ▼                    ▼                    ▼                       FYERS             AliceBlue            INDstocks
  *      native FYERS symbol   native contract       exchange/securityId            │                    │                    │         
@@ -58,11 +58,11 @@ import {
 
 import {
     searchAliceBlueOptions
-} from "../aliceblue/symbols.js";
+} from "../aliceblue/symbolMaster.js";
 
 import {
     searchIndstocksOptions
-} from "../indstocks/symbols.js";
+} from "../indstocks/symbolMaster.js";
 
 import {
     resolveDeltaOptionContract,

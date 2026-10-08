@@ -33,7 +33,7 @@ from "./history.js";
 import {
     resolveFyersSymbol
 }
-from "./symbols.js";
+from "./symbolMaster.js";
 
 import {
     isLoggedIn,

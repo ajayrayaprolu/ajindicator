@@ -18,30 +18,24 @@
 // AJ Institutional Terminal
 //======================================================
 
-import fs from "fs";
-import path from "path";
 import axios from "axios";
 
-import { INDEX_MAP } from "./symbols.js";
+import { INDEX_MAP } from "./symbolMaster.js";
+
+import * as contractDb from "./data/FyersContractDatabase.js";
 
 //======================================================
 // CONFIGURATION
 //======================================================
 
-const DATA_DIR =
-    path.resolve(process.cwd(), "server", "fyers", "data");
-
 const NSE_CM_URL =
     "https://public.fyers.in/sym_details/NSE_CM.csv";
 
-const RAW_FILE =
-    path.join(DATA_DIR, "NSE_CM.csv");
-
-const CACHE_FILE =
-    path.join(DATA_DIR, "fyers-equity-master.json");
-
 const REFRESH_INTERVAL_MS =
-    Number(process.env.FYERS_EQUITY_REFRESH_MS ?? 60 * 60 * 1000);
+    Number(
+        process.env.FYERS_EQUITY_REFRESH_MS ??
+        60 * 60 * 1000
+    );
 
 //======================================================
 // COLUMN LAYOUT — same as symbolMaster.js, confirmed
@@ -61,7 +55,7 @@ const COLUMN = {
 // STATIC INDICES — merged into every search
 //
 // Ticker resolution now comes from INDEX_MAP in
-// symbols.js (the same map resolveFyersSymbol() uses),
+// symbolMaster.js (the same map resolveFyersSymbol() uses),
 // so this file can no longer drift out of sync with the
 // actual resolver — only display names live here.
 //======================================================
@@ -92,14 +86,8 @@ let lastRefresh = 0;
 let refreshTimer = null;
 
 //======================================================
-// DIRECTORY
+// CSV
 //======================================================
-
-function ensureDataDirectory() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-}
 
 function splitCsvLine(line) {
     return line.replace(/\r$/, "").split(",");
@@ -109,11 +97,9 @@ function splitCsvLine(line) {
 // PARSE
 //======================================================
 
-function parseEquityFile() {
+function parseEquityText(text) {
 
-    const text = fs.readFileSync(RAW_FILE, "utf8");
     const lines = text.split("\n").filter(Boolean);
-
     const parsed = [];
 
     for (const line of lines) {
@@ -124,19 +110,25 @@ function parseEquityFile() {
             continue;
         }
 
-        const strike = Number(fields[COLUMN.STRIKE_PRICE]);
-        const optionType = String(fields[COLUMN.OPTION_TYPE] ?? "").trim().toUpperCase();
+        const optionType =
+            String(fields[COLUMN.OPTION_TYPE] ?? "")
+                .trim()
+                .toUpperCase();
 
-        // Equities only — skip anything that is actually a
-        // derivative contract (shouldn't appear in NSE_CM, but
-        // defensive in case FYERS ever mixes segments).
         if (optionType === "CE" || optionType === "PE") {
             continue;
         }
 
-        const symbolTicker = String(fields[COLUMN.SYMBOL_TICKER] ?? "").trim();
-        const symbol = String(fields[COLUMN.UNDERLYING_SYMBOL] ?? "").trim().toUpperCase();
-        const companyName = String(fields[COLUMN.SYMBOL_DETAILS] ?? "").trim();
+        const symbolTicker =
+            String(fields[COLUMN.SYMBOL_TICKER] ?? "").trim();
+
+        const symbol =
+            String(fields[COLUMN.UNDERLYING_SYMBOL] ?? "")
+                .trim()
+                .toUpperCase();
+
+        const companyName =
+            String(fields[COLUMN.SYMBOL_DETAILS] ?? "").trim();
 
         if (!symbolTicker || !symbol) {
             continue;
@@ -159,22 +151,24 @@ function parseEquityFile() {
 
 export async function downloadFyersEquityMaster() {
 
-    ensureDataDirectory();
-
     console.log("[FYERS EQUITY MASTER] Downloading NSE_CM...");
 
-    const response = await axios.get(NSE_CM_URL, {
-        timeout: 30000,
-        responseType: "text"
-    });
+    const response =
+        await axios.get(
+            NSE_CM_URL,
+            {
+                timeout: 30000,
+                responseType: "text"
+            }
+        );
 
-    const body = typeof response.data === "string" ? response.data : String(response.data);
+    const body =
+        typeof response.data === "string"
+            ? response.data
+            : String(response.data);
 
-    fs.writeFileSync(RAW_FILE, body, "utf8");
-
-    console.log(`[FYERS EQUITY MASTER] Saved ${body.length} bytes`);
-
-    const parsed = parseEquityFile();
+    const parsed =
+        parseEquityText(body);
 
     if (parsed.length === 0) {
         throw new Error(
@@ -182,58 +176,71 @@ export async function downloadFyersEquityMaster() {
         );
     }
 
-    equities = parsed;
-    loaded = true;
-    lastRefresh = Date.now();
+    const downloadedAt =
+        new Date().toISOString();
 
-    fs.writeFileSync(
-        CACHE_FILE,
-        JSON.stringify(
-            {
-                provider: "FYERS",
-                downloadedAt: new Date(lastRefresh).toISOString(),
-                count: equities.length,
-                equities
-            },
-            null,
-            2
-        ),
-        "utf8"
+    contractDb.replaceEquities(
+        parsed,
+        downloadedAt
     );
 
-    console.log(`[FYERS EQUITY MASTER] Ready: ${equities.length} equities`);
+    equities =
+        contractDb.getEquities();
 
-    return { success: true, count: equities.length };
+    loaded = true;
+    lastRefresh =
+        Date.parse(downloadedAt);
+
+    console.log(
+        `[FYERS EQUITY MASTER] Ready: ${equities.length} equities`
+    );
+
+    return {
+        success: true,
+        count: equities.length
+    };
 }
 
 //======================================================
-// LOAD LOCAL CACHE
+// LOAD SQLITE MASTER
 //======================================================
 
 export function loadFyersEquityMasterFromDisk() {
 
-    ensureDataDirectory();
-
-    if (!fs.existsSync(CACHE_FILE)) {
-        return false;
-    }
-
     try {
-        const parsed = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
 
-        if (!Array.isArray(parsed?.equities) || parsed.equities.length === 0) {
+        const rows =
+            contractDb.getEquities();
+
+        if (!Array.isArray(rows) || rows.length === 0) {
             return false;
         }
 
-        equities = parsed.equities;
+        equities = rows;
         loaded = true;
-        lastRefresh = parsed.downloadedAt ? Date.parse(parsed.downloadedAt) || 0 : 0;
 
-        console.log(`[FYERS EQUITY MASTER] Loaded ${equities.length} equities from local cache.`);
+        const status =
+            contractDb.getFyersContractDatabaseStatus();
+
+        lastRefresh =
+            status?.equities?.last_updated
+                ? Date.parse(status.equities.last_updated) || 0
+                : 0;
+
+        console.log(
+            `[FYERS EQUITY MASTER] Loaded ${equities.length} equities from SQLite.`
+        );
+
         return true;
 
-    } catch (error) {
-        console.error("[FYERS EQUITY MASTER] Local cache load failed:", error?.message ?? error);
+    }
+    catch (error) {
+
+        console.error(
+            "[FYERS EQUITY MASTER] SQLite load failed:",
+            error?.message ?? error
+        );
+
         return false;
     }
 }
@@ -350,12 +357,20 @@ export function searchFyersEquities(query, limit = 20) {
 //======================================================
 
 export function getFyersEquityMasterStatus() {
+
     return {
         loaded,
         count: equities.length,
-        lastRefresh: lastRefresh ? new Date(lastRefresh).toISOString() : null,
-        cacheFile: CACHE_FILE,
-        refreshIntervalMs: REFRESH_INTERVAL_MS
+        lastRefresh:
+            lastRefresh
+                ? new Date(lastRefresh).toISOString()
+                : null,
+        cacheFile:
+            contractDb.fyersContractDatabasePath(),
+        databaseFile:
+            contractDb.fyersContractDatabasePath(),
+        refreshIntervalMs:
+            REFRESH_INTERVAL_MS
     };
 }
 

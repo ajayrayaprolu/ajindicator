@@ -5,7 +5,7 @@
 //======================================================
 
 import express from "express";
-import { searchIndstocksOptions } from "./symbols.js";
+import { searchIndstocksOptions } from "./symbolMaster.js";
 
 const router = express.Router();
 

@@ -11,7 +11,7 @@ import {
     indstocksSymbolCount,
     getIndstocksSymbolStatus,
     loadContractMaster
-} from "./symbols.js";
+} from "./symbolMaster.js";
 
 import {
     resolveOptionContract

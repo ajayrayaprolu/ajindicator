@@ -10,7 +10,7 @@ import {
     getAllIndstocksSymbols,
     indstocksSymbolCount,
     getIndstocksSymbolStatus
-} from "./symbols.js";
+} from "./symbolMaster.js";
 
 const router = express.Router();
 

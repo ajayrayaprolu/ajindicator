@@ -1,19 +1,17 @@
 //======================================================
-// server/indstocks/symbols.js
+// server/indstocks/symbolMaster.js
 //
 // IndStocks Contract Master / Symbol Catalog
 //======================================================
 
-import fs from "fs";
-import path from "path";
 import axios from "axios";
 import { getAccessToken } from "./token.js";
-
-const DATA_DIR =
-    path.resolve(process.cwd(), "server", "indstocks", "data");
-
-const MASTER_FILE =
-    path.join(DATA_DIR, "contract-master.json");
+import {
+    replaceContracts,
+    getAllContracts,
+    getIndstocksContractDatabaseStatus,
+    indstocksContractDatabasePath
+} from "./data/IndstocksContractDatabase.js";
 
 const INDSTOCKS_BASE =
     "https://api.indstocks.com";
@@ -37,12 +35,6 @@ const optionIndex = new Map();
 //======================================================
 // HELPERS
 //======================================================
-
-function ensureDataDir() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-}
 
 function clean(value) {
     return String(value ?? "").trim().toUpperCase();
@@ -263,8 +255,6 @@ function buildIndexes() {
 
 export async function downloadContractMaster() {
 
-    ensureDataDir();
-
     const token = await getAccessToken();
 
     console.log("[INDSTOCKS SYMBOLS] Downloading instrument masters...");
@@ -353,19 +343,13 @@ export async function downloadContractMaster() {
         throw new Error("[INDSTOCKS SYMBOLS] No contracts downloaded from any source.");
     }
 
-    contracts = allContracts;
+    const downloadedAt = new Date().toISOString();
+
+    replaceContracts(allContracts, downloadedAt);
+
+    contracts = getAllContracts();
 
     buildIndexes();
-
-    fs.writeFileSync(
-        MASTER_FILE,
-        JSON.stringify(
-            { provider: "INDSTOCKS", downloadedAt: new Date().toISOString(), count: contracts.length, contracts },
-            null,
-            2
-        ),
-        "utf8"
-    );
 
     loaded = true;
     lastRefresh = Date.now();
@@ -375,47 +359,50 @@ export async function downloadContractMaster() {
     return { success: true, count: contracts.length };
 
 }
-
 //======================================================
 // LOCAL CACHE
 //======================================================
 
 export function loadContractMaster() {
 
-    ensureDataDir();
-
-    if (!fs.existsSync(MASTER_FILE)) {
-        return false;
-    }
-
     try {
 
-        const parsed = JSON.parse(fs.readFileSync(MASTER_FILE, "utf8"));
+        const cached = getAllContracts();
 
-        const cached = Array.isArray(parsed?.contracts) ? parsed.contracts : [];
-
-        if (cached.length === 0) {
+        if (!Array.isArray(cached) || cached.length === 0) {
             return false;
         }
 
         contracts = cached;
         buildIndexes();
         loaded = true;
-        lastRefresh = parsed?.downloadedAt ? Date.parse(parsed.downloadedAt) || 0 : 0;
 
-        console.log(`[INDSTOCKS SYMBOLS] Loaded ${contracts.length} contracts from cache.`);
+        const status =
+            getIndstocksContractDatabaseStatus();
+
+        lastRefresh =
+            status?.lastRefresh
+                ? Date.parse(status.lastRefresh) || 0
+                : 0;
+
+        console.log(
+            `[INDSTOCKS SYMBOLS] Loaded ${contracts.length} contracts from SQLite.`
+        );
 
         return true;
 
     } catch (error) {
 
-        console.error("[INDSTOCKS SYMBOLS] Cache load failed:", error?.message ?? error);
+        console.error(
+            "[INDSTOCKS SYMBOLS] SQLite cache load failed:",
+            error?.message ?? error
+        );
+
         return false;
 
     }
 
 }
-
 //======================================================
 // INITIALIZE
 //======================================================
@@ -1056,7 +1043,7 @@ export function getIndstocksSymbolStatus() {
         loaded,
         count: contracts.length,
         lastRefresh: lastRefresh ? new Date(lastRefresh).toISOString() : null,
-        cacheFile: MASTER_FILE,
+        databaseFile: indstocksContractDatabasePath(),
         refreshIntervalMs: REFRESH_INTERVAL_MS
     };
 

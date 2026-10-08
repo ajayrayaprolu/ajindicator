@@ -1,4 +1,4 @@
-﻿//======================================================
+//======================================================
 // server/fyers/history.js
 //======================================================
 //
@@ -17,6 +17,8 @@ import {
     getAccessToken
 }
 from "./token.js";
+
+import * as candleDb from "./data/FyersCandleDatabase.js";
 
 //======================================================
 // BASE URL
@@ -323,8 +325,62 @@ export async function getHistory(
 			throw detailedError;
 		}
 
-		throw error;
+		try {
 
+
+		    const cachedCandles =
+
+		        candleDb.getCandles(
+
+		            params.symbol,
+
+		            params.resolution,
+
+		            rangeFrom,
+
+		            rangeTo
+
+		        );
+
+
+		    if (cachedCandles.length > 0) {
+
+
+		        console.warn(
+
+		            "[FYERS HISTORY] Returning SQLite cached candles after FYERS request failure:",
+
+		            params.symbol,
+
+		            params.resolution,
+
+		            cachedCandles.length
+
+		        );
+
+
+		        return cachedCandles;
+
+		    }
+
+
+		}
+
+		catch (cacheReadError) {
+
+
+		    console.error(
+
+		        "[FYERS HISTORY] SQLite candle cache read failed:",
+
+		        cacheReadError?.message ?? cacheReadError
+
+		    );
+
+		}
+
+
+		throw error;
 	}
 
     const data =
@@ -357,9 +413,30 @@ export async function getHistory(
 
     }
 
-    return data.candles.map(
-        normalizeCandle
-    );
+    const normalizedCandles =
+        data.candles.map(
+            normalizeCandle
+        );
+
+    try {
+
+        candleDb.upsertCandles(
+            params.symbol,
+            params.resolution,
+            normalizedCandles
+        );
+
+    }
+    catch (cacheError) {
+
+        console.error(
+            "[FYERS HISTORY] SQLite candle cache write failed:",
+            cacheError?.message ?? cacheError
+        );
+
+    }
+
+    return normalizedCandles;
 
 }
 

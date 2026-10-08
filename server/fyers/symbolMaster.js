@@ -24,38 +24,35 @@
 // AJ Institutional Terminal
 //======================================================
 
-import fs from "fs";
-import path from "path";
 import axios from "axios";
+
+import * as contractDb from "./data/FyersContractDatabase.js";
 
 //======================================================
 // CONFIGURATION
 //======================================================
 
-const DATA_DIR =
-    path.resolve(process.cwd(), "server", "fyers", "data");
-
 const SEGMENTS = {
     NSE_FO: {
-        url: "https://public.fyers.in/sym_details/NSE_FO.csv",
-        rawFile: path.join(DATA_DIR, "NSE_FO.csv"),
-        // No underlying restriction — every NSE F&O underlying
-        // (indices AND individual stocks like RELIANCE) is
-        // indexed. Options search is now what filters by name.
+        url:
+            "https://public.fyers.in/sym_details/NSE_FO.csv",
         underlyings: null
     },
     BSE_FO: {
-        url: "https://public.fyers.in/sym_details/BSE_FO.csv",
-        rawFile: path.join(DATA_DIR, "BSE_FO.csv"),
+        url:
+            "https://public.fyers.in/sym_details/BSE_FO.csv",
         underlyings: null
     }
 };
 
-const CACHE_FILE =
-    path.join(DATA_DIR, "fyers-option-master.json");
-
 const REFRESH_INTERVAL_MS =
-    Number(process.env.FYERS_SYMBOL_REFRESH_MS ?? 30 * 60 * 1000);
+    Number(
+        process.env.FYERS_SYMBOL_REFRESH_MS ??
+        30 * 60 * 1000
+    );
+
+// Raw CSV is retained in memory for inspectRawSample() only.
+const rawSamples = new Map();
 
 //======================================================
 // COLUMN LAYOUT (0-indexed) — CONFIRMED, see header
@@ -109,14 +106,10 @@ const tickerIndex = new Map();
 const expiryIndex = new Map();
 
 //======================================================
-// DIRECTORY
+// STORAGE
 //======================================================
-
-function ensureDataDirectory() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-}
+// Persistent master storage is SQLite.
+// Raw CSV text exists only in memory for diagnostics.
 
 //======================================================
 // MINIMAL CSV LINE SPLIT
@@ -139,33 +132,50 @@ export function inspectRawSample(segmentKey = "NSE_FO", sampleSize = 5) {
     const segment = SEGMENTS[segmentKey];
 
     if (!segment) {
-        throw new Error(`[FYERS MASTER] Unknown segment: ${segmentKey}`);
+        throw new Error(
+            `[FYERS MASTER] Unknown segment: ${segmentKey}`
+        );
     }
 
-    if (!fs.existsSync(segment.rawFile)) {
-        return { error: "Raw CSV not downloaded yet. Call downloadFyersSymbolMaster() first." };
+    const text = rawSamples.get(segmentKey);
+
+    if (!text) {
+        return {
+            error:
+                "Raw CSV sample is not available in memory. Call downloadFyersSymbolMaster() first."
+        };
     }
 
-    const text = fs.readFileSync(segment.rawFile, "utf8");
-    const lines = text.split("\n").filter(Boolean).slice(0, sampleSize);
+    const lines =
+        text
+            .split("\n")
+            .filter(Boolean)
+            .slice(0, sampleSize);
 
     return {
         segment: segmentKey,
-        totalLines: text.split("\n").filter(Boolean).length,
-        sampleRows: lines.map(line => {
-            const fields = splitCsvLine(line);
-            return {
-                columnCount: fields.length,
-                fields,
-                mapped: {
-                    symbolDetails: fields[COLUMN.SYMBOL_DETAILS],
-                    symbolTicker: fields[COLUMN.SYMBOL_TICKER],
-                    underlyingSymbol: fields[COLUMN.UNDERLYING_SYMBOL],
-                    strikePrice: fields[COLUMN.STRIKE_PRICE],
-                    optionType: fields[COLUMN.OPTION_TYPE]
-                }
-            };
-        })
+        totalLines:
+            text.split("\n").filter(Boolean).length,
+        sampleRows:
+            lines.map(line => {
+                const fields = splitCsvLine(line);
+                return {
+                    columnCount: fields.length,
+                    fields,
+                    mapped: {
+                        symbolDetails:
+                            fields[COLUMN.SYMBOL_DETAILS],
+                        symbolTicker:
+                            fields[COLUMN.SYMBOL_TICKER],
+                        underlyingSymbol:
+                            fields[COLUMN.UNDERLYING_SYMBOL],
+                        strikePrice:
+                            fields[COLUMN.STRIKE_PRICE],
+                        optionType:
+                            fields[COLUMN.OPTION_TYPE]
+                    }
+                };
+            })
     };
 }
 
@@ -234,12 +244,10 @@ function exchangeFromTicker(symbolTicker) {
 // PARSE ONE SEGMENT FILE
 //======================================================
 
-function parseSegmentFile(segmentKey) {
+function parseSegmentText(segmentKey, text) {
 
     const segment = SEGMENTS[segmentKey];
-    const text = fs.readFileSync(segment.rawFile, "utf8");
     const lines = text.split("\n").filter(Boolean);
-
     const parsed = [];
 
     for (const line of lines) {
@@ -247,45 +255,60 @@ function parseSegmentFile(segmentKey) {
         const fields = splitCsvLine(line);
 
         if (fields.length < 18) {
-            continue; // malformed / unexpected row — skip defensively
+            continue;
         }
 
-        const optionType = normalizeOptionType(fields[COLUMN.OPTION_TYPE]);
+        const optionType =
+            normalizeOptionType(
+                fields[COLUMN.OPTION_TYPE]
+            );
 
-        // We only care about actual option contracts here.
         if (!optionType) {
             continue;
         }
 
-        const underlying = normalizeUnderlying(
-            fields[COLUMN.UNDERLYING_SYMBOL],
-            segment.underlyings
-        );
+        const underlying =
+            normalizeUnderlying(
+                fields[COLUMN.UNDERLYING_SYMBOL],
+                segment.underlyings
+            );
 
         if (!underlying) {
-            continue; // not NIFTY (for NSE_FO) / SENSEX (for BSE_FO)
+            continue;
         }
 
-        const symbolTicker = String(fields[COLUMN.SYMBOL_TICKER] ?? "").trim();
-        const expiry = parseExpiryFromSymbolDetails(fields[COLUMN.SYMBOL_DETAILS]);
-        const strike = Number(fields[COLUMN.STRIKE_PRICE]);
+        const symbolTicker =
+            String(fields[COLUMN.SYMBOL_TICKER] ?? "").trim();
+
+        const expiry =
+            parseExpiryFromSymbolDetails(
+                fields[COLUMN.SYMBOL_DETAILS]
+            );
+
+        const strike =
+            Number(fields[COLUMN.STRIKE_PRICE]);
 
         if (!expiry || !Number.isFinite(strike)) {
             continue;
         }
 
         parsed.push({
-            symbolTicker,                        // exact FYERS-native symbol, e.g. NSE:BANKNIFTY26AUG39900CE
-            underlying,                          // NIFTY | SENSEX
-            exchange: exchangeFromTicker(symbolTicker), // NSE | BSE
-            segment: segmentKey,                 // NSE_FO | BSE_FO
-            expiry,                               // YYYY-MM-DD
+            symbolTicker,
+            underlying,
+            exchange:
+                exchangeFromTicker(symbolTicker),
+            segment: segmentKey,
+            expiry,
             strike,
-            optionType,                           // CE | PE
-            lotSize: Number(fields[COLUMN.MIN_LOT_SIZE]) || null,
-            tickSize: Number(fields[COLUMN.TICK_SIZE]) || null,
-            fyToken: String(fields[COLUMN.FYTOKEN] ?? "").trim(),
-            scripCode: String(fields[COLUMN.SCRIP_CODE] ?? "").trim()
+            optionType,
+            lotSize:
+                Number(fields[COLUMN.MIN_LOT_SIZE]) || null,
+            tickSize:
+                Number(fields[COLUMN.TICK_SIZE]) || null,
+            fyToken:
+                String(fields[COLUMN.FYTOKEN] ?? "").trim(),
+            scripCode:
+                String(fields[COLUMN.SCRIP_CODE] ?? "").trim()
         });
     }
 
@@ -327,30 +350,46 @@ function buildIndexes() {
 
 export async function downloadFyersSymbolMaster() {
 
-    ensureDataDirectory();
-
-    console.log("[FYERS MASTER] Downloading symbol master (NSE_FO, BSE_FO)...");
+    console.log(
+        "[FYERS MASTER] Downloading symbol master (NSE_FO, BSE_FO)..."
+    );
 
     const allParsed = [];
 
     for (const [segmentKey, segment] of Object.entries(SEGMENTS)) {
 
-        console.log(`[FYERS MASTER] Downloading ${segmentKey}...`);
+        console.log(
+            `[FYERS MASTER] Downloading ${segmentKey}...`
+        );
 
-        const response = await axios.get(segment.url, {
-            timeout: 30000,
-            responseType: "text"
-        });
+        const response =
+            await axios.get(
+                segment.url,
+                {
+                    timeout: 30000,
+                    responseType: "text"
+                }
+            );
 
-        const body = typeof response.data === "string" ? response.data : String(response.data);
+        const body =
+            typeof response.data === "string"
+                ? response.data
+                : String(response.data);
 
-        fs.writeFileSync(segment.rawFile, body, "utf8");
+        rawSamples.set(
+            segmentKey,
+            body
+        );
 
-        console.log(`[FYERS MASTER] ${segmentKey}: saved ${body.length} bytes`);
+        const parsed =
+            parseSegmentText(
+                segmentKey,
+                body
+            );
 
-        const parsed = parseSegmentFile(segmentKey);
-
-        console.log(`[FYERS MASTER] ${segmentKey}: ${parsed.length} option contracts parsed`);
+        console.log(
+            `[FYERS MASTER] ${segmentKey}: ${parsed.length} option contracts parsed`
+        );
 
         allParsed.push(...parsed);
     }
@@ -358,68 +397,77 @@ export async function downloadFyersSymbolMaster() {
     if (allParsed.length === 0) {
         throw new Error(
             "[FYERS MASTER] Zero option contracts parsed. Column mapping may have changed — " +
-            "run inspectRawSample() and compare against the raw CSV before retrying."
+            "run inspectRawSample() immediately after download."
         );
     }
 
-    contracts = allParsed;
+    const downloadedAt =
+        new Date().toISOString();
+
+    contractDb.replaceOptions(
+        allParsed,
+        downloadedAt
+    );
+
+    contracts =
+        contractDb.getOptions();
+
     buildIndexes();
     loaded = true;
-    lastRefresh = Date.now();
-
-    fs.writeFileSync(
-        CACHE_FILE,
-        JSON.stringify(
-            {
-                provider: "FYERS",
-                downloadedAt: new Date(lastRefresh).toISOString(),
-                count: contracts.length,
-                contracts
-            },
-            null,
-            2
-        ),
-        "utf8"
-    );
+    lastRefresh = Date.parse(downloadedAt);
 
     console.log("[FYERS MASTER] Ready:", {
         count: contracts.length,
-        niftyExpiries: [...(expiryIndex.get("NIFTY") ?? [])].sort(),
-        sensexExpiries: [...(expiryIndex.get("SENSEX") ?? [])].sort()
+        niftyExpiries:
+            [...(expiryIndex.get("NIFTY") ?? [])].sort(),
+        sensexExpiries:
+            [...(expiryIndex.get("SENSEX") ?? [])].sort()
     });
 
-    return { success: true, count: contracts.length, downloadedAt: new Date(lastRefresh).toISOString() };
+    return {
+        success: true,
+        count: contracts.length,
+        downloadedAt
+    };
 }
-
-//======================================================
-// LOAD LOCAL CACHE
-//======================================================
 
 export function loadFyersSymbolMasterFromDisk() {
 
-    ensureDataDirectory();
-
-    if (!fs.existsSync(CACHE_FILE)) {
-        return false;
-    }
-
     try {
-        const parsed = JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
 
-        if (!Array.isArray(parsed?.contracts) || parsed.contracts.length === 0) {
+        const rows =
+            contractDb.getOptions();
+
+        if (!Array.isArray(rows) || rows.length === 0) {
             return false;
         }
 
-        contracts = parsed.contracts;
+        contracts = rows;
         buildIndexes();
         loaded = true;
-        lastRefresh = parsed.downloadedAt ? Date.parse(parsed.downloadedAt) || 0 : 0;
 
-        console.log(`[FYERS MASTER] Loaded ${contracts.length} contracts from local cache.`);
+        const status =
+            contractDb.getFyersContractDatabaseStatus();
+
+        lastRefresh =
+            status?.options?.last_updated
+                ? Date.parse(status.options.last_updated) || 0
+                : 0;
+
+        console.log(
+            `[FYERS MASTER] Loaded ${contracts.length} contracts from SQLite.`
+        );
+
         return true;
 
-    } catch (error) {
-        console.error("[FYERS MASTER] Local cache load failed:", error?.message ?? error);
+    }
+    catch (error) {
+
+        console.error(
+            "[FYERS MASTER] SQLite load failed:",
+            error?.message ?? error
+        );
+
         return false;
     }
 }
@@ -571,8 +619,12 @@ export function getFyersSymbolMasterStatus() {
         loaded,
         count: contracts.length,
         lastRefresh: lastRefresh ? new Date(lastRefresh).toISOString() : null,
-        cacheFile: CACHE_FILE,
-        refreshIntervalMs: REFRESH_INTERVAL_MS,
+        cacheFile:
+            contractDb.fyersContractDatabasePath(),
+        databaseFile:
+            contractDb.fyersContractDatabasePath(),
+        refreshIntervalMs:
+            REFRESH_INTERVAL_MS,
         availableUnderlyings,
         expiriesByUnderlying,
         // Kept for backward compatibility with existing checks.
@@ -595,7 +647,321 @@ export function shutdownFyersSymbolMaster() {
 }
 
 //======================================================
+//
+// FYERS symbol normalization.
+//
+// FYERS equity:
+//
+//   NSE:RELIANCE-EQ
+//
+// FYERS indices:
+//
+//   NSE:NIFTY50-INDEX
+//   NSE:NIFTYBANK-INDEX
+//
+// BSE:
+//
+//   BSE:SENSEX-INDEX
+//======================================================
 
+export const INDEX_MAP = {
+    NIFTY:
+        "NSE:NIFTY50-INDEX",
+
+    NIFTY50:
+        "NSE:NIFTY50-INDEX",
+
+    BANKNIFTY:
+        "NSE:NIFTYBANK-INDEX",
+
+    NIFTYBANK:
+        "NSE:NIFTYBANK-INDEX",
+
+    FINNIFTY:
+        "NSE:FINNIFTY-INDEX",
+
+    MIDCPNIFTY:
+        "NSE:MIDCPNIFTY-INDEX",
+
+    SENSEX:
+        "BSE:SENSEX-INDEX",
+
+    BANKEX:
+        "BSE:BANKEX-INDEX",
+
+    INDIA_VIX:
+        "NSE:INDIAVIX-INDEX",
+
+    INDVIX:
+        "NSE:INDIAVIX-INDEX"
+};
+
+//======================================================
+// RESOLVE FYERS SYMBOL
+//======================================================
+//
+// Supports:
+//
+// EQUITY
+//   RELIANCE
+//   RELIANCE-EQ
+//   NSE:RELIANCE-EQ
+//
+// INDEX
+//   NIFTY
+//   NIFTY50
+//   NSE:NIFTY
+//   SENSEX
+//
+// OPTION
+//   NSE:NIFTY25SEP26000CE
+//   NSE:NIFTY25SEP26000PE
+//
+// IMPORTANT:
+//
+// FYERS option symbols are already native FYERS symbols.
+// They MUST NOT be converted to -EQ.
+//
+// The option symbol should normally come from the FYERS
+// option symbol master and must be passed through unchanged.
+//======================================================
+
+export function resolveFyersSymbol(
+    symbol
+) {
+
+    let value =
+        String(
+            symbol ?? ""
+        )
+        .trim()
+        .toUpperCase();
+
+    if (!value) {
+
+        throw new Error(
+            "[FYERS SYMBOL] Symbol is required."
+        );
+
+    }
+
+    value =
+        value.replace(
+            /\s+/g,
+            ""
+        );
+
+    //--------------------------------------------------
+    // ALREADY-NATIVE FYERS OPTION
+    //
+    // Example:
+    //
+    // NSE:NIFTY25SEP26000CE
+    // NSE:NIFTY25SEP26000PE
+    //
+    // DO NOT APPEND -EQ.
+    //--------------------------------------------------
+
+    if (
+        /^(NSE|BSE):.*(CE|PE)$/.test(
+            value
+        )
+    ) {
+
+        return value;
+
+    }
+
+    //--------------------------------------------------
+    // NIFTY INDEX
+    //--------------------------------------------------
+
+    if (
+        value === "NIFTY" ||
+        value === "NIFTY50" ||
+        value === "NIFTY50-INDEX" ||
+        value === "NSE:NIFTY"
+    ) {
+
+        return "NSE:NIFTY50-INDEX";
+
+    }
+
+    //--------------------------------------------------
+    // SENSEX INDEX
+    //--------------------------------------------------
+
+    if (
+        value === "SENSEX" ||
+        value === "BSE:SENSEX" ||
+        value === "BSE:SENSEX-INDEX"
+    ) {
+
+        return "BSE:SENSEX-INDEX";
+
+    }
+
+    //--------------------------------------------------
+    // ALL OTHER INDICES — driven by INDEX_MAP so
+    // BANKNIFTY, FINNIFTY, MIDCPNIFTY, BANKEX, INDIA_VIX
+    // resolve the same way NIFTY/SENSEX do above, instead
+    // of silently falling through to the equity path.
+    //--------------------------------------------------
+
+    const bareValue =
+        value.replace(/^(NSE:|BSE:)/, "");
+
+    if (INDEX_MAP[bareValue]) {
+
+        return INDEX_MAP[bareValue];
+
+    }
+
+    if (value.endsWith("-INDEX")) {
+
+        return value.includes(":")
+            ? value
+            : `NSE:${value}`;
+
+    }
+
+    //--------------------------------------------------
+    // REMOVE EXCHANGE PREFIX
+    //
+    // We remember the exchange so BSE equities are not
+    // accidentally returned as NSE.
+    //--------------------------------------------------
+
+    let exchange =
+        "NSE";
+
+    if (
+        value.startsWith("NSE:")
+    ) {
+
+        exchange =
+            "NSE";
+
+        value =
+            value.substring(4);
+
+    }
+    else if (
+        value.startsWith("BSE:")
+    ) {
+
+        exchange =
+            "BSE";
+
+        value =
+            value.substring(4);
+
+    }
+
+    //--------------------------------------------------
+    // EQUITY
+    //--------------------------------------------------
+
+    if (
+        !value.endsWith("-EQ") &&
+        !value.endsWith("-INDEX")
+    ) {
+
+        value =
+            `${value}-EQ`;
+
+    }
+
+    //--------------------------------------------------
+    // RETURN NATIVE FYERS FORMAT
+    //--------------------------------------------------
+
+    return (
+        `${exchange}:${value}`
+    );
+
+}
+
+//======================================================
+// MANY
+//======================================================
+
+export function resolveFyersSymbols(
+    symbols,
+    exchange = "NSE"
+) {
+
+    const list =
+        Array.isArray(symbols)
+            ? symbols
+            : [symbols];
+
+    return list
+        .filter(
+            symbol =>
+                symbol !== undefined &&
+                symbol !== null &&
+                String(symbol).trim() !== ""
+        )
+        .map(
+            symbol =>
+                resolveFyersSymbol(
+                    symbol,
+                    exchange
+                )
+        );
+}
+
+//======================================================
+// CHECK
+//======================================================
+
+export function isFyersSymbol(symbol) {
+
+    if (!symbol) {
+        return false;
+    }
+
+    return /^[A-Z]+:/.test(
+        String(symbol)
+            .trim()
+            .toUpperCase()
+    );
+}
+
+//======================================================
+// EXCHANGE
+//======================================================
+
+export function getFyersExchange(symbol) {
+
+    if (!symbol) {
+        return "";
+    }
+
+    return String(symbol)
+        .split(":")[0]
+        .toUpperCase();
+}
+
+//======================================================
+// NAME
+//======================================================
+
+export function getFyersSymbolName(symbol) {
+
+    if (!symbol) {
+        return "";
+    }
+
+    return String(symbol)
+        .split(":")
+        .pop()
+        .replace(/-EQ$/, "")
+        .replace(/-INDEX$/, "");
+}
+
+//======================================================
 export default {
     inspectRawSample,
     downloadFyersSymbolMaster,
@@ -608,5 +974,10 @@ export default {
     getFyersContractByTicker,
     listFyersExpiries,
     getFyersSymbolMasterStatus,
-    shutdownFyersSymbolMaster
+    shutdownFyersSymbolMaster,
+	resolveFyersSymbol,
+    resolveFyersSymbols,
+    isFyersSymbol,
+    getFyersExchange,
+    getFyersSymbolName
 };

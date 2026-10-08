@@ -14,7 +14,7 @@
 //   app.use("/api/aliceblue/options", aliceBlueOptionsRouter);
 //
 // Built on the EXISTING searchAliceBlueOptions() in
-// symbols.js — no new resolver logic, just an HTTP surface
+// symbolMaster.js — no new resolver logic, just an HTTP surface
 // for what was already there.
 //======================================================
 
@@ -23,7 +23,7 @@ import express from "express";
 import {
     searchAliceBlueOptions,
     getAliceBlueSymbolStatus
-} from "./symbols.js";
+} from "./symbolMaster.js";
 
 const router = express.Router();
 
@@ -86,7 +86,7 @@ function normalizeExpiryInput(value) {
 //
 // searchAliceBlueOptions() results don't carry a stored
 // "underlying" field — it's inferred from the symbol
-// prefix here, same heuristic symbols.js uses internally.
+// prefix here, same heuristic symbolMaster.js uses internally.
 //======================================================
 
 function deriveUnderlying(contract) {

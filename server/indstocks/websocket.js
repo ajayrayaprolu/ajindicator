@@ -9,7 +9,7 @@
 // Instrument format on THIS endpoint only:
 //   SEGMENT:TOKEN  e.g. "NSE:2885", "NIDX:26000", "BIDX:1"
 // This is DIFFERENT from the REST scrip-code format
-// (EXCH_SECURITYID, e.g. "NSE_2885") used by history.js/symbols.js.
+// (EXCH_SECURITYID, e.g. "NSE_2885") used by history.js/symbolMaster.js.
 // toWsInstrument() below is the only place that translates
 // between the two - nothing else in this file or its callers
 // needs to know both formats exist.
