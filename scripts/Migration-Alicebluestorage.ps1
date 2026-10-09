@@ -1582,15 +1582,78 @@ if (
 ) {
 
     log("");
-    log(
-        "[INFO] Legacy cleanup requested."
-    );
+    log("======================================================");
+    log(" LEGACY JSON CLEANUP");
+    log("======================================================");
+
+    // Contract legacy JSON
+    if (fs.existsSync(contractSource)) {
+
+        fs.unlinkSync(
+            contractSource
+        );
+
+        log(
+            "[PASS] Removed legacy contract-master.json"
+        );
+
+    } else {
+
+        log(
+            "[INFO] Legacy contract-master.json already absent."
+        );
+
+    }
+
+    // Candle legacy JSON files
+    if (fs.existsSync(candleSource)) {
+
+        const legacyCandleFiles =
+            fs.readdirSync(
+                candleSource,
+                {
+                    withFileTypes: true
+                }
+            )
+            .filter(
+                entry =>
+                    entry.isFile() &&
+                    entry.name
+                        .toLowerCase()
+                        .endsWith(".json")
+            );
+
+        for (
+            const file
+            of legacyCandleFiles
+        ) {
+
+            fs.unlinkSync(
+                path.join(
+                    candleSource,
+                    file.name
+                )
+            );
+
+        }
+
+        log(
+            "[PASS] Removed " +
+            legacyCandleFiles.length +
+            " legacy candle JSON file(s)."
+        );
+
+    } else {
+
+        log(
+            "[INFO] Legacy candle-cache directory already absent."
+        );
+
+    }
 
     log(
-        "[INFO] Legacy files will be removed only after successful migration."
+        "[PASS] Legacy JSON cleanup completed."
     );
-
-    process.exit(0);
 }
 
 log("");
@@ -1742,22 +1805,56 @@ Write-Host ""
 
 if ($RemoveLegacy) {
 
-    Write-Host "[INFO] Legacy cleanup was requested."
-    Write-Host "[INFO] Verify application runtime before deleting backup."
+    Write-Host "[PASS] Legacy JSON cleanup was requested and completed."
+
+    if (Test-Path $ContractSource) {
+
+        throw `
+            "Final validation failed: legacy contract-master.json still exists."
+
+    }
+
+    if (Test-Path $CandleSource) {
+
+        $remainingLegacyCandles =
+            Get-ChildItem `
+                -Path $CandleSource `
+                -Filter "*.json" `
+                -File `
+                -ErrorAction SilentlyContinue
+
+        if ($remainingLegacyCandles.Count -gt 0) {
+
+            throw `
+                "Final validation failed: legacy candle JSON files still exist."
+
+        }
+    }
+
+    Write-Host "[PASS] Legacy JSON files removed."
 }
 else {
 
     Write-Host "[INFO] Legacy JSON files remain intact."
-    Write-Host "[INFO] This is intentional."
+    Write-Host "[INFO] This is intentional because -RemoveLegacy was not supplied."
 }
 
 Write-Host ""
-Write-Host "NEXT:"
-Write-Host "  Update AliceBlue storage implementation to use:"
+Write-Host "FINAL ARCHITECTURE:"
 Write-Host ""
-Write-Host "  server\aliceblue\data\aliceblue-contract-master.db"
-Write-Host "  server\aliceblue\data\aliceblue-candle-cache.db"
+Write-Host "  AliceBlue contracts : SQLite"
+Write-Host "  AliceBlue candles   : SQLite"
+Write-Host "  AliceBlue history   : SQLite-backed"
+Write-Host "  AliceBlue sync      : SQLite-backed"
+Write-Host "  AliceBlue CLI       : SQLite-backed"
 Write-Host ""
-Write-Host "  Do NOT modify the existing AliceBlue -> IndStocks"
-Write-Host "  historical fallback logic."
+Write-Host "  Contract DB:"
+Write-Host "    $ContractDatabase"
+Write-Host ""
+Write-Host "  Candle DB:"
+Write-Host "    $CandleDatabase"
+Write-Host ""
+Write-Host "  IndStocks storage was not modified."
+Write-Host "  Existing historical fallback behavior was not changed."
+Write-Host ""
 Write-Host ""

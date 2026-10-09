@@ -19,10 +19,6 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-console.log(
-    "[LOGIN] dotenv loaded"
-);
-
 import fs from "fs";
 import path from "path";
 
@@ -112,44 +108,6 @@ export function getLoginUrl() {
 //======================================================
 
 export function registerLoginRoutes(app) {
-
-
-    //==================================================
-    // LOGIN
-    //==================================================
-
-    app.get(
-        "/api/zerodha/login",
-        (_, res) => {
-
-            try {
-
-                console.log(
-                    "[ZERODHA] Redirecting to Kite login..."
-                );
-
-                res.redirect(
-                    getLoginUrl()
-                );
-
-            }
-
-            catch (err) {
-
-                res.status(500).json({
-
-                    success: false,
-
-                    error:
-                        err.message
-
-                });
-
-            }
-
-        }
-    );
-
 
     //==================================================
     // CALLBACK
@@ -378,18 +336,14 @@ export function registerLoginRoutes(app) {
 
                 <script>
 
-                if (window.opener) {
 
-                    window.opener.postMessage(
-                        {
-                            type: "ZERODHA_LOGIN_SUCCESS"
-                        },
-                        "*"
-                    );
-
-                    window.close();
-
-                }
+				if (window.opener && !window.opener.closed) {
+					window.opener.postMessage(
+						{ type: "ZERODHA_LOGIN_SUCCESS" },
+						"https://ajtrade.in"
+					);
+					window.close();
+				}
 
                 </script>
 

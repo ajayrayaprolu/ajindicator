@@ -41,8 +41,8 @@
 //     for that key is left untouched.
 //
 // clear --yes [--refresh]
-//     DESTRUCTIVE. Deletes every .json file in
-//     candle-cache. Requires --yes as confirmation.
+//     DESTRUCTIVE. Deletes every candle row from
+//     the AliceBlue SQLite candle store. Requires --yes as confirmation.
 //     Captures the key list BEFORE deleting, so --refresh
 //     can immediately redownload the exact same set right
 //     after wiping — a true hard reset, not a data-loss
@@ -64,15 +64,17 @@
 // API cannot resolve them, confirmed separately.
 //======================================================
 
-import fs from "fs";
-import path from "path";
-
 import {
     fetchAndCacheLive,
     getAliceBlueHistory,
     listTrackedKeys,
     getCacheFreshness
 } from "./history.js";
+
+import {
+    clearCandles,
+    getDatabasePath
+} from "./data/AliceBlueCandleDatabase.js";
 
 import {
     getTokenStatus,
@@ -84,8 +86,6 @@ import {
     istNow
 } from "./syncWorker.js";
 
-const CACHE_DIR =
-    path.resolve(process.cwd(), "server", "aliceblue", "data", "candle-cache");
 
 const REQUEST_SPACING_MS = 350;
 const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -183,8 +183,8 @@ function runStatus() {
 
     if (keys.length === 0) {
 
-        console.log(
-            `No tracked keys found in ${CACHE_DIR}.\n` +
+		console.log(
+			"No tracked keys found in the AliceBlue SQLite candle store.\n" +
             "The store is empty — this is exactly what causes " +
             "\"Waiting for first sync\" everywhere. Run 'preflight' " +
             "next to confirm AliceBlue is reachable, then either " +
@@ -194,7 +194,9 @@ function runStatus() {
         return;
     }
 
-    console.log(`Tracked keys (${keys.length}) — reading from ${CACHE_DIR}\n`);
+    console.log(
+		`Tracked keys (${keys.length}) — reading from ${getDatabasePath()}\n`
+	);
     console.log(
         "EXCHANGE".padEnd(10) +
         "TOKEN".padEnd(12) +
@@ -605,7 +607,8 @@ async function runClear(flags) {
     if (!flags.yes) {
 
         console.log(
-            "This deletes every .json file in:\n  " + CACHE_DIR +
+            "This deletes ALL cached candles from the AliceBlue SQLite candle store:\n  " +
+            getDatabasePath() +
             "\n\nRe-run with --yes to confirm, e.g.:\n" +
             "  node server\\aliceblue\\cli.mjs clear --yes\n" +
             "  node server\\aliceblue\\cli.mjs clear --yes --refresh   (wipe, then immediately redownload the same keys)"
@@ -614,27 +617,32 @@ async function runClear(flags) {
         return;
     }
 
-    if (!fs.existsSync(CACHE_DIR)) {
-        console.log("Cache directory doesn't exist yet — nothing to clear:", CACHE_DIR);
-        return;
-    }
-
     // Capture the key list BEFORE deleting anything, so --refresh
     // has something to redownload afterwards.
-    const previousKeys = listTrackedKeys();
+    const previousKeys =
+        listTrackedKeys();
 
-    const files = fs.readdirSync(CACHE_DIR).filter((f) => f.endsWith(".json"));
+    if (previousKeys.length === 0) {
 
-    for (const file of files) {
-        fs.unlinkSync(path.join(CACHE_DIR, file));
+        console.log(
+            "SQLite candle store is already empty — nothing to clear."
+        );
+
+        return;
+
     }
 
-    console.log(`Deleted ${files.length} cache file(s) from ${CACHE_DIR}.`);
+    const deletedCount =
+        clearCandles();
+
+    console.log(
+        `Deleted ${deletedCount} candle row(s) from ${getDatabasePath()}.`
+    );
 
     if (!flags.refresh) {
 
         console.log(
-            "\nStore is now empty. Every chart will show \"Waiting for first sync\" " +
+            "\nSQLite candle store is now empty. Every chart will show \"Waiting for first sync\" " +
             "until either you load it once in the UI, or you run:\n" +
             '  node server\\aliceblue\\cli.mjs refresh --symbols "..."'
         );
@@ -642,12 +650,9 @@ async function runClear(flags) {
         return;
     }
 
-    if (previousKeys.length === 0) {
-        console.log("\n(Store was already empty before clearing — nothing to redownload.)");
-        return;
-    }
-
-    console.log(`\nRedownloading the ${previousKeys.length} key(s) that were tracked before clearing...\n`);
+    console.log(
+        `\nRedownloading the ${previousKeys.length} key(s) that were tracked before clearing...\n`
+    );
 
     await refreshKeys(previousKeys);
 }

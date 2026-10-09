@@ -41,6 +41,11 @@ import {
     listTrackedKeys
 } from "./history.js";
 
+import {
+    getAliceBlueContractByToken,
+    getAliceBlueSymbolStatus
+} from "./symbolMaster.js";
+
 //======================================================
 // MARKET HOURS (IST, NSE cash/derivatives segment)
 //
@@ -100,7 +105,9 @@ function isAfterMarketClose() {
 const INTRADAY_SYNC_INTERVAL_MS = 90 * 1000;      // every 90s during market hours
 const DAILY_SYNC_INTERVAL_MS = 30 * 60 * 1000;     // check for EOD sync every 30 min
 const REQUEST_SPACING_MS = 350;                    // gap between broker calls in a batch, so a 40-symbol watchlist doesn't fire 40 requests at once
-const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;     // how far back each refresh asks for
+const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_HISTORY_ATTEMPTS = 2;
+const RETRY_BASE_DELAY_MS = 800; // Delay before the single retry
 
 let lastDailySyncDateKey = null; // "YYYY-MM-DD" (IST) of the last completed EOD sync
 
@@ -112,26 +119,53 @@ function sleep(ms) {
 // ONE SYNC PASS
 //======================================================
 
+const loggedAliceBlueFailures = new Map();
+
 async function syncKeys(keys, label) {
 
     if (keys.length === 0) {
-        console.log(`[ALICEBLUE SYNC] ${label}: 0 tracked key(s) — nothing to refresh (this is normal right after a store wipe, or before anything's ever been charted).`);
-        return { attempted: 0, refreshed: 0, failed: 0 };
+        return { attempted: 0, refreshed: 0, failed: 0, retries: 0 };
     }
 
+    let attempted = 0;
     let refreshed = 0;
     let failed = 0;
+    let retries = 0;
+    let skipped = 0;
+    let stopForSession = false;
 
-    console.log(`[ALICEBLUE SYNC] ${label}: refreshing ${keys.length} key(s)...`);
+    const masterLoaded = getAliceBlueSymbolStatus()?.loaded === true;
 
     for (const { exchange, token, resolution } of keys) {
 
-        const now = Date.now();
+        const key = `${exchange}:${token}:${resolution}`;
 
-        try {
+        // Never discard cached candles. Skip only when the loaded
+        // contract master confirms that this token cannot be resolved.
+        if (
+            masterLoaded &&
+            !getAliceBlueContractByToken(exchange, token)
+        ) {
+            skipped += 1;
 
-            const result =
-                await fetchAndCacheLive({
+            if (loggedAliceBlueFailures.get(key) !== "UNRESOLVED_CONTRACT") {
+                console.warn(
+                    `[ALICEBLUE SYNC] Skipping key=${key}: token not found in loaded contract master; cached candles preserved.`
+                );
+                loggedAliceBlueFailures.set(key, "UNRESOLVED_CONTRACT");
+            }
+
+            continue;
+        }
+
+        attempted += 1;
+
+        for (let attempt = 1; attempt <= MAX_HISTORY_ATTEMPTS; attempt++) {
+
+            const now = Date.now();
+
+            try {
+                const result = await fetchAndCacheLive({
                     exch: exchange,
                     instrumentToken: token,
                     resolution,
@@ -139,42 +173,82 @@ async function syncKeys(keys, label) {
                     toMs: now
                 });
 
-            if (result && result.length > 0) {
-                refreshed += 1;
-            } else {
-                failed += 1;
-            }
-
-        } catch (error) {
-
-            failed += 1;
-
-            // SESSION_EXPIRED is the one case worth logging loudly —
-            // it means every key in this pass (and the next, and the
-            // next) will fail until someone re-logs in.
-            if (error?.aliceBlueReason === "SESSION_EXPIRED") {
+                if (result && result.length > 0) {
+                    refreshed += 1;
+                    loggedAliceBlueFailures.delete(key);
+                    break;
+                }
 
                 console.warn(
-                    "[ALICEBLUE SYNC] Session expired — pausing this pass. Re-login required."
+                    `[ALICEBLUE SYNC] Empty result key=${key} attempt=${attempt}/${MAX_HISTORY_ATTEMPTS}; no usable candles returned.`
                 );
+
+                if (attempt < MAX_HISTORY_ATTEMPTS) {
+                    retries += 1;
+
+                    await sleep(RETRY_BASE_DELAY_MS * attempt);
+                    continue;
+                }
+
+                failed += 1;
+
+                break;
+
+            } catch (error) {
+
+                if (attempt === MAX_HISTORY_ATTEMPTS) {
+                    const reason =
+                        error?.aliceBlueReason ?? "UNCLASSIFIED_ERROR";
+                    const message =
+                        error?.message ?? String(error);
+                    const signature = `${reason}:${message}`;
+                    const previousSignature =
+                        loggedAliceBlueFailures.get(key);
+
+                    if (previousSignature !== signature) {
+                        console.error(
+                            `[ALICEBLUE SYNC] Failed key=${key} after ${attempt}/${MAX_HISTORY_ATTEMPTS} attempts reason=${reason} message=${message}`
+                        );
+                        loggedAliceBlueFailures.set(key, signature);
+                    }
+                }
+
+                if (error?.aliceBlueReason === "SESSION_EXPIRED") {
+                    failed += 1;
+                    stopForSession = true;
+
+                    console.warn(
+                        "[ALICEBLUE SYNC] Session expired — pausing this pass. Re-login required."
+                    );
+
+                    break;
+                }
+
+                if (attempt < MAX_HISTORY_ATTEMPTS) {
+                    retries += 1;
+
+                    await sleep(RETRY_BASE_DELAY_MS * attempt);
+                    continue;
+                }
+
+                failed += 1;
 
                 break;
             }
+        }
 
-            console.warn(
-                `[ALICEBLUE SYNC] Failed to refresh ${exchange}_${token}_${resolution}:`,
-                error?.message ?? error
-            );
+        if (stopForSession) {
+            break;
         }
 
         await sleep(REQUEST_SPACING_MS);
     }
 
-    console.log(
-        `[ALICEBLUE SYNC] ${label}: done. refreshed=${refreshed} failed=${failed} of ${keys.length}`
-    );
+	console.log(
+		`[ALICEBLUE SYNC] ${label}: done. requested=${attempted}/${keys.length} refreshed=${refreshed} failed=${failed} skipped=${skipped} retries=${retries}`
+	);
 
-    return { attempted: keys.length, refreshed, failed };
+    return { attempted, refreshed, failed, skipped, retries };
 }
 
 //======================================================
@@ -184,7 +258,7 @@ async function syncKeys(keys, label) {
 async function runIntradaySync() {
 
     if (!isMarketOpen()) {
-        console.log("[ALICEBLUE SYNC] intraday: market closed, skipping this pass.");
+//        console.log("[ALICEBLUE SYNC] intraday: market closed, skipping this pass.");
         return;
     }
 
@@ -210,14 +284,14 @@ function todayIstDateKey() {
 async function runDailySyncIfDue() {
 
     if (!isAfterMarketClose()) {
-        console.log("[ALICEBLUE SYNC] daily (EOD): before market close, skipping this pass.");
+//        console.log("[ALICEBLUE SYNC] daily (EOD): before market close, skipping this pass.");
         return;
     }
 
     const todayKey = todayIstDateKey();
 
     if (lastDailySyncDateKey === todayKey) {
-        console.log("[ALICEBLUE SYNC] daily (EOD): already ran today, skipping this pass.");
+//        console.log("[ALICEBLUE SYNC] daily (EOD): already ran today, skipping this pass.");
         return; // already done today
     }
 

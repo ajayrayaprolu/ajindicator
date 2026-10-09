@@ -364,8 +364,8 @@ export function synchronizeInstrumentMaster() {
     ) {
 
         console.warn(
-            "[INSTRUMENT SYNC]",
-            "No Zerodha instruments available."
+            "[MASTER CONTRACT DATABSE SYNC]",
+            "No Zerodha Master contract Database available."
         );
 
         return 0;
@@ -377,7 +377,7 @@ export function synchronizeInstrumentMaster() {
         );
 
     console.log(
-        "[INSTRUMENT SYNC]",
+        "[MASTER CONTRACT DATABASE SYNC]",
         "SQLite synchronized:",
         count
     );
@@ -408,7 +408,7 @@ export async function initializeInstrumentSynchronizer() {
     catch (error) {
 
         console.error(
-            "[INSTRUMENT SYNC] Initialization failed:",
+            "[MASTER CONTRACT DATABASE SYNC] Initialization failed:",
             error?.message
         );
 
@@ -436,8 +436,8 @@ export async function refreshInstrumentMaster() {
     try {
 
         console.log(
-            "[INSTRUMENT SYNC]",
-            "Refreshing Zerodha instrument master..."
+            "[MASTER CONTRACT DATABASE SYNC]",
+            "Refreshing Zerodha master contract database..."
         );
 
         await refreshInstrumentCache();
@@ -449,7 +449,7 @@ export async function refreshInstrumentMaster() {
     catch (error) {
 
         console.error(
-            "[INSTRUMENT SYNC] Refresh failed:",
+            "[Master Contract Database Sync] Refresh failed:",
             error?.message
         );
 
@@ -479,7 +479,7 @@ export function startInstrumentSynchronization() {
         );
 
     console.log(
-        "[INSTRUMENT SYNC]",
+        "[Master Contract Database Sync]",
         "Automatic refresh enabled:",
         "30 minutes"
     );

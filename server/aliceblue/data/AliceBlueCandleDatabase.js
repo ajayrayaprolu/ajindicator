@@ -650,6 +650,25 @@ export function getCandleCount({
 }
 
 //======================================================
+// CLEAR CANDLES
+//======================================================
+
+export function clearCandles() {
+
+    const result =
+        database
+            .prepare(`
+                DELETE FROM candles
+            `)
+            .run();
+
+    return Number(
+        result?.changes ?? 0
+    );
+
+}
+
+//======================================================
 // DATABASE PATH
 //======================================================
 
@@ -690,6 +709,8 @@ export default {
     loadTrackedKeys,
 
     getCandleCount,
+
+    clearCandles,
 
     getDatabasePath,
 

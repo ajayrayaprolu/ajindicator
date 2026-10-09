@@ -1,3 +1,6 @@
+let hasLoggedZerodhaFyersFallbackSuccess = false;
+let hasLoggedZerodhaFallbackPersistenceSkipped = false;
+let hasLoggedMissingZerodhaInstrument = false;
 //================================================
 // NPM Server INDEX Page .\server\index.js.new2808
 //===============================================
@@ -23,6 +26,10 @@ import { WebSocketServer } from "ws";
 import { registerFeed } from "./feeds/FeedRegistry.js";
 import feedManager from "./feeds/FeedManager.js";
 
+//==========================
+// ZERODHA import
+//==========================
+
 import { searchSymbols } from "./zerodha/SymbolSearch.js";
 
 import {
@@ -35,7 +42,8 @@ import {
 } from "./zerodha/instruments/InstrumentSynchronizer.js";
 
 import {
-    registerLoginRoutes
+    registerLoginRoutes,
+    getLoginUrl as getZerodhaLoginUrl
 } from "./zerodha/login.js";
 
 import {
@@ -58,6 +66,9 @@ import {
     zerodhaCandleDatabasePath
 } from "./zerodha/data/ZerodhaCandleDatabase.js";
 
+import {
+    isLoggedIn as isZerodhaLoggedIn
+} from "./zerodha/token.js";
 
 //==========================
 // YAHOO import
@@ -119,6 +130,10 @@ import {
     startFyersEquityRefresh
 } from "./fyers/equityMaster.js";
 
+import {
+    isLoggedIn as isFyersLoggedIn
+} from "./fyers/token.js";
+
 //============================
 // ALICEBLUE import
 //============================
@@ -130,10 +145,6 @@ import {
     logout as aliceBlueLogout,
     getLoginStatus as getAliceBlueLoginStatus
 } from "./aliceblue/login.js";
-
-import {
-    getTokenStatus as getAliceBlueTokenStatus
-} from "./aliceblue/token.js";
 
 import {
     createAliceBlueFeed
@@ -152,6 +163,11 @@ import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
 import {
     startAliceBlueSync
 } from "./aliceblue/syncWorker.js";
+
+import {
+    getTokenStatus as getAliceBlueTokenStatus,
+    isLoggedIn as isAliceBlueLoggedIn
+} from "./aliceblue/token.js";
 
 //============================
 // INDSTOCKS import
@@ -1404,13 +1420,16 @@ app.get(
                 }
                 if (Array.isArray(fyersCandles) && fyersCandles.length > 0) {
 
-                    console.log(
-                        "[ZERODHA HISTORY] FYERS fallback succeeded:",
-                        {
-                            symbol: fallbackSymbol,
-                            count: fyersCandles.length
-                        }
-                    );
+                    if (!hasLoggedZerodhaFyersFallbackSuccess) {
+                        console.log(
+                            "[ZERODHA HISTORY] FYERS fallback succeeded:",
+                            {
+                                symbol: fallbackSymbol,
+                                count: fyersCandles.length
+                            }
+                        );
+                        hasLoggedZerodhaFyersFallbackSuccess = true;
+                    }
 
                     //--------------------------------------------------
                     // Persist FYERS fallback candles into Zerodha
@@ -1509,10 +1528,13 @@ app.get(
                         }
                     } else {
 
-                        console.warn(
-                            "[ZERODHA CANDLE DB] FYERS fallback succeeded, but Zerodha instrument was not found. SQLite persistence skipped:",
-                            fallbackSymbol
-                        );
+                        if (!hasLoggedZerodhaFallbackPersistenceSkipped) {
+                            console.warn(
+                                "[ZERODHA CANDLE DB] FYERS fallback succeeded, but Zerodha instrument was not found. SQLite persistence skipped:",
+                                fallbackSymbol
+                            );
+                            hasLoggedZerodhaFallbackPersistenceSkipped = true;
+                        }
                     }
 
                     return res.json(fyersCandles);
@@ -1521,10 +1543,18 @@ app.get(
                 console.warn("[ZERODHA HISTORY] FYERS fallback also failed:", fallbackError?.message ?? fallbackError);
             }
 
-            console.error(
-                "[ZERODHA HISTORY]",
-                error
-            );
+			const historyErrorMessage = String(error?.message ?? error);
+			
+			if (/^Instrument not found:/i.test(historyErrorMessage)) {
+				if (!hasLoggedMissingZerodhaInstrument) {
+					console.warn(
+						"[ZERODHA HISTORY] Zerodha instrument unavailable; FYERS fallback was unsuccessful for this request."
+					);
+					hasLoggedMissingZerodhaInstrument = true;
+				}
+			} else {
+				console.error("[ZERODHA HISTORY]", error);
+			}
 
             res.status(500).json({
                 error:
@@ -1992,39 +2022,86 @@ app.get(
     }
 );
 
+
+/*=======================
+  ZERODHA LOGIN API
+=======================*/
+
+app.get("/api/zerodha/login", (req, res) => {
+    try {
+        if (isZerodhaLoggedIn()) {
+            return res.status(200).type("html").send(`
+                <!doctype html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Zerodha Already Connected</title>
+                </head>
+                <body>
+                    <h2>Zerodha is already connected.</h2>
+                    <p>No additional login is required.</p>
+                    <script>
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.postMessage(
+                                { type: "ZERODHA_LOGIN_SUCCESS" },
+                                "https://ajtrade.in"
+                            );
+                        }
+                        window.close();
+                    </script>
+                </body>
+                </html>
+            `);
+        }
+
+        return res.redirect(getZerodhaLoginUrl());
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            provider: "zerodha",
+            error: error?.message ?? "Unable to generate Zerodha login URL."
+        });
+    }
+});
+
 //======================
 // Fyers API get
 //======================
 
-app.get(
-    "/api/fyers/login",
-    (req, res) => {
-        try {
-            const url =
-                generateFyersLoginUrl();
-
-            console.log(
-                "[FYERS LOGIN] Redirecting."
-            );
-
-            res.redirect(url);
+app.get("/api/fyers/login", (req, res) => {
+    try {
+        if (isFyersLoggedIn()) {
+            return res.status(200).type("html").send(`
+                <!doctype html>
+                <html>
+                <head><title>FYERS Already Connected</title></head>
+                <body>
+                    <h2>FYERS is already connected.</h2>
+                    <p>No additional login is required.</p>
+                    <script>
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.postMessage({
+                                type: "AJTRADE_BROKER_AUTH",
+                                provider: "fyers",
+                                status: "success"
+                            }, "*");
+                        }
+                        window.close();
+                    </script>
+                </body>
+                </html>
+            `);
         }
-        catch (error) {
-            console.error(
-                "[FYERS LOGIN]",
-                error
-            );
 
-            res.status(500).json({
-                ok: false,
-                provider: "fyers",
-                error:
-                    error?.message ??
-                    "Unable to generate FYERS login URL."
-            });
-        }
+        res.redirect(generateFyersLoginUrl());
+    } catch (error) {
+        res.status(500).json({
+            ok: false,
+            provider: "fyers",
+            error: error?.message ?? "Unable to generate FYERS login URL."
+        });
     }
-);
+});
 
 app.get(
     "/api/fyers/callback",
@@ -2224,35 +2301,40 @@ app.post(
 //=======================
 // ALICEBLUE API get
 //=======================
-app.get(
-    "/api/aliceblue/login",
-    (req, res) => {
-        try {
-            const loginUrl =
-                generateAliceBlueLoginUrl();
-
-            console.log(
-                "[ALICEBLUE LOGIN] Redirecting."
-            );
-
-            res.redirect(loginUrl);
+app.get("/api/aliceblue/login", (req, res) => {
+    try {
+        if (isAliceBlueLoggedIn()) {
+            return res.status(200).type("html").send(`
+                <!doctype html>
+                <html>
+                <head><title>Alice Blue Already Connected</title></head>
+                <body>
+                    <h2>Alice Blue is already connected.</h2>
+                    <p>No additional login is required.</p>
+                    <script>
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.postMessage({
+                                type: "AJTRADE_BROKER_AUTH",
+                                provider: "aliceblue",
+                                status: "success"
+                            }, "*");
+                        }
+                        window.close();
+                    </script>
+                </body>
+                </html>
+            `);
         }
-        catch (error) {
-            console.error(
-                "[ALICEBLUE LOGIN]",
-                error
-            );
 
-            res.status(500).json({
-                ok: false,
-                provider: "aliceblue",
-                error:
-                    error?.message ??
-                    "Unable to generate Alice Blue login URL."
-            });
-        }
+        res.redirect(generateAliceBlueLoginUrl());
+    } catch (error) {
+        res.status(500).json({
+            ok: false,
+            provider: "aliceblue",
+            error: error?.message ?? "Unable to generate Alice Blue login URL."
+        });
     }
-);
+});
 
 app.get(
     "/api/aliceblue/callback",
@@ -2759,13 +2841,3 @@ wss.on(
         );
     }
 );
-
-console.log();
-console.log(
-    "[ZERODHA] Waiting for user login..."
-);
-console.log("Open:");
-console.log(
-    "https://localhost:3001/api/zerodha/login"
-);
-console.log();

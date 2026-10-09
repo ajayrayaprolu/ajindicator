@@ -316,15 +316,15 @@ export function createAliceBlueFeed() {
             key:`${exchange}|${token}`
         };
 
-        console.log(
-            "[ALICEBLUE] Symbol resolved:",
-            {
-                requested:rawSymbol,
-                exchange,
-                token,
-                resolved:instrument.key
-            }
-        );
+//        console.log(
+//            "[ALICEBLUE] Symbol resolved:",
+//            {
+//                requested:rawSymbol,
+//                exchange,
+//                token,
+//                resolved:instrument.key
+//           }
+//        );
 
         return instrument;
     }

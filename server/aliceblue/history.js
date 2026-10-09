@@ -8,7 +8,7 @@
 // POST
 // https://a3.aliceblueonline.com/open-api/od/ChartAPIService/api/chart/history
 //
-// STRATEGY (v2 — store-first):
+// STRATEGY (v2 ï¿½ store-first):
 //
 //   The read path (getAliceBlueHistory) NEVER makes a
 //   synchronous broker call on a symbol it has already
@@ -25,7 +25,7 @@
 //      that succeeds, the key is written to disk and from
 //      then on it's case 1 forever, and the sync worker
 //      picks it up automatically (it just scans the cache
-//      directory — see listTrackedKeys()).
+//      directory ï¿½ see listTrackedKeys()).
 //   3. Cold start fails too (broker down, or genuinely no
 //      data yet) -> return empty. Nothing to show yet.
 //
@@ -38,7 +38,7 @@
 //   fetchAndCacheLive() is the shared low-level "hit
 //   AliceBlue, normalize, write to disk" primitive used by
 //   both the cold-start path here AND the background sync
-//   worker — one code path, one place that talks to the
+//   worker ï¿½ one code path, one place that talks to the
 //   broker.
 //
 //======================================================
@@ -53,8 +53,7 @@ import {
     loadCandles,
     saveCandles,
     getCandleFreshness,
-    loadTrackedKeys,
-    getDatabasePath
+    loadTrackedKeys
 } from "./data/AliceBlueCandleDatabase.js";
 
 const ALICEBLUE_BASE =
@@ -63,181 +62,184 @@ const ALICEBLUE_BASE =
 //======================================================
 // CACHE
 //======================================================
-
-const CACHE_DIR =
-    path.resolve(
-        process.cwd(),
-        "server",
-        "aliceblue",
-        "data",
-        "candle-cache"
-    );
-
-function ensureCacheDir() {
-    if (!fs.existsSync(CACHE_DIR)) {
-        fs.mkdirSync(CACHE_DIR, { recursive: true });
-    }
-}
+//
+// Runtime candle storage is SQLite.
+//
+// The legacy JSON candle-cache directory is intentionally
+// NOT read or written by the runtime anymore.
+//
+// Existing AliceBlue candle behavior is preserved:
+//   - known key -> instant SQLite read
+//   - unknown key -> one cold-start live fetch
+//   - successful live fetch -> SQLite persistence
+//   - forceRefresh -> live fetch, then stale SQLite fallback
+//
+//======================================================
+//======================================================
+// CACHE KEY
+//======================================================
 
 function cacheKey(exchange, token, resolution) {
+
     return `${exchange}_${token}_${resolution}`;
+
 }
 
-function cacheFile(key) {
-    return path.join(CACHE_DIR, `${key}.json`);
-}
+//======================================================
+// READ CACHE
+//======================================================
 
-function readCache(key) {
+function readCache(
+    exchange,
+    token,
+    resolution
+) {
 
     try {
 
-        const file = cacheFile(key);
+        const candles =
+            loadCandles({
 
-        if (!fs.existsSync(file)) {
+                exchange,
+                token,
+                resolution
+
+            });
+
+        if (
+            !Array.isArray(candles) ||
+            candles.length === 0
+        ) {
+
             return null;
+
         }
 
-        const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
+        return candles;
 
-        if (!Array.isArray(parsed?.candles) || parsed.candles.length === 0) {
-            return null;
-        }
-
-        return parsed.candles;
-
-    } catch (error) {
+    }
+    catch (error) {
 
         console.warn(
-            "[ALICEBLUE HISTORY CACHE] Read failed:",
-            key,
+            "[ALICEBLUE HISTORY CACHE] SQLite read failed:",
+            cacheKey(
+                exchange,
+                token,
+                resolution
+            ),
             error?.message ?? error
         );
 
         return null;
+
     }
+
 }
 
-function writeCache(key, candles, meta = {}) {
+//======================================================
+// WRITE CACHE
+//======================================================
+
+function writeCache(
+    exchange,
+    token,
+    resolution,
+    candles
+) {
 
     try {
 
-        ensureCacheDir();
+        if (
+            !Array.isArray(candles) ||
+            candles.length === 0
+        ) {
 
-        fs.writeFileSync(
-            cacheFile(key),
-            JSON.stringify(
-                {
-                    cachedAt: new Date().toISOString(),
-                    count: candles.length,
-                    // Self-describing, so the sync worker can
-                    // rebuild the fetch params from disk alone
-                    // (no separate registry to drift out of
-                    // sync with what's actually cached).
-                    exchange: meta.exchange ?? null,
-                    token: meta.token ?? null,
-                    resolution: meta.resolution ?? null,
-                    candles
-                },
-                null,
-                2
-            ),
-            "utf8"
-        );
+            return 0;
 
-    } catch (error) {
+        }
+
+        return saveCandles({
+
+            exchange,
+            token,
+            resolution,
+            candles,
+            cachedAt:
+                new Date().toISOString()
+
+        });
+
+    }
+    catch (error) {
 
         console.warn(
-            "[ALICEBLUE HISTORY CACHE] Write failed:",
-            key,
+            "[ALICEBLUE HISTORY CACHE] SQLite write failed:",
+            cacheKey(
+                exchange,
+                token,
+                resolution
+            ),
             error?.message ?? error
         );
+
+        return 0;
+
     }
+
 }
 
 //======================================================
-// FRESHNESS — for the (future) frontend badge and for
-// the sync worker to decide what's due for a refresh.
+// FRESHNESS
 //======================================================
 
-export function getCacheFreshness({ exchange, token, timeframe }) {
+export function getCacheFreshness({
+    exchange,
+    token,
+    timeframe
+}) {
 
-    const resolution = normalizeResolution(timeframe);
-    const key = cacheKey(
-        String(exchange ?? "").trim().toUpperCase(),
-        String(token ?? "").trim(),
+    const resolution =
+        normalizeResolution(
+            timeframe
+        );
+
+    return getCandleFreshness({
+
+        exchange:
+            String(
+                exchange ?? ""
+            )
+            .trim()
+            .toUpperCase(),
+
+        token:
+            String(
+                token ?? ""
+            )
+            .trim(),
+
         resolution
-    );
 
-    const file = cacheFile(key);
+    });
 
-    if (!fs.existsSync(file)) {
-        return { hasCache: false, cachedAt: null, ageMs: null, count: 0 };
-    }
-
-    try {
-
-        const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
-        const cachedAt = parsed?.cachedAt ?? null;
-
-        return {
-            hasCache: true,
-            cachedAt,
-            ageMs: cachedAt ? (Date.now() - new Date(cachedAt).getTime()) : null,
-            count: parsed?.count ?? (parsed?.candles?.length ?? 0)
-        };
-
-    } catch {
-
-        return { hasCache: false, cachedAt: null, ageMs: null, count: 0 };
-    }
 }
 
 //======================================================
-// TRACKED KEYS — every symbol+resolution ever
-// successfully cached. This IS the sync worker's
-// worklist: it just scans the directory, so there's
-// nothing to keep manually in sync. A key only ever
-// lands here after a real successful AliceBlue response,
-// which means indices and unsupported exchanges never
-// appear (they never succeed in the first place).
+// TRACKED KEYS
+//======================================================
+//
+// SQLite itself is now the worklist.
+//
+// Every successfully persisted
+// exchange + token + resolution combination
+// appears in this result.
+//
 //======================================================
 
 export function listTrackedKeys() {
 
-    ensureCacheDir();
+    return loadTrackedKeys();
 
-    const files =
-        fs.readdirSync(CACHE_DIR)
-            .filter((name) => name.endsWith(".json"));
-
-    return files
-        .map((name) => {
-
-            const base = name.slice(0, -".json".length);
-
-            // key format: EXCHANGE_TOKEN_RESOLUTION
-            // e.g. NFO_35235_1, NSE_21808_D
-            const firstUnderscore = base.indexOf("_");
-            const lastUnderscore = base.lastIndexOf("_");
-
-            if (
-                firstUnderscore === -1 ||
-                firstUnderscore === lastUnderscore
-            ) {
-                return null;
-            }
-
-            const exchange = base.slice(0, firstUnderscore);
-            const token = base.slice(firstUnderscore + 1, lastUnderscore);
-            const resolution = base.slice(lastUnderscore + 1);
-
-            if (!exchange || !token || !resolution) {
-                return null;
-            }
-
-            return { key: base, exchange, token, resolution };
-        })
-        .filter(Boolean);
 }
 
 //======================================================
@@ -302,10 +304,10 @@ function normalizeResolution(timeframe) {
 }
 
 //======================================================
-// LIVE FETCH — raw AliceBlue call + response validation.
+// LIVE FETCH ï¿½ raw AliceBlue call + response validation.
 // Throws on real errors (session expiry, broker rejection).
 // Returns [] (not an error) when AliceBlue answers "ok"
-// with zero rows — that case is handled by the caller as
+// with zero rows ï¿½ that case is handled by the caller as
 // a cache-fallback trigger, not an exception.
 //======================================================
 
@@ -373,7 +375,7 @@ async function fetchLiveCandles({ exch, instrumentToken, resolution, fromMs, toM
 
         // Any other transport-level failure is treated as
         // "live unavailable right now" by the caller, not a
-        // hard error — so just signal it distinctly here.
+        // hard error ï¿½ so just signal it distinctly here.
         // Deliberately no console noise: this fires on every
         // routine poll whenever the broker has nothing to give,
         // which is the normal/expected case for a huge fraction
@@ -384,6 +386,8 @@ async function fetchLiveCandles({ exch, instrumentToken, resolution, fromMs, toM
             {
                 httpStatus: error?.response?.status,
                 responseData: error?.response?.data,
+                requestUrl: error?.config?.url,
+                responseMessage: error?.message,
                 code: error?.code,
                 message: error?.message
             }
@@ -421,7 +425,7 @@ async function fetchLiveCandles({ exch, instrumentToken, resolution, fromMs, toM
 
     if (status && status !== "ok") {
 
-        // e.g. {"emsg":"No data available"} — broker-level
+        // e.g. {"emsg":"No data available"} ï¿½ broker-level
         // "nothing to give you right now", not a real error.
         // No console noise here either, same reasoning as above.
         const noData = new Error(data.emsg ?? data.message ?? "No data available.");
@@ -467,7 +471,7 @@ function dedupeCandlesByTime(sortedCandles) {
 }
 
 //======================================================
-// FETCH + CACHE — shared primitive. Hits AliceBlue once,
+// FETCH + CACHE ï¿½ shared primitive. Hits AliceBlue once,
 // normalizes, writes to disk on success. Used by both the
 // cold-start path below and the background sync worker.
 // Throws on real errors (session expiry); returns null on
@@ -476,36 +480,70 @@ function dedupeCandlesByTime(sortedCandles) {
 // expected outcome for both callers, not an exception.
 //======================================================
 
-export async function fetchAndCacheLive({ exch, instrumentToken, resolution, fromMs, toMs }) {
-
-    const key = cacheKey(exch, instrumentToken, resolution);
+export async function fetchAndCacheLive({
+    exch,
+    instrumentToken,
+    resolution,
+    fromMs,
+    toMs
+}) {
 
     let candles;
 
     try {
 
-        candles = await fetchLiveCandles({ exch, instrumentToken, resolution, fromMs, toMs });
+        candles =
+            await fetchLiveCandles({
 
-    } catch (error) {
+                exch,
+                instrumentToken,
+                resolution,
+                fromMs,
+                toMs
+
+            });
+
+    }
+    catch (error) {
 
         if (error?.aliceBlueReason === "SESSION_EXPIRED") {
             throw error;
         }
 
-        return null;
+        const diagnosticError = new Error(
+            error?.message ?? "AliceBlue live fetch failed."
+        );
+
+        diagnosticError.aliceBlueReason =
+            error?.aliceBlueReason ?? "LIVE_UNAVAILABLE";
+
+        diagnosticError.cause = error;
+
+        throw diagnosticError;
     }
 
-    if (!candles || candles.length === 0) {
+    if (
+        !candles ||
+        candles.length === 0
+    ) {
+
         return null;
+
     }
 
-    writeCache(key, candles, { exchange: exch, token: instrumentToken, resolution });
+    writeCache(
+        exch,
+        instrumentToken,
+        resolution,
+        candles
+    );
 
     return candles;
+
 }
 
 //======================================================
-// HISTORY (public entry point) — STORE-FIRST.
+// HISTORY (public entry point) ï¿½ STORE-FIRST.
 //
 // Known key -> instant read from disk, no network call,
 // never blocked on AliceBlue being reachable.
@@ -548,17 +586,17 @@ export async function getAliceBlueHistory({
 
     const exch = rawExchange;
 
-    console.log(
-        "[ALICEBLUE HISTORY] EXCHANGE CLASSIFICATION:",
-        {
-            rawExchange: exchange,
-            token: instrumentToken,
-            exchangeSegment: normalizedSegment,
-            instrumentType: normalizedInstrumentType,
-            finalIsIndex,
-            finalExchange: exch
-        }
-    );
+//    console.log(
+//        "[ALICEBLUE HISTORY] EXCHANGE CLASSIFICATION:",
+//        {
+//            rawExchange: exchange,
+//            token: instrumentToken,
+//            exchangeSegment: normalizedSegment,
+//            instrumentType: normalizedInstrumentType,
+//            finalIsIndex,
+//            finalExchange: exch
+//        }
+//    );
 
     if (!exch) {
         throw new Error("[ALICEBLUE HISTORY] Exchange is required.");
@@ -569,7 +607,7 @@ export async function getAliceBlueHistory({
     }
 
     //--------------------------------------------------
-    // HARD PLATFORM LIMIT — not a timing issue, still
+    // HARD PLATFORM LIMIT ï¿½ not a timing issue, still
     // fails immediately, no cache fallback attempted.
     //--------------------------------------------------
 
@@ -592,7 +630,7 @@ export async function getAliceBlueHistory({
     }
 
     //--------------------------------------------------
-    // RESOLUTION — no pre-block here anymore. A previous
+    // RESOLUTION ï¿½ no pre-block here anymore. A previous
     // version hardcoded a "1 and D only" gate that fired
     // before AliceBlue was ever called, so it was never
     // actually verified against the real API. Every
@@ -601,7 +639,7 @@ export async function getAliceBlueHistory({
     // real endpoint rejects a given resolution, that shows
     // up as a normal LIVE_UNAVAILABLE / cache-fallback case
     // below, same as any other "no data right now" response
-    // — not a hardcoded assumption.
+    // ï¿½ not a hardcoded assumption.
     //--------------------------------------------------
 
     const now = Date.now();
@@ -613,27 +651,39 @@ export async function getAliceBlueHistory({
     // KNOWN KEY -> READ FROM STORE, NO NETWORK CALL.
     //
     // forceRefresh is an explicit opt-in escape hatch
-    // (e.g. a manual "refresh" button in the UI) — normal
+    // (e.g. a manual "refresh" button in the UI) ï¿½ normal
     // chart loads never set it, so they never wait on
     // AliceBlue for a symbol that's already tracked.
     //--------------------------------------------------
 
-    if (!forceRefresh) {
-
-        const cached = readCache(key);
-
-        if (cached && cached.length > 0) {
-
-            console.log(
-                "[ALICEBLUE HISTORY] Served from store:",
-                key,
-                cached.length,
-                "candles"
-            );
-
-            return dedupeCandlesByTime(cached);
-        }
-    }
+	if (!forceRefresh) {
+	
+		const cached =
+			readCache(
+				exch,
+				instrumentToken,
+				resolution
+			);
+	
+		if (
+			cached &&
+			cached.length > 0
+		) {
+	
+//			console.log(
+//				"[ALICEBLUE HISTORY] Served from SQLite store:",
+//				key,
+//				cached.length,
+//				"candles"
+//			);
+	
+			return dedupeCandlesByTime(
+				cached
+			);
+	
+		}
+	
+	}
 
     //--------------------------------------------------
     // UNKNOWN KEY (or explicit forceRefresh) -> ONE LIVE
@@ -658,7 +708,7 @@ export async function getAliceBlueHistory({
     } catch (error) {
 
         if (error?.aliceBlueReason === "SESSION_EXPIRED") {
-            // Real problem the user must fix — don't mask it,
+            // Real problem the user must fix ï¿½ don't mask it,
             // surface it as-is.
             throw error;
         }
@@ -687,32 +737,43 @@ export async function getAliceBlueHistory({
     // failed live -> fall back to whatever's still on
     // disk rather than blanking the chart.
     //--------------------------------------------------
-
-    if (forceRefresh) {
-
-        const stale = readCache(key);
-
-        if (stale && stale.length > 0) {
-
-            console.log(
-                "[ALICEBLUE HISTORY] Refresh failed, served stale store copy:",
-                key
-            );
-
-            return dedupeCandlesByTime(stale);
-        }
-    }
+	if (forceRefresh) {
+	
+		const stale =
+			readCache(
+				exch,
+				instrumentToken,
+				resolution
+			);
+	
+		if (
+			stale &&
+			stale.length > 0
+		) {
+	
+			console.log(
+				"[ALICEBLUE HISTORY] Refresh failed, served stale SQLite copy:",
+				key
+			);
+	
+			return dedupeCandlesByTime(
+				stale
+			);
+	
+		}
+	
+	}
 
     //--------------------------------------------------
-    // NOTHING LIVE, NOTHING STORED — genuinely first-ever
+    // NOTHING LIVE, NOTHING STORED ï¿½ genuinely first-ever
     // request for this symbol and the broker has nothing
     // right now.
     //--------------------------------------------------
 
-    console.log(
-        "[ALICEBLUE HISTORY] No live data and nothing in store yet:",
-        key
-    );
+//    console.log(
+//        "[ALICEBLUE HISTORY] No live data and nothing in store yet:",
+//        key
+//    );
 
     return [];
 }

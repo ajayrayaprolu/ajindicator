@@ -131,8 +131,8 @@ function loadFromDatabase() {
     buildIndexes();
 
     console.log(
-        "[ZERODHA]",
-        "SQLite instrument cache loaded:",
+        "[ZERODHA MASTER]",
+        "SQLite DB cache loaded:",
         instruments.length
     );
 
@@ -152,7 +152,7 @@ export async function downloadInstruments() {
     );
 
     console.log(
-        "ZERODHA INSTRUMENT DOWNLOAD"
+        "ZERODHA MASTER CONTRACT DOWNLOAD"
     );
 
     console.log(
@@ -179,33 +179,30 @@ export async function downloadInstruments() {
 
         );
 
-    const csv =
-        response.data;
+    const csv = response.data;
 
-    console.log(
-        "CSV Size:",
-        Math.round(
-            csv.length / 1024
-        ),
-        "KB"
-    );
+//    console.log(
+//        "CSV Size:",
+//        Math.round(
+//            csv.length / 1024
+//        ),
+//        "KB"
+//    );
 
-    instruments =
-        parseCSV(csv);
-
+    instruments = parseCSV(csv);
     buildIndexes();
 
-    console.log(
-        "Loaded:",
-        instruments.length,
-        "instruments"
-    );
+//    console.log(
+//        "Loaded:",
+//        instruments.length,
+//        "instruments"
+//    );
 
-    console.log(
-        "======================================"
-    );
+//    console.log(
+//        "======================================"
+//    );
 
-    console.log();
+//    console.log();
 
     return instruments;
 
@@ -429,7 +426,7 @@ export function loadCache() {
 
         console.warn(
             "[ZERODHA]",
-            "Unable to load SQLite instrument cache:",
+            "Unable to load SQLite DB cache:",
             error?.message
         );
 
@@ -609,7 +606,7 @@ export function searchInstrument(
 export async function refreshInstrumentCache() {
 
     console.log(
-        "[ZERODHA] Refreshing instrument cache..."
+        "[ZERODHA] Refreshing DB cache..."
     );
 
     return await downloadInstruments();
@@ -640,7 +637,7 @@ export async function initializeInstrumentCache() {
     }
 
     console.log(
-        "[ZERODHA] No local SQLite instrument cache found."
+        "[ZERODHA] No local SQLite DB cache found."
     );
 
     //--------------------------------------------------
@@ -650,7 +647,7 @@ export async function initializeInstrumentCache() {
     try {
 
         console.log(
-            "[ZERODHA] Downloading instrument master..."
+            "[ZERODHA] Downloading master Contract DB..."
         );
 
         await downloadInstruments();

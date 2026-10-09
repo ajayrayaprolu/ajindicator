@@ -18,7 +18,7 @@ import speakeasy from "speakeasy";
 const INDSTOCKS_BASE = "https://api.indstocks.com";
 
 const DATA_DIR = path.resolve(process.cwd(), "server", "indstocks", "data");
-const SESSION_FILE = path.join(DATA_DIR, "session.json");
+const SESSION_FILE = path.resolve(process.cwd(), "server", "indstocks", "session.json");
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
 

@@ -285,7 +285,7 @@ export function initializeInstrumentDatabase() {
     //==================================================
 
 console.log(
-    "[ZERODHA CONTRACT DB] SQLite initialized"
+    "[ZERODHA MASTER] SQLite initialized"
 );
 
     return db;

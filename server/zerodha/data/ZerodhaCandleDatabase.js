@@ -192,9 +192,9 @@ function migrateLegacySchema(database) {
         )
     ) {
 
-        console.log(
-            "[ZERODHA CANDLE DB] Migrating candle_time to INTEGER..."
-        );
+//        console.log(
+//            "[ZERODHA CANDLE DB] Migrating candle_time to INTEGER..."
+//        );
 
         database.transaction(() => {
 
@@ -326,9 +326,9 @@ function migrateLegacySchema(database) {
 
         })();
 
-        console.log(
-            "[ZERODHA CANDLE DB] candle_time migration completed."
-        );
+//        console.log(
+//            "[ZERODHA CANDLE DB] candle_time migration completed."
+//        );
     }
 }
 
@@ -449,7 +449,7 @@ export function initializeZerodhaCandleDatabase() {
 
     console.log(
         "[ZERODHA CANDLE DB] SQLite initialized:",
-        DATABASE_FILE,
+//        DATABASE_FILE,
         "retentionDays:",
         RETENTION_DAYS
     );
