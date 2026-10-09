@@ -1,6 +1,6 @@
 // ============================================================
 // src/pages/AlgoHome.tsx
-// AJ Institutional ΓÇö Algo Home Dashboard
+// AJ Institutional — Algo Home Dashboard
 //
 // Phase 2:
 // - Reuses existing broker symbol-search APIs.
@@ -116,16 +116,16 @@ const orders = [
 ];
 
 const history = [
-  ["09 Sep", "NIFTY 25,400 CE", "BUY ΓåÆ EXIT", "+Γé╣3,420"],
-  ["08 Sep", "BANKNIFTY 56,800 CE", "BUY ΓåÆ EXIT", "+Γé╣1,870"],
-  ["08 Sep", "RELIANCE 1240 CE", "BUY ΓåÆ SL", "-Γé╣620"],
-  ["07 Sep", "NIFTY 25,300 CE", "BUY ΓåÆ TARGET", "+Γé╣2,190"],
+  ["09 Sep", "NIFTY 25,400 CE", "BUY → EXIT", "+₹3,420"],
+  ["08 Sep", "BANKNIFTY 56,800 CE", "BUY → EXIT", "+₹1,870"],
+  ["08 Sep", "RELIANCE 1240 CE", "BUY → SL", "-₹620"],
+  ["07 Sep", "NIFTY 25,300 CE", "BUY → TARGET", "+₹2,190"],
 ];
 
 const fallbackInstruments: Instrument[] = [];
 
 function money(value: number) {
-  return `${value < 0 ? "-" : ""}Γé╣${Math.abs(value).toLocaleString("en-IN")}`;
+  return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
 }
 
 function openTerminal() {
@@ -386,7 +386,7 @@ function instrumentSecondaryLabel(
     parts.push(String(instrument.expiry));
   }
 
-  return parts.join(" ┬╖ ");
+  return parts.join(" · ");
 }
 
 export default function AlgoHome() {
@@ -1438,7 +1438,7 @@ export default function AlgoHome() {
 
                 <div className="aj-feed-status">
                   <span className="aj-live-dot" />
-                  Connected ┬╖ Live
+                  Connected · Live
                 </div>
               </button>
             ))}
@@ -1481,7 +1481,7 @@ export default function AlgoHome() {
           <div className="aj-panel aj-hero-main">
 
             <div className="aj-eyebrow">
-              AUTOMATED EXECUTION ┬╖ {FEED_LABELS[feed]}
+              AUTOMATED EXECUTION · {FEED_LABELS[feed]}
             </div>
 
             <h1 className="aj-h1">
@@ -1947,7 +1947,7 @@ export default function AlgoHome() {
                 </h2>
 
                 <div className="aj-card-subtitle">
-                  {FEED_LABELS[feed]} ┬╖ Signal driven
+                  {FEED_LABELS[feed]} · Signal driven
                   execution plan
                 </div>
               </div>
@@ -2121,7 +2121,7 @@ export default function AlgoHome() {
 
                     <div className="aj-canonical-value">
                       {selectedInstrument.symbol ||
-                        "ΓÇö"}
+                        "—"}
                     </div>
                   </div>
 
@@ -2132,7 +2132,7 @@ export default function AlgoHome() {
 
                     <div className="aj-canonical-value">
                       {selectedInstrument.tradingSymbol ||
-                        "ΓÇö"}
+                        "—"}
                     </div>
                   </div>
 
@@ -2143,7 +2143,7 @@ export default function AlgoHome() {
 
                     <div className="aj-canonical-value">
                       {selectedInstrument.underlying ||
-                        "ΓÇö"}
+                        "—"}
                     </div>
                   </div>
 
@@ -2154,7 +2154,7 @@ export default function AlgoHome() {
 
                     <div className="aj-canonical-value">
                       {selectedInstrument.expiry ||
-                        "ΓÇö"}
+                        "—"}
                     </div>
                   </div>
 
@@ -2165,7 +2165,7 @@ export default function AlgoHome() {
 
                     <div className="aj-canonical-value">
                       {selectedInstrument.strike ??
-                        "ΓÇö"}
+                        "—"}
                     </div>
                   </div>
 
@@ -2176,7 +2176,7 @@ export default function AlgoHome() {
 
                     <div className="aj-canonical-value">
                       {selectedInstrument.optionType ||
-                        "ΓÇö"}
+                        "—"}
                     </div>
                   </div>
 
@@ -2232,7 +2232,7 @@ export default function AlgoHome() {
                 </span>
 
                 <span className="aj-exec-value">
-                  AJIndicator ┬╖ SuperTrend
+                  AJIndicator · SuperTrend
                 </span>
               </div>
 
@@ -2244,7 +2244,7 @@ export default function AlgoHome() {
                 <span className="aj-exec-value">
                   {selectedInstrument?.underlying ||
                     selectedInstrument?.symbol ||
-                    "ΓÇö"}
+                    "—"}
                 </span>
               </div>
 
@@ -2293,7 +2293,7 @@ export default function AlgoHome() {
                 </span>
 
                 <span className="aj-exec-value">
-                  Γé╣124.50
+                  ₹124.50
                 </span>
               </div>
 
@@ -2307,17 +2307,17 @@ export default function AlgoHome() {
 
               <div className="aj-target hit">
                 <span>
-                  Target 1 ┬╖ Γé╣145
+                  Target 1 · ₹145
                 </span>
 
                 <span>
-                  Γ£ô HIT
+                  ✓ HIT
                 </span>
               </div>
 
               <div className="aj-target wait">
                 <span>
-                  Target 2 ┬╖ Γé╣160
+                  Target 2 · ₹160
                 </span>
 
                 <span>
@@ -2327,7 +2327,7 @@ export default function AlgoHome() {
 
               <div className="aj-target wait">
                 <span>
-                  Final Target ┬╖ Γé╣175
+                  Final Target · ₹175
                 </span>
 
                 <span>
@@ -2337,7 +2337,7 @@ export default function AlgoHome() {
 
               <div className="aj-target stop">
                 <span>
-                  Stop Loss ┬╖ Γé╣110
+                  Stop Loss · ₹110
                 </span>
 
                 <span>
@@ -2509,14 +2509,14 @@ export default function AlgoHome() {
                         </td>
 
                         <td>
-                          Γé╣
+                          ₹
                           {item.avg.toFixed(
                             2,
                           )}
                         </td>
 
                         <td>
-                          Γé╣
+                          ₹
                           {item.ltp.toFixed(
                             2,
                           )}
@@ -2671,7 +2671,7 @@ export default function AlgoHome() {
                 </h2>
 
                 <div className="aj-card-subtitle">
-                  Prototype metrics ΓÇö not live
+                  Prototype metrics — not live
                   account data
                 </div>
               </div>
@@ -2691,7 +2691,7 @@ export default function AlgoHome() {
                 </span>
 
                 <strong className="aj-positive">
-                  Γé╣8,420
+                  ₹8,420
                 </strong>
               </div>
 
@@ -2776,15 +2776,15 @@ export default function AlgoHome() {
               {[
                 [
                   "NIFTY Momentum",
-                  "5m ┬╖ Option Buy ┬╖ 68% win rate",
+                  "5m · Option Buy · 68% win rate",
                 ],
                 [
                   "BankNifty Breakout",
-                  "5m ┬╖ Option Buy ┬╖ 61% win rate",
+                  "5m · Option Buy · 61% win rate",
                 ],
                 [
                   "Stock Option Buy",
-                  "15m ┬╖ Signal driven ┬╖ 64% win rate",
+                  "15m · Signal driven · 64% win rate",
                 ],
               ].map(
                 ([name, meta]) => (
@@ -2828,9 +2828,9 @@ export default function AlgoHome() {
         </section>
 
         <div className="aj-footer">
-          AJ Institutional ┬╖{" "}
-          {FEED_LABELS[feed]} ┬╖ Phase 2 Algo
-          Dashboard ┬╖ No live orders are
+          AJ Institutional ·{" "}
+          {FEED_LABELS[feed]} · Phase 2 Algo
+          Dashboard · No live orders are
           submitted by this prototype.
         </div>
 

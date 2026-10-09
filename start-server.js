@@ -64,6 +64,47 @@ const logStreams = [];
 
 let shuttingDown = false;
 
+const ANSI_GREEN = "\x1b[32m";
+const ANSI_RED = "\x1b[31m";
+const ANSI_RESET = "\x1b[0m";
+
+const shownAliceBlueSyncDone = new Set();
+
+function showConsoleLine(originalLine) {
+    let line = originalLine;
+
+    // Display each AliceBlue completion message only once per server run.
+    const syncMatch = line.match(
+        /^\s*\[ALICEBLUE SYNC\]\s*(intraday|daily \(EOD\)): done\./i
+    );
+
+    if (syncMatch) {
+        const label = syncMatch[1].toLowerCase();
+
+        if (shownAliceBlueSyncDone.has(label)) {
+            return;
+        }
+
+        shownAliceBlueSyncDone.add(label);
+        line = `[ALICEBLUE SYNC] ${syncMatch[1]}: done.`;
+    }
+
+    const isFailure =
+        /\b(ERROR|FAILED|FAILURE|FATAL|EXCEPTION)\b/i.test(line) ||
+        /\bfetch failed\b/i.test(line);
+
+    const isSuccess =
+        /\b(READY|LOADED|CONNECTED|LISTENING|DONE|SUCCESSFUL)\b/i.test(line);
+
+    if (isFailure) {
+        console.log(`${ANSI_RED}${line}${ANSI_RESET}`);
+    } else if (isSuccess) {
+        console.log(`${ANSI_GREEN}${line}${ANSI_RESET}`);
+    } else {
+        console.log(line);
+    }
+}
+
 //------------------------------------------------------
 // QUIETLY FIND EXISTING LISTENERS
 //
@@ -330,16 +371,16 @@ function captureOutput(stream, log, processName) {
         pending = lines.pop() ?? "";
 
         for (const line of lines) {
-            if (shouldShowOnConsole(line)) {
-                console.log(line);
-            }
+			if (shouldShowOnConsole(line)) {
+				showConsoleLine(line);
+			}
         }
     });
 
     stream.on("end", () => {
-        if (pending && shouldShowOnConsole(pending)) {
-            console.log(pending);
-        }
+		if (pending && shouldShowOnConsole(pending)) {
+			showConsoleLine(pending);
+		}
 
         pending = "";
     });

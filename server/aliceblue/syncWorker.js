@@ -109,7 +109,8 @@ const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY_ATTEMPTS = 2;
 const RETRY_BASE_DELAY_MS = 800; // Delay before the single retry
 
-let lastDailySyncDateKey = null; // "YYYY-MM-DD" (IST) of the last completed EOD sync
+let lastDailySyncDateKey = null;
+let syncPassInProgress = false;
 
 function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -122,6 +123,23 @@ function sleep(ms) {
 const loggedAliceBlueFailures = new Map();
 
 async function syncKeys(keys, label) {
+	    if (syncPassInProgress) {
+        console.warn(
+            `[ALICEBLUE SYNC] ${label}: skipped because another sync pass is running.`
+        );
+        return {
+            attempted: 0,
+            refreshed: 0,
+            failed: 0,
+            skipped: keys.length,
+            retries: 0,
+            busy: true
+        };
+    }
+
+    syncPassInProgress = true;
+
+    try {
 
     if (keys.length === 0) {
         return { attempted: 0, refreshed: 0, failed: 0, retries: 0 };
@@ -244,11 +262,30 @@ async function syncKeys(keys, label) {
         await sleep(REQUEST_SPACING_MS);
     }
 
-	console.log(
-		`[ALICEBLUE SYNC] ${label}: done. requested=${attempted}/${keys.length} refreshed=${refreshed} failed=${failed} skipped=${skipped} retries=${retries}`
-	);
+	console.log(`[ALICEBLUE SYNC] ${label}: done.`);
 
-    return { attempted, refreshed, failed, skipped, retries };
+        return { attempted, refreshed, failed, skipped, retries };
+    } finally {
+        syncPassInProgress = false;
+    }
+}
+
+function getSyncEligibleKeys(isDaily) {
+    const keys = listTrackedKeys().filter((key) =>
+        isDaily
+            ? key.resolution === "D"
+            : key.resolution !== "D"
+    );
+
+    // If the contract master is ready, exclude stale or
+    // unresolved tokens from the sync worklist.
+    if (getAliceBlueSymbolStatus()?.loaded !== true) {
+        return keys;
+    }
+
+    return keys.filter(({ exchange, token }) =>
+        Boolean(getAliceBlueContractByToken(exchange, token))
+    );
 }
 
 //======================================================
@@ -262,9 +299,7 @@ async function runIntradaySync() {
         return;
     }
 
-    const keys =
-        listTrackedKeys()
-            .filter((k) => k.resolution !== "D");
+const keys = getSyncEligibleKeys(false);
 
     await syncKeys(keys, "intraday");
 }
@@ -295,13 +330,13 @@ async function runDailySyncIfDue() {
         return; // already done today
     }
 
-    const keys =
-        listTrackedKeys()
-            .filter((k) => k.resolution === "D");
+const keys = getSyncEligibleKeys(true);
 
-    await syncKeys(keys, "daily (EOD)");
+    const result = await syncKeys(keys, "daily (EOD)");
 
-    lastDailySyncDateKey = todayKey;
+    if (!result?.busy) {
+        lastDailySyncDateKey = todayKey;
+    }
 }
 
 //======================================================

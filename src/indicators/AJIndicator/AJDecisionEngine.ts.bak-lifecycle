@@ -82,7 +82,6 @@ import { EngineState } from "./core/EngineState";
 import { StateMachine } from "./core/StateMachine";
 import { ExecutionAuthority } from "./engines/Authority";
 import { ExecutionEngine } from "./engines/Execution/ExecutionEngine";
-import { PaperPosition } from "./engines/Execution/PaperPosition";
 import type { ExecutionContext } from "./engines/Execution/ExecutionTypes";
 import { OptionRecommendation } from "./options/OptionRecommendation";
 import { AJDashboardAdapter } from "../../dashboard/AJDashboardAdapter";
@@ -2176,72 +2175,10 @@ export class AJDecisionEngine {
 
         };
 
-		//--------------------------------------------------
-		// AJ PAPER POSITION - lifecycle exit (see PaperPosition.ts)
-		//
-		// ChartWindow never reports an open position, so the StateMachine
-		// could not leave EXECUTED. A trade is "open" from the cycle after
-		// it entered EXECUTED until its stop loss / TP3 / new day / timeout.
-		//--------------------------------------------------
-		const paperTrade =
-			PaperPosition.get(lockKey);
-
-		const paperExit =
-			PaperPosition.check(
-				lockKey,
-				payload.ajRuntime.candles as any,
-				{
-					closeOnNewDay:
-						!(payload.stateInputs as any)?.isAdvCryptoSymbol
-				}
-			);
-
-		stateInputs.positionOpen =
-			paperTrade !== undefined;
-
-		stateInputs.positionClosed =
-			paperTrade !== undefined &&
-			paperExit.exit;
-
         const stateResult =
             this.stateMachine.evaluate(
                 stateInputs
             );
-
-		// remember the executed plan the moment the trade enters EXECUTED
-		if (
-			stateResult.enteredExecuted === true &&
-			execEntryPrice > 0
-		) {
-			const paperCandles: any[] =
-				payload.ajRuntime.candles as any[];
-
-			PaperPosition.start(
-				lockKey,
-				{
-					entry: execEntryPrice,
-					sl: execSlPrice,
-					tp1: execTp1,
-					tp2: execTp2,
-					tp3: execTp3,
-					dir: execDirection >= 0 ? 1 : -1,
-					entryTime:
-						paperCandles.length > 0
-							? paperCandles[paperCandles.length - 1].time
-							: 0,
-					entryBar:
-						payload.ajRuntime.barIndex
-				}
-			);
-		}
-
-		// lifecycle is back at SCAN / CLOSED: the paper position is over
-		if (
-			stateResult.engineState === "SCAN" ||
-			stateResult.engineState === "CLOSED"
-		) {
-			PaperPosition.clear(lockKey);
-		}
 
 		//--------------------------------------------------
 		// TRADE SNAPSHOT
@@ -2311,10 +2248,10 @@ export class AJDecisionEngine {
 		//
 		// 1) Option charts are always BOUGHT (CE or PE), so an approval is
 		//    shown as BUY APPROVED even when the INDEX bias is bearish.
-		// 2) ExecutionAuthority is re-evaluated on EVERY bar and its confidence
-		//    swings around the threshold, so it flips to WAIT while a trade is
-		//    running even though the trade was approved when it opened. While
-		//    the lifecycle is EXECUTED or MANAGE that approval still stands.
+		// 2) ExecutionAuthority answers "may a NEW trade open?", so it says
+		//    WAIT for as long as a trade is running (mandatory gate
+		//    "trade already running"). While the lifecycle is EXECUTED or
+		//    MANAGE the approval that opened the trade still stands, so show it.
 		//--------------------------------------------------
 		const authTradeActive =
 			stateResult.engineState === "EXECUTED" ||
