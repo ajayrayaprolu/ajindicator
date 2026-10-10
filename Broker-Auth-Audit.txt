@@ -1,0 +1,3329 @@
+AI-INSTITUTIONAL BROKER AUTHENTICATION AUDIT
+
+========================================
+BROKER: ZERODHA
+========================================
+
+----- zerodha\login.js -----
+//======================================================
+// server/zerodha/login.js
+//======================================================
+//
+// Zerodha OAuth Login
+//
+// Responsibilities
+//
+// 1. Generate Login URL
+// 2. Receive request_token
+// 3. Exchange request_token
+//    for access_token
+// 4. Persist session
+// 5. Synchronize Zerodha instrument master
+//    after successful authentication
+//
+//======================================================
+
+import dotenv from "dotenv";
+dotenv.config();
+
+import fs from "fs";
+import path from "path";
+
+import axios from "axios";
+
+import {
+    refreshInstrumentCache
+}
+from "./instruments/instruments.js";
+
+import {
+    synchronizeInstrumentMaster
+}
+from "./instruments/InstrumentSynchronizer.js";
+
+
+//======================================================
+// SESSION FILE
+//======================================================
+
+const SESSION_FILE =
+    path.join(
+        process.cwd(),
+        "server",
+        "zerodha",
+        "session.json"
+    );
+
+
+//======================================================
+// CONFIG
+//======================================================
+
+function getApiKey() {
+
+    return (
+        process.env.ZERODHA_API_KEY ?? ""
+    );
+
+}
+
+function getApiSecret() {
+
+    return (
+        process.env.ZERODHA_API_SECRET ?? ""
+    );
+
+}
+
+function getCallbackUrl() {
+
+    return (
+
+        process.env.ZERODHA_CALLBACK_URL ??
+
+        "https://localhost:3001/api/zerodha/callback"
+
+    );
+
+}
+
+
+//======================================================
+// LOGIN URL
+//======================================================
+
+export function getLoginUrl() {
+
+    const apiKey =
+        getApiKey();
+
+    if (!apiKey) {
+
+        throw new Error(
+            "ZERODHA_API_KEY missing."
+        );
+
+    }
+
+    return `https://kite.zerodha.com/connect/login?v=3&api_key=${apiKey}`;
+
+}
+
+
+//======================================================
+// REGISTER ROUTES
+//======================================================
+
+export function registerLoginRoutes(app) {
+
+    //==================================================
+    // CALLBACK
+    //==================================================
+
+    app.get(
+        "/api/zerodha/callback",
+
+        async (req, res) => {
+
+            try {
+
+                const requestToken =
+                    req.query.request_token;
+
+
+                //--------------------------------------------------
+                // REQUEST TOKEN
+                //--------------------------------------------------
+
+                if (!requestToken) {
+
+                    return res
+                        .status(400)
+                        .json({
+
+                            success: false,
+
+                            error:
+                                "Missing request_token."
+
+                        });
+
+                }
+
+
+                //--------------------------------------------------
+                // GENERATE SESSION
+                //--------------------------------------------------
+
+                const response =
+                    await axios.post(
+
+                        "https://api.kite.trade/session/token",
+
+                        new URLSearchParams({
+
+                            api_key:
+                                getApiKey(),
+
+                            request_token:
+                                requestToken,
+
+                            checksum:
+                                createChecksum(
+                                    getApiKey(),
+                                    requestToken,
+                                    getApiSecret()
+                                )
+
+                        }),
+
+                        {
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/x-www-form-urlencoded"
+
+                            }
+
+                        }
+
+                    );
+
+
+                //--------------------------------------------------
+                // RESPONSE DATA
+                //--------------------------------------------------
+
+                const data =
+                    response.data.data;
+
+
+                //--------------------------------------------------
+                // SAVE SESSION
+                //--------------------------------------------------
+
+                const session = {
+
+                    apiKey:
+                        getApiKey(),
+
+                    accessToken:
+                        data.access_token,
+
+                    publicToken:
+                        data.public_token,
+
+                    refreshToken:
+                        data.refresh_token,
+
+                    userId:
+                        data.user_id,
+
+                    loginTime:
+                        new Date()
+                            .toISOString()
+
+                };
+
+
+                fs.writeFileSync(
+
+                    SESSION_FILE,
+
+                    JSON.stringify(
+
+                        session,
+
+                        null,
+
+                        4
+
+                    )
+
+                );
+
+
+                //==================================================
+                // LOGIN SUCCESS
+                //==================================================
+
+                console.log();
+
+                console.log(
+                    "======================================"
+                );
+
+                console.log(
+                    "ZERODHA LOGIN SUCCESS"
+                );
+
+                console.log(
+                    "======================================"
+                );
+
+                console.log(
+                    "User:",
+                    session.userId
+                );
+
+                console.log(
+                    "======================================"
+                );
+
+                console.log();
+
+
+                //==================================================
+                // INSTRUMENT MASTER SYNCHRONIZATION
+                //
+                // The access token is now available, so this is
+                // the correct point to download the Zerodha
+                // instrument master and populate SQLite.
+                //
+                // IMPORTANT:
+                // A synchronization failure must NOT invalidate
+                // an otherwise successful Zerodha login.
+                //==================================================
+
+                try {
+
+                    console.log();
+
+                    console.log(
+                        "[ZERODHA] Synchronizing instrument master..."
+                    );
+
+                    await refreshInstrumentCache();
+
+                    const count =
+                        synchronizeInstrumentMaster();
+
+                    console.log(
+                        "[ZERODHA] Instrument master synchronized:",
+                        count
+                    );
+
+                    console.log();
+
+                }
+
+                catch (syncError) {
+
+                    console.error(
+                        "[ZERODHA] Instrument synchronization failed:",
+                        syncError?.message ||
+                        syncError
+                    );
+
+                    console.warn(
+                        "[ZERODHA] Login succeeded, but instrument database was not populated."
+                    );
+
+                }
+
+
+                //==================================================
+                // LOGIN RESPONSE
+                //==================================================
+
+                res.send(`
+                <!DOCTYPE html>
+                <html>
+
+                <head>
+                    <title>Zerodha Login</title>
+                </head>
+
+                <body>
+
+                <h2>Zerodha Login Successful</h2>
+
+                <p>You can close this window.</p>
+
+                <script>
+
+
+				if (window.opener && !window.opener.closed) {
+					window.opener.postMessage(
+						{ type: "ZERODHA_LOGIN_SUCCESS" },
+						"https://ajtrade.in"
+					);
+					window.close();
+				}
+
+                </script>
+
+                </body>
+
+                </html>
+                `);
+
+            }
+
+            catch (err) {
+
+                //--------------------------------------------------
+                // EXTRACT ERROR MESSAGE
+                //--------------------------------------------------
+
+                const errorMessage =
+
+                    err.response?.data?.message
+
+                    ??
+
+                    err.message;
+
+
+                //--------------------------------------------------
+                // SAVE AUTH STATUS
+                //--------------------------------------------------
+
+                fs.writeFileSync(
+
+                    SESSION_FILE,
+
+                    JSON.stringify(
+
+                        {
+
+                            loggedIn: false,
+
+                            authError:
+                                errorMessage,
+
+                            loginTime:
+                                new Date()
+                                    .toISOString()
+
+                        },
+
+                        null,
+
+                        4
+
+                    )
+
+                );
+
+
+                //--------------------------------------------------
+                // LOG
+                //--------------------------------------------------
+
+                console.error(
+
+                    "[ZERODHA LOGIN]",
+
+                    errorMessage
+
+                );
+
+
+                //--------------------------------------------------
+                // RESPONSE
+                //--------------------------------------------------
+
+                res.status(500).json({
+
+                    success: false,
+
+                    error:
+                        errorMessage
+
+                });
+
+            }
+
+        }
+
+    );
+
+}
+
+
+//======================================================
+// SHA256 CHECKSUM
+//======================================================
+
+import crypto from "crypto";
+
+function createChecksum(
+
+    apiKey,
+
+    requestToken,
+
+    apiSecret
+
+) {
+
+    return crypto
+
+        .createHash("sha256")
+
+        .update(
+
+            apiKey +
+
+            requestToken +
+
+            apiSecret
+
+        )
+
+        .digest("hex");
+
+}
+
+----- zerodha\token.js -----
+//======================================================
+// server/zerodha/token.js
+//======================================================
+//
+// Zerodha Session Token Manager
+//
+// Responsibilities
+//
+// • Read saved session
+// • Validate session
+// • Return access token
+// • Save updated session
+// • Clear session
+// • Utility methods for future refresh support
+//
+// NOTE
+// -----
+// Zerodha access tokens are generated once per trading
+// day. There is currently NO refresh-token API.
+// When expired, user must login again.
+//
+//======================================================
+
+import fs from "fs";
+import path from "path";
+
+//------------------------------------------------------
+// SESSION FILE
+//------------------------------------------------------
+
+const SESSION_FILE =
+    path.join(
+        process.cwd(),
+        "server",
+        "zerodha",
+        "session.json"
+    );
+
+//------------------------------------------------------
+// FILE EXISTS
+//------------------------------------------------------
+
+export function sessionExists() {
+
+    return fs.existsSync(
+        SESSION_FILE
+    );
+
+}
+
+//------------------------------------------------------
+// LOAD SESSION
+//------------------------------------------------------
+
+export function loadSession() {
+
+    if (
+        !sessionExists()
+    ) {
+
+        return null;
+
+    }
+
+    try {
+
+        const json =
+            fs.readFileSync(
+                SESSION_FILE,
+                "utf8"
+            );
+
+        return JSON.parse(
+            json
+        );
+
+    }
+
+    catch (err) {
+
+        console.error(
+
+            "[ZERODHA]",
+
+            "Unable to read session.",
+
+            err.message
+
+        );
+
+        return null;
+
+    }
+
+}
+
+//------------------------------------------------------
+// SAVE SESSION
+//------------------------------------------------------
+
+export function saveSession(
+    session
+) {
+
+    fs.writeFileSync(
+
+        SESSION_FILE,
+
+        JSON.stringify(
+
+            session,
+
+            null,
+
+            4
+
+        ),
+
+        "utf8"
+
+    );
+
+    return session;
+
+}
+
+//------------------------------------------------------
+// DELETE SESSION
+//------------------------------------------------------
+
+export function clearSession() {
+
+    if (
+        sessionExists()
+    ) {
+
+        fs.unlinkSync(
+            SESSION_FILE
+        );
+
+    }
+
+}
+
+//------------------------------------------------------
+// ACCESS TOKEN
+//------------------------------------------------------
+
+export function getAccessToken() {
+
+    const session =
+        loadSession();
+
+    if (
+        !session
+    ) {
+
+        throw new Error(
+
+            "No Zerodha session available."
+
+        );
+
+    }
+
+    if (
+        !session.accessToken
+    ) {
+
+        throw new Error(
+
+            "Access token missing."
+
+        );
+
+    }
+
+    return session.accessToken;
+
+}
+
+//------------------------------------------------------
+// PUBLIC TOKEN
+//------------------------------------------------------
+
+export function getPublicToken() {
+
+    const session =
+        loadSession();
+
+    return (
+        session?.publicToken ??
+        "");
+
+}
+
+//------------------------------------------------------
+// USER ID
+//------------------------------------------------------
+
+export function getUserId() {
+
+    const session =
+        loadSession();
+
+    return (
+        session?.userId ??
+        "");
+
+}
+
+//------------------------------------------------------
+// API KEY
+//------------------------------------------------------
+
+export function getApiKey() {
+
+    const session =
+        loadSession();
+
+    return (
+        session?.apiKey ??
+
+        process.env
+            .ZERODHA_API_KEY ??
+
+        "");
+
+}
+
+//------------------------------------------------------
+// AUTH HEADER
+//------------------------------------------------------
+
+export function getAuthorizationHeader() {
+
+    return {
+
+	Authorization:
+	
+	`token ${getApiKey()}:${getAccessToken()}`
+
+    };
+
+}
+
+//------------------------------------------------------
+// LOGIN STATUS
+//------------------------------------------------------
+
+export function isLoggedIn() {
+
+    try {
+
+        const token =
+            getAccessToken();
+
+        return (
+            token.length > 0);
+
+    }
+
+    catch {
+
+        return false;
+
+    }
+
+}
+
+//------------------------------------------------------
+// SESSION INFO
+//------------------------------------------------------
+
+export function getSessionInfo() {
+
+    const session =
+        loadSession();
+
+	//--------------------------------------------------
+	// NO SESSION
+	//--------------------------------------------------
+	
+	if (!session) {
+	
+		return {
+	
+			loggedIn: false,
+	
+			status: "login_required",
+	
+			message:
+				"Please log in to Zerodha.",
+	
+			apiKey: "",
+	
+			userId: "",
+	
+			loginTime: "",
+	
+			accessToken: ""
+	
+		};
+	
+	}
+
+    //--------------------------------------------------
+    // INVALID SESSION
+    //--------------------------------------------------
+
+    const validation =
+        validateSession();
+	
+	//--------------------------------------------------
+	// OAUTH FAILED
+	//--------------------------------------------------
+	
+	if (session.authError) {
+	
+		return {
+	
+			loggedIn: false,
+	
+			status: "oauth_failed",
+	
+			message:
+				session.authError,
+	
+			apiKey:
+				session.apiKey ?? "",
+	
+			userId:
+				session.userId ?? "",
+	
+			loginTime:
+				session.loginTime ?? "",
+	
+			accessToken: ""
+	
+		};
+	
+	}
+
+    if (!validation.valid) {
+
+        return {
+
+            loggedIn: false,
+
+            status: "invalid_session",
+
+            message:
+                validation.reason,
+
+            apiKey:
+                session.apiKey ?? "",
+
+            userId:
+                session.userId ?? "",
+
+            loginTime:
+                session.loginTime ?? "",
+
+            accessToken: ""
+
+        };
+
+    }
+
+    //--------------------------------------------------
+    // VALID SESSION
+    //--------------------------------------------------
+
+    return {
+
+        loggedIn: true,
+
+        status: "connected",
+
+        message:
+            "Connected to Zerodha.",
+
+        apiKey:
+            session.apiKey,
+
+        userId:
+            session.userId,
+
+        loginTime:
+            session.loginTime,
+
+        accessToken:
+            session.accessToken
+
+    };
+
+}
+
+//------------------------------------------------------
+// VALIDATE SESSION
+//------------------------------------------------------
+
+export function validateSession() {
+
+    const session =
+        loadSession();
+
+    if (
+        !session
+    ) {
+
+        return {
+
+            valid: false,
+
+            reason:
+                "Session file missing."
+
+        };
+
+    }
+
+    if (
+        !session.apiKey
+    ) {
+
+        return {
+
+            valid: false,
+
+            reason:
+                "API Key missing."
+
+        };
+
+    }
+
+    if (
+        !session.accessToken
+    ) {
+
+        return {
+
+            valid: false,
+
+            reason:
+                "Access Token missing."
+
+        };
+
+    }
+
+    if (
+        !session.userId
+    ) {
+
+        return {
+
+            valid: false,
+
+            reason:
+                "User ID missing."
+
+        };
+
+    }
+
+    return {
+
+        valid: true,
+
+        reason:
+            "OK"
+
+    };
+
+}
+
+//------------------------------------------------------
+// DEBUG
+//------------------------------------------------------
+
+export function printSession() {
+
+    console.log();
+
+    console.log(
+        "======================================"
+    );
+
+    console.log(
+        "ZERODHA SESSION"
+    );
+
+    console.log(
+        "======================================"
+    );
+
+    const info =
+        getSessionInfo();
+
+    console.table(
+        info
+    );
+
+    console.log(
+        "======================================"
+    );
+
+    console.log();
+
+}
+
+//------------------------------------------------------
+// EXPRESS ROUTES
+//------------------------------------------------------
+
+export function registerTokenRoutes(
+    app
+) {
+
+    //--------------------------------------------------
+    // SESSION STATUS
+    //--------------------------------------------------
+
+    app.get(
+
+        "/api/zerodha/session",
+
+        (_, res) => {
+
+            res.json(
+
+                getSessionInfo()
+
+            );
+
+        }
+
+    );
+
+    //--------------------------------------------------
+    // VALIDATE
+    //--------------------------------------------------
+
+    app.get(
+
+        "/api/zerodha/session/validate",
+
+        (_, res) => {
+
+            res.json(
+
+                validateSession()
+
+            );
+
+        }
+
+    );
+
+    //--------------------------------------------------
+    // LOGOUT
+    //--------------------------------------------------
+
+    app.post(
+
+        "/api/zerodha/logout",
+
+        (_, res) => {
+
+            clearSession();
+
+            res.json({
+
+                success: true,
+
+                message:
+
+                    "Session cleared."
+
+            });
+
+        }
+
+    );
+
+}
+
+----- zerodha\history.js -----
+
+  server\zerodha\history.js:24:
+  server\zerodha\history.js:25:import axios from "axios";
+  server\zerodha\history.js:26:
+  server\zerodha\history.js:27:import {
+> server\zerodha\history.js:28:    getAccessToken
+  server\zerodha\history.js:29:} from "./token.js";
+  server\zerodha\history.js:30:
+  server\zerodha\history.js:31:import {
+  server\zerodha\history.js:32:    getByTradingSymbol,
+  server\zerodha\history.js:33:    getInstrument
+  server\zerodha\history.js:34:} from "./instruments/instruments.js";
+  server\zerodha\history.js:266:        getDateRange(
+  server\zerodha\history.js:267:            interval
+  server\zerodha\history.js:268:        );
+  server\zerodha\history.js:269:
+> server\zerodha\history.js:270:    const accessToken =
+> server\zerodha\history.js:271:        getAccessToken();
+  server\zerodha\history.js:272:
+> server\zerodha\history.js:273:    if (!accessToken) {
+  server\zerodha\history.js:274:
+  server\zerodha\history.js:275:        throw new Error(
+  server\zerodha\history.js:276:            "Zerodha access token missing."
+  server\zerodha\history.js:277:        );
+  server\zerodha\history.js:278:    }
+  server\zerodha\history.js:279:
+  server\zerodha\history.js:286:    const config = {
+  server\zerodha\history.js:287:
+  server\zerodha\history.js:288:        headers: {
+  server\zerodha\history.js:289:
+> server\zerodha\history.js:290:            Authorization:
+> server\zerodha\history.js:291:                `token ${process.env.ZERODHA_API_KEY}:${accessToken}`,
+  server\zerodha\history.js:292:
+  server\zerodha\history.js:293:            "X-Kite-Version":
+  server\zerodha\history.js:294:                "3"
+  server\zerodha\history.js:295:        },
+  server\zerodha\history.js:296:
+  server\zerodha\history.js:297:        params: {
+
+
+
+========================================
+BROKER: ALICEBLUE
+========================================
+
+----- aliceblue\login.js -----
+//======================================================
+// server/aliceblue/login.js
+//
+// Alice Blue authentication.
+//
+// Flow:
+//
+// ChartWindow
+//     ↓
+// /api/aliceblue/login
+//     ↓
+// Alice Blue login
+//     ↓
+// /api/aliceblue/callback?authCode=...&userId=...
+//     ↓
+// SHA256(userId + authCode + apiSecret)
+//     ↓
+// getUserDetails
+//     ↓
+// userSession
+//     ↓
+// session.json
+//======================================================
+
+import crypto from "crypto";
+import axios from "axios";
+
+import {
+
+    getAppCode,
+    getApiSecret,
+    getRedirectUri,
+
+    saveSession,
+    clearSession,
+    getTokenStatus
+
+} from "./token.js";
+
+//======================================================
+// BASE URL
+//======================================================
+
+const ALICEBLUE_BASE =
+    "https://a3.aliceblueonline.com";
+
+//======================================================
+// LOGIN URL
+//======================================================
+
+export function generateLoginUrl() {
+
+    const appCode =
+        getAppCode();
+
+    if (!appCode) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] ALICEBLUE_APPCODE missing."
+        );
+
+    }
+
+    const redirectUri =
+        getRedirectUri();
+
+    if (!redirectUri) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] ALICEBLUE_REDIRECT_URI missing."
+        );
+
+    }
+
+	return (
+		"https://ant.aliceblueonline.com/" +
+		"?appcode=" +
+		encodeURIComponent(appCode) +
+		"&redirect_uri=" +
+		encodeURIComponent(redirectUri)
+	);
+}
+
+//======================================================
+// CHECKSUM
+//======================================================
+//
+// SHA256:
+//
+// userId + authCode + apiSecret
+//
+//======================================================
+
+function createChecksum(
+    userId,
+    authCode,
+    apiSecret
+) {
+
+    return crypto
+        .createHash(
+            "sha256"
+        )
+        .update(
+            `${userId}${authCode}${apiSecret}`
+        )
+        .digest(
+            "hex"
+        );
+
+}
+
+//======================================================
+// EXCHANGE AUTH CODE
+//======================================================
+
+export async function exchangeAuthCode(
+    userId,
+    authCode
+) {
+
+    if (
+        !userId
+    ) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] userId is required."
+        );
+
+    }
+
+    if (
+        !authCode
+    ) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] authCode is required."
+        );
+
+    }
+
+    const apiSecret =
+        getApiSecret();
+
+    if (
+        !apiSecret
+    ) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] ALICEBLUE_API_SECRET missing."
+        );
+
+    }
+
+    const checksum =
+        createChecksum(
+            userId,
+            authCode,
+            apiSecret
+        );
+
+    const response =
+        await axios.post(
+
+            `${ALICEBLUE_BASE}/open-api/od/v1/vendor/getUserDetails`,
+
+            {
+
+                checkSum:
+                    checksum
+
+            },
+
+            {
+
+                headers: {
+
+                    "Content-Type":
+                        "application/json"
+
+                },
+
+                timeout:
+                    15000
+
+            }
+
+        );
+
+    const data =
+        response.data;
+
+    if (
+        !data ||
+        (
+            data.stat !== "Ok" &&
+            data.status !== "Ok"
+        ) ||
+        !data.userSession
+    ) {
+
+        throw new Error(
+
+            `[ALICEBLUE LOGIN] Session generation failed: ${
+                data?.emsg ??
+                data?.message ??
+                JSON.stringify(data)
+            }`
+
+        );
+
+    }
+
+    const session = {
+
+        appCode:
+            getAppCode(),
+
+        userId,
+
+        authCode,
+
+        clientId:
+            data.clientId ??
+            userId,
+
+        userSession:
+            data.userSession,
+
+        generatedAt:
+            new Date().toISOString()
+
+    };
+
+    saveSession(
+        session
+    );
+
+    console.log(
+        "[ALICEBLUE LOGIN] User session saved."
+    );
+
+    return session;
+
+}
+
+//======================================================
+// LOGIN FROM CALLBACK
+//======================================================
+
+export async function loginFromRedirectUrl(
+    redirectUrl
+) {
+
+    if (!redirectUrl) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] Redirect URL is required."
+        );
+
+    }
+
+    const parsed =
+        new URL(
+            redirectUrl
+        );
+
+    const authCode =
+        parsed.searchParams.get(
+            "authCode"
+        );
+
+    const userId =
+        parsed.searchParams.get(
+            "userId"
+        );
+
+    if (!authCode) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] authCode missing."
+        );
+
+    }
+
+    if (!userId) {
+
+        throw new Error(
+            "[ALICEBLUE LOGIN] userId missing."
+        );
+
+    }
+
+    console.log(
+        "[ALICEBLUE LOGIN] Exchanging authCode...",
+        {
+            userId,
+            hasAuthCode:
+                Boolean(authCode)
+        }
+    );
+
+    return await exchangeAuthCode(
+        userId,
+        authCode
+    );
+}
+
+//======================================================
+// LOGOUT
+//======================================================
+
+export function logout() {
+
+    clearSession();
+
+    console.log(
+        "[ALICEBLUE LOGIN] Local session cleared."
+    );
+
+}
+
+//======================================================
+// STATUS
+//======================================================
+
+export function getLoginStatus() {
+
+    return getTokenStatus();
+
+}
+
+//======================================================
+// DEFAULT
+//======================================================
+
+export default {
+
+    generateLoginUrl,
+    exchangeAuthCode,
+    loginFromRedirectUrl,
+    logout,
+    getLoginStatus
+
+};
+
+----- aliceblue\token.js -----
+//======================================================
+// server/aliceblue/token.js
+//
+// Alice Blue API authentication/session persistence.
+//
+// Credentials:
+//
+//   ALICEBLUE_APPCODE
+//   ALICEBLUE_API_SECRET
+//   ALICEBLUE_REDIRECT_URI
+//
+// Runtime session:
+//
+// Alice Blue authentication:
+//
+//   authCode
+//       +
+//   userId
+//       +
+//   apiSecret
+//       ↓
+//   SHA256
+//       ↓
+//   getUserDetails
+//       ↓
+//   userSession
+//
+//   server/aliceblue/session.json
+//
+// Session contains:
+//
+//   appCode
+//   apiSecret     -> NOT persisted
+//   userId
+//   authCode
+//   clientId
+//   userSession
+//   generatedAt
+//======================================================
+//======================================================
+// server/aliceblue/token.js
+//======================================================
+
+import fs from "fs";
+import path from "path";
+
+const SESSION_FILE = path.join(
+    process.cwd(),
+    "server",
+    "aliceblue",
+    "session.json"
+);
+
+//======================================================
+// SESSION
+//======================================================
+
+function ensureDirectory() {
+    fs.mkdirSync(
+        path.dirname(SESSION_FILE),
+        { recursive: true }
+    );
+}
+
+export function loadSession() {
+    if (!fs.existsSync(SESSION_FILE)) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(
+            fs.readFileSync(
+                SESSION_FILE,
+                "utf8"
+            )
+        );
+    } catch (error) {
+        console.error(
+            "[ALICEBLUE TOKEN] Session read failed:",
+            error?.message
+        );
+
+        return null;
+    }
+}
+
+export function saveSession(session) {
+    if (
+        !session ||
+        typeof session !== "object"
+    ) {
+        throw new Error(
+            "[ALICEBLUE TOKEN] Invalid session."
+        );
+    }
+
+    ensureDirectory();
+
+    fs.writeFileSync(
+        SESSION_FILE,
+        JSON.stringify(
+            session,
+            null,
+            4
+        ),
+        "utf8"
+    );
+
+    return session;
+}
+
+export function clearSession() {
+    if (fs.existsSync(SESSION_FILE)) {
+        fs.unlinkSync(SESSION_FILE);
+    }
+}
+
+//======================================================
+// CONFIG
+//======================================================
+
+export function getAppCode() {
+    return (
+        process.env.ALICEBLUE_APPCODE ??
+        process.env.ALICEBLUE_APP_CODE ??
+        process.env.ALICEBLUE_APPID ??
+        ""
+    );
+}
+
+export function getApiSecret() {
+    return (
+        process.env.ALICEBLUE_API_SECRET ??
+        process.env.ALICEBLUE_SECRET ??
+        ""
+    );
+}
+
+export function getRedirectUri() {
+    return (
+        process.env.ALICEBLUE_REDIRECT_URI ??
+        ""
+    );
+}
+
+//======================================================
+// SESSION VALUES
+//======================================================
+
+export function getUserId() {
+    return (
+        loadSession()?.userId ??
+        process.env.ALICEBLUE_USER_ID ??
+        ""
+    );
+}
+
+export function getAuthCode() {
+    return (
+        loadSession()?.authCode ??
+        ""
+    );
+}
+
+export function getSessionId() {
+    return (
+        loadSession()?.userSession ??
+        ""
+    );
+}
+
+export function getClientId() {
+    return (
+        loadSession()?.clientId ??
+        getUserId()
+    );
+}
+
+//======================================================
+// LOGIN STATE
+//======================================================
+
+export function isLoggedIn() {
+    return Boolean(
+        getUserId() &&
+        getSessionId()
+    );
+}
+
+//======================================================
+// STATUS
+//======================================================
+
+export function getTokenStatus() {
+    const session = loadSession();
+
+    return {
+        configured: Boolean(
+            getAppCode() &&
+            getApiSecret() &&
+            getRedirectUri()
+        ),
+
+        loggedIn: isLoggedIn(),
+
+        appCode: getAppCode(),
+
+        userId: getUserId(),
+
+        clientId: getClientId(),
+
+        hasSession: Boolean(
+            getSessionId()
+        ),
+
+        generatedAt:
+            session?.generatedAt ??
+            null
+    };
+}
+
+export default {
+    loadSession,
+    saveSession,
+    clearSession,
+
+    getAppCode,
+    getApiSecret,
+    getRedirectUri,
+
+    getUserId,
+    getAuthCode,
+    getSessionId,
+    getClientId,
+
+    isLoggedIn,
+    getTokenStatus
+};
+
+----- aliceblue\history.js -----
+
+  server\aliceblue\history.js:28://      directory � see listTrackedKeys()).
+  server\aliceblue\history.js:29://   3. Cold start fails too (broker down, or genuinely no
+  server\aliceblue\history.js:30://      data yet) -> return empty. Nothing to show yet.
+  server\aliceblue\history.js:31://
+> server\aliceblue\history.js:32://   Session expiry (401/403) and the two hard platform
+  server\aliceblue\history.js:33://   limits (BSE/BCD/BFO not supported at all; index
+  server\aliceblue\history.js:34://   symbols, which AliceBlue's chart API cannot resolve)
+  server\aliceblue\history.js:35://   are real, permanent errors, so they still throw
+  server\aliceblue\history.js:36://   immediately instead of attempting anything.
+  server\aliceblue\history.js:37://
+  server\aliceblue\history.js:38://   fetchAndCacheLive() is the shared low-level "hit
+  server\aliceblue\history.js:71:// Existing AliceBlue candle behavior is preserved:
+  server\aliceblue\history.js:72://   - known key -> instant SQLite read
+  server\aliceblue\history.js:73://   - unknown key -> one cold-start live fetch
+  server\aliceblue\history.js:74://   - successful live fetch -> SQLite persistence
+> server\aliceblue\history.js:75://   - forceRefresh -> live fetch, then stale SQLite fallback
+  server\aliceblue\history.js:76://
+  server\aliceblue\history.js:77://======================================================
+  server\aliceblue\history.js:78://======================================================
+  server\aliceblue\history.js:79:// CACHE KEY
+  server\aliceblue\history.js:80://======================================================
+  server\aliceblue\history.js:81:
+  server\aliceblue\history.js:340:                },
+  server\aliceblue\history.js:341:
+  server\aliceblue\history.js:342:                {
+  server\aliceblue\history.js:343:                    headers: {
+> server\aliceblue\history.js:344:                        Authorization: `Bearer ${sessionId}`,
+  server\aliceblue\history.js:345:                        "Content-Type": "application/json"
+  server\aliceblue\history.js:346:                    },
+  server\aliceblue\history.js:347:
+  server\aliceblue\history.js:348:                    timeout: 20000
+  server\aliceblue\history.js:349:                }
+  server\aliceblue\history.js:350:            );
+  server\aliceblue\history.js:352:    } catch (error) {
+  server\aliceblue\history.js:353:
+  server\aliceblue\history.js:354:        const httpStatus = error?.response?.status;
+  server\aliceblue\history.js:355:
+> server\aliceblue\history.js:356:        if (httpStatus === 401 || httpStatus === 403) {
+  server\aliceblue\history.js:357:
+  server\aliceblue\history.js:358:            // Genuinely worth a loud log - this is the one AliceBlue
+  server\aliceblue\history.js:359:            // outcome that's actually actionable (log in again), and
+  server\aliceblue\history.js:360:            // it doesn't fire on every poll like the routine "no
+  server\aliceblue\history.js:361:            // data" case does, so it won't flood the console.
+  server\aliceblue\history.js:362:            console.warn(
+  server\aliceblue\history.js:364:            );
+  server\aliceblue\history.js:365:
+  server\aliceblue\history.js:366:            const sessionError =
+  server\aliceblue\history.js:367:                new Error(
+> server\aliceblue\history.js:368:                    "[ALICEBLUE HISTORY] Alice Blue session has expired or is invalid. Log in again via /api/aliceblue/login, then retry."
+  server\aliceblue\history.js:369:                );
+  server\aliceblue\history.js:370:
+> server\aliceblue\history.js:371:            sessionError.aliceBlueReason = "SESSION_EXPIRED";
+  server\aliceblue\history.js:372:
+  server\aliceblue\history.js:373:            throw sessionError;
+  server\aliceblue\history.js:374:        }
+  server\aliceblue\history.js:375:
+  server\aliceblue\history.js:376:        // Any other transport-level failure is treated as
+  server\aliceblue\history.js:377:        // "live unavailable right now" by the caller, not a
+  server\aliceblue\history.js:505:
+  server\aliceblue\history.js:506:    }
+  server\aliceblue\history.js:507:    catch (error) {
+  server\aliceblue\history.js:508:
+> server\aliceblue\history.js:509:        if (error?.aliceBlueReason === "SESSION_EXPIRED") {
+  server\aliceblue\history.js:510:            throw error;
+  server\aliceblue\history.js:511:        }
+  server\aliceblue\history.js:512:
+  server\aliceblue\history.js:513:        const diagnosticError = new Error(
+  server\aliceblue\history.js:514:            error?.message ?? "AliceBlue live fetch failed."
+  server\aliceblue\history.js:515:        );
+  server\aliceblue\history.js:559:    to,
+  server\aliceblue\history.js:560:    isIndex = false,
+  server\aliceblue\history.js:561:    exchangeSegment = "",
+  server\aliceblue\history.js:562:    instrumentType = "",
+> server\aliceblue\history.js:563:    forceRefresh = false
+  server\aliceblue\history.js:564:}) {
+  server\aliceblue\history.js:565:
+  server\aliceblue\history.js:566:    const rawExchange =
+  server\aliceblue\history.js:567:        String(exchange ?? "").trim().toUpperCase();
+  server\aliceblue\history.js:568:
+  server\aliceblue\history.js:569:    const instrumentToken =
+  server\aliceblue\history.js:649:
+  server\aliceblue\history.js:650:    //--------------------------------------------------
+  server\aliceblue\history.js:651:    // KNOWN KEY -> READ FROM STORE, NO NETWORK CALL.
+  server\aliceblue\history.js:652:    //
+> server\aliceblue\history.js:653:    // forceRefresh is an explicit opt-in escape hatch
+> server\aliceblue\history.js:654:    // (e.g. a manual "refresh" button in the UI) � normal
+  server\aliceblue\history.js:655:    // chart loads never set it, so they never wait on
+  server\aliceblue\history.js:656:    // AliceBlue for a symbol that's already tracked.
+  server\aliceblue\history.js:657:    //--------------------------------------------------
+  server\aliceblue\history.js:658:
+> server\aliceblue\history.js:659:	if (!forceRefresh) {
+  server\aliceblue\history.js:660:	
+  server\aliceblue\history.js:661:		const cached =
+  server\aliceblue\history.js:662:			readCache(
+  server\aliceblue\history.js:663:				exch,
+  server\aliceblue\history.js:664:				instrumentToken,
+  server\aliceblue\history.js:665:				resolution
+  server\aliceblue\history.js:685:	
+  server\aliceblue\history.js:686:	}
+  server\aliceblue\history.js:687:
+  server\aliceblue\history.js:688:    //--------------------------------------------------
+> server\aliceblue\history.js:689:    // UNKNOWN KEY (or explicit forceRefresh) -> ONE LIVE
+  server\aliceblue\history.js:690:    // FETCH. On success this both answers the current
+  server\aliceblue\history.js:691:    // request AND seeds the store, so the sync worker
+  server\aliceblue\history.js:692:    // picks this key up on its very next scan.
+  server\aliceblue\history.js:693:    //--------------------------------------------------
+  server\aliceblue\history.js:694:
+  server\aliceblue\history.js:695:    let live;
+  server\aliceblue\history.js:706:            });
+  server\aliceblue\history.js:707:
+  server\aliceblue\history.js:708:    } catch (error) {
+  server\aliceblue\history.js:709:
+> server\aliceblue\history.js:710:        if (error?.aliceBlueReason === "SESSION_EXPIRED") {
+  server\aliceblue\history.js:711:            // Real problem the user must fix � don't mask it,
+  server\aliceblue\history.js:712:            // surface it as-is.
+  server\aliceblue\history.js:713:            throw error;
+  server\aliceblue\history.js:714:        }
+  server\aliceblue\history.js:715:
+  server\aliceblue\history.js:716:        console.error(
+  server\aliceblue\history.js:732:        return live;
+  server\aliceblue\history.js:733:    }
+  server\aliceblue\history.js:734:
+  server\aliceblue\history.js:735:    //--------------------------------------------------
+> server\aliceblue\history.js:736:    // forceRefresh on an already-tracked key that just
+  server\aliceblue\history.js:737:    // failed live -> fall back to whatever's still on
+  server\aliceblue\history.js:738:    // disk rather than blanking the chart.
+  server\aliceblue\history.js:739:    //--------------------------------------------------
+> server\aliceblue\history.js:740:	if (forceRefresh) {
+  server\aliceblue\history.js:741:	
+  server\aliceblue\history.js:742:		const stale =
+  server\aliceblue\history.js:743:			readCache(
+  server\aliceblue\history.js:744:				exch,
+  server\aliceblue\history.js:745:				instrumentToken,
+  server\aliceblue\history.js:746:				resolution
+  server\aliceblue\history.js:751:			stale.length > 0
+  server\aliceblue\history.js:752:		) {
+  server\aliceblue\history.js:753:	
+  server\aliceblue\history.js:754:			console.log(
+> server\aliceblue\history.js:755:				"[ALICEBLUE HISTORY] Refresh failed, served stale SQLite copy:",
+  server\aliceblue\history.js:756:				key
+  server\aliceblue\history.js:757:			);
+  server\aliceblue\history.js:758:	
+  server\aliceblue\history.js:759:			return dedupeCandlesByTime(
+  server\aliceblue\history.js:760:				stale
+  server\aliceblue\history.js:761:			);
+
+
+
+========================================
+BROKER: INDSTOCKS
+========================================
+
+FILE NOT FOUND: C:\AI-Institutional\server\indstocks\login.js
+
+----- indstocks\token.js -----
+//======================================================
+// server/indstocks/token.js
+//
+// IndStocks Token Manager
+//
+// Hardened: single-flight lock, failure cooldown with
+// exponential backoff, and Cloudflare-challenge detection.
+// Without these, a failed login retried on a timer will
+// rate-limit the /generate/token route and lock itself out.
+//======================================================
+
+import fs from "fs";
+import path from "path";
+import https from "https";
+import axios from "axios";
+import speakeasy from "speakeasy";
+
+const INDSTOCKS_BASE = "https://api.indstocks.com";
+
+const DATA_DIR = path.resolve(process.cwd(), "server", "indstocks", "data");
+const SESSION_FILE = path.resolve(process.cwd(), "server", "indstocks", "session.json");
+
+const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+
+// Backoff schedule after a failed login attempt.
+const BACKOFF_BASE_MS   = 60 * 1000;        // 1 min
+const BACKOFF_MAX_MS    = 15 * 60 * 1000;   // 15 min
+const EDGE_BLOCK_MS     = 10 * 60 * 1000;   // Cloudflare meta-refresh was 360s; be generous
+
+const USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+
+//======================================================
+// STATE
+//======================================================
+
+let cachedToken = null;
+let cachedExpiry = 0;
+
+let inFlight = null;            // single-flight promise
+let cooldownUntil = 0;          // no network attempts before this
+let consecutiveFailures = 0;
+let lastFailureReason = null;
+
+const keepAliveAgent = new https.Agent({ keepAlive: true, maxSockets: 4 });
+
+const http = axios.create({
+    timeout: 15000,
+    httpsAgent: keepAliveAgent,
+    headers: {
+        "User-Agent": USER_AGENT,
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Origin": "https://indstocks.com",
+        "Referer": "https://indstocks.com/",
+        "Connection": "keep-alive"
+    },
+    // We want to inspect non-2xx ourselves rather than have axios throw.
+    validateStatus: () => true
+});
+
+//======================================================
+// HELPERS
+//======================================================
+
+function ensureDataDir() {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function isChallengeBody(data) {
+    const text = typeof data === "string" ? data : "";
+    return /Just a moment|_cf_chl_opt|cf-browser-verification|challenge-platform/i.test(text);
+}
+
+function decodeJwtExpiry(token) {
+    try {
+        const parts = token.split(".");
+        if (parts.length < 2) return null;
+        const payload = Buffer.from(
+            parts[1].replace(/-/g, "+").replace(/_/g, "/"),
+            "base64"
+        ).toString("utf8");
+        const parsed = JSON.parse(payload);
+        return typeof parsed.exp === "number" ? parsed.exp * 1000 : null;
+    } catch {
+        return null;
+    }
+}
+
+function readSessionFile() {
+    try {
+        if (!fs.existsSync(SESSION_FILE)) return null;
+        const parsed = JSON.parse(fs.readFileSync(SESSION_FILE, "utf8"));
+        if (parsed && parsed.accessToken && typeof parsed.expiresAt === "number") return parsed;
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function writeSessionFile(accessToken, expiresAt) {
+    try {
+        ensureDataDir();
+        fs.writeFileSync(
+            SESSION_FILE,
+            JSON.stringify(
+                { accessToken, expiresAt, savedAt: new Date().toISOString() },
+                null, 2
+            ),
+            "utf8"
+        );
+        console.log("[INDSTOCKS TOKEN] Session cached at:", SESSION_FILE);
+    } catch (error) {
+        console.warn("[INDSTOCKS TOKEN] Failed to write session cache:", error?.message ?? error);
+    }
+}
+
+function generateTotpCode() {
+    const secret = process.env.INDSTOCKS_TOTP_SECRET;
+    if (!secret) throw new Error("[INDSTOCKS TOKEN] INDSTOCKS_TOTP_SECRET is not set in .env");
+    return speakeasy.totp({ secret, encoding: "base32" });
+}
+
+function enterCooldown(ms, reason) {
+    cooldownUntil = Date.now() + ms;
+    lastFailureReason = reason;
+    console.warn(
+        `[INDSTOCKS TOKEN] Cooldown ${Math.round(ms / 1000)}s (${reason}). ` +
+        `No login attempts until ${new Date(cooldownUntil).toLocaleTimeString()}.`
+    );
+}
+
+function cooldownError() {
+    const remaining = Math.max(0, cooldownUntil - Date.now());
+    const err = new Error(
+        `[INDSTOCKS TOKEN] In cooldown for ${Math.ceil(remaining / 1000)}s ` +
+        `after ${consecutiveFailures} failure(s): ${lastFailureReason}`
+    );
+    err.indstocksReason = "TOKEN_COOLDOWN";
+    err.retryAfterMs = remaining;
+    return err;
+}
+
+//======================================================
+// REQUEST NEW TOKEN  (never call directly - use getAccessToken)
+//======================================================
+
+async function requestNewToken() {
+
+    const clientId = process.env.INDSTOCKS_CLIENT_ID;
+    const mpin     = process.env.INDSTOCKS_MPIN;
+
+    if (!clientId || !mpin) {
+        throw new Error("[INDSTOCKS TOKEN] INDSTOCKS_CLIENT_ID or INDSTOCKS_MPIN is not set in .env");
+    }
+
+    const totp = generateTotpCode();
+
+    console.log("[INDSTOCKS TOKEN] Requesting new access token via TOTP...");
+
+    let response;
+
+    try {
+        response = await http.post(
+            `${INDSTOCKS_BASE}/generate/token`,
+            { mpin, totp },
+            { headers: { "x-api-key": clientId, "Content-Type": "application/json" } }
+        );
+    } catch (error) {
+        // Transport-level failure (DNS, TLS, timeout).
+        consecutiveFailures += 1;
+        const wait = Math.min(BACKOFF_BASE_MS * 2 ** (consecutiveFailures - 1), BACKOFF_MAX_MS);
+        enterCooldown(wait, `network: ${error?.code ?? error?.message}`);
+        const err = new Error(`[INDSTOCKS TOKEN] Network failure: ${error?.message}`);
+        err.indstocksReason = "NETWORK";
+        throw err;
+    }
+
+    const status  = response.status;
+    const data    = response.data;
+    const headers = response.headers ?? {};
+
+    // ---- Cloudflare / edge interception -------------------------------
+    if (isChallengeBody(data) || headers["cf-mitigated"]) {
+        consecutiveFailures += 1;
+        const retryAfter = Number(headers["retry-after"]) * 1000;
+        const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : EDGE_BLOCK_MS;
+        console.error("[INDSTOCKS TOKEN] EDGE BLOCK - Cloudflare challenge, not an auth failure.", {
+            status,
+            cfRay: headers["cf-ray"],
+            cfMitigated: headers["cf-mitigated"] ?? "(none)"
+        });
+        enterCooldown(wait, `cloudflare challenge (HTTP ${status})`);
+        const err = new Error("[INDSTOCKS TOKEN] Blocked by Cloudflare challenge on /generate/token.");
+        err.indstocksReason = "EDGE_BLOCKED";
+        throw err;
+    }
+
+    // ---- Plain rate limit ---------------------------------------------
+    if (status === 429) {
+        consecutiveFailures += 1;
+        const retryAfter = Number(headers["retry-after"]) * 1000;
+        const wait = Number.isFinite(retryAfter) && retryAfter > 0
+            ? retryAfter
+            : Math.min(BACKOFF_BASE_MS * 2 ** (consecutiveFailures - 1), BACKOFF_MAX_MS);
+        enterCooldown(wait, "rate limited (429)");
+        const err = new Error("[INDSTOCKS TOKEN] Rate limited by IndStocks.");
+        err.indstocksReason = "RATE_LIMITED";
+        throw err;
+    }
+
+    // ---- Auth rejection -------------------------------------------------
+    if (status === 401 || status === 403) {
+        consecutiveFailures += 1;
+        enterCooldown(BACKOFF_MAX_MS, `credentials rejected (HTTP ${status})`);
+        console.error("[INDSTOCKS TOKEN] Credentials rejected:", { status, data });
+        const err = new Error("[INDSTOCKS TOKEN] Credentials rejected - check CLIENT_ID / MPIN / TOTP secret.");
+        err.indstocksReason = "BAD_CREDENTIALS";
+        throw err;
+    }
+
+    if (status < 200 || status >= 300) {
+        consecutiveFailures += 1;
+        const wait = Math.min(BACKOFF_BASE_MS * 2 ** (consecutiveFailures - 1), BACKOFF_MAX_MS);
+        enterCooldown(wait, `HTTP ${status}`);
+        console.error("[INDSTOCKS TOKEN] Unexpected status:", { status, data });
+        const err = new Error(`[INDSTOCKS TOKEN] Login failed with HTTP ${status}.`);
+        err.indstocksReason = "HTTP_ERROR";
+        throw err;
+    }
+
+    // ---- Success --------------------------------------------------------
+    const accessToken = data?.token ?? data?.data?.token ?? null;
+
+    if (!accessToken) {
+        consecutiveFailures += 1;
+        enterCooldown(BACKOFF_MAX_MS, "unexpected response shape");
+        console.error("[INDSTOCKS TOKEN] Unexpected response shape:", JSON.stringify(data));
+        const err = new Error("[INDSTOCKS TOKEN] No access token in response - see logged shape above.");
+        err.indstocksReason = "BAD_SHAPE";
+        throw err;
+    }
+
+    const expiresAt = decodeJwtExpiry(accessToken) ?? (Date.now() + 23 * 60 * 60 * 1000);
+
+    cachedToken = accessToken;
+    cachedExpiry = expiresAt;
+    consecutiveFailures = 0;
+    cooldownUntil = 0;
+    lastFailureReason = null;
+
+    writeSessionFile(accessToken, expiresAt);
+
+    console.log("[INDSTOCKS TOKEN] New token acquired. Expires at:", new Date(expiresAt).toISOString());
+
+    return accessToken;
+}
+
+//======================================================
+// GET ACCESS TOKEN (public entry point)
+//======================================================
+
+export async function getAccessToken() {
+
+    const now = Date.now();
+
+    if (cachedToken && cachedExpiry - now > REFRESH_BUFFER_MS) return cachedToken;
+
+    const fromDisk = readSessionFile();
+    if (fromDisk && fromDisk.expiresAt - now > REFRESH_BUFFER_MS) {
+        cachedToken  = fromDisk.accessToken;
+        cachedExpiry = fromDisk.expiresAt;
+        console.log("[INDSTOCKS TOKEN] Reusing cached session from disk. Expires:",
+            new Date(cachedExpiry).toISOString());
+        return cachedToken;
+    }
+
+    if (now < cooldownUntil) throw cooldownError();
+
+    // Single-flight: concurrent callers share one login request.
+    if (inFlight) return inFlight;
+
+    inFlight = requestNewToken().finally(() => { inFlight = null; });
+
+    return inFlight;
+}
+
+//======================================================
+// FORCE REFRESH  (clears cooldown - manual use only)
+//======================================================
+
+export async function refreshToken() {
+    cachedToken = null;
+    cachedExpiry = 0;
+    cooldownUntil = 0;
+    consecutiveFailures = 0;
+    try { if (fs.existsSync(SESSION_FILE)) fs.unlinkSync(SESSION_FILE); } catch { /* ignore */ }
+    if (inFlight) return inFlight;
+    inFlight = requestNewToken().finally(() => { inFlight = null; });
+    return inFlight;
+}
+
+//======================================================
+// STATUS
+//======================================================
+
+export function getTokenStatus() {
+    return {
+        hasToken: Boolean(cachedToken),
+        expiresAt: cachedExpiry ? new Date(cachedExpiry).toISOString() : null,
+        minutesRemaining: cachedExpiry
+            ? Math.max(0, Math.round((cachedExpiry - Date.now()) / 60000))
+            : 0,
+        sessionFileExists: fs.existsSync(SESSION_FILE),
+        consecutiveFailures,
+        lastFailureReason,
+        cooldownSecondsRemaining: Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000))
+    };
+}
+
+export default { getAccessToken, refreshToken, getTokenStatus };
+
+----- indstocks\history.js -----
+
+  server\indstocks\history.js:4:// IndStocks historical candle data.
+  server\indstocks\history.js:5://
+  server\indstocks\history.js:6:// Confirmed working endpoint:
+  server\indstocks\history.js:7://   GET /market/historical/{interval}?scrip-codes=EXCH_SECURITYID&start_time=..&end_time=..
+> server\indstocks\history.js:8://   Auth header: Authorization: <access_token>  (raw token, no "Bearer " prefix)
+  server\indstocks\history.js:9://   Response: { success:true, data: { "EXCH_SECID": { candles: [{ts,o,h,l,c,v}, ...] } } }
+  server\indstocks\history.js:10://======================================================
+  server\indstocks\history.js:11:
+  server\indstocks\history.js:12:import axios from "axios";
+> server\indstocks\history.js:13:import { getAccessToken, refreshToken } from "./token.js";
+  server\indstocks\history.js:14:import {
+  server\indstocks\history.js:15:    getCandles,
+  server\indstocks\history.js:16:    upsertCandles
+  server\indstocks\history.js:17:} from "./data/IndstocksCandleDatabase.js";
+  server\indstocks\history.js:18:
+  server\indstocks\history.js:19:const INDSTOCKS_BASE =
+  server\indstocks\history.js:97://======================================================
+  server\indstocks\history.js:98:
+  server\indstocks\history.js:99:async function fetchLiveCandles({ exchange, securityId, resolution, fromMs, toMs }) {
+  server\indstocks\history.js:100:
+> server\indstocks\history.js:101:    const token = await getAccessToken();
+  server\indstocks\history.js:102:
+  server\indstocks\history.js:103:    const url =
+  server\indstocks\history.js:104:        `${INDSTOCKS_BASE}/market/historical/${resolution}` +
+  server\indstocks\history.js:105:        `?scrip-codes=${exchange}_${securityId}` +
+  server\indstocks\history.js:106:        `&start_time=${fromMs}&end_time=${toMs}`;
+  server\indstocks\history.js:107:
+  server\indstocks\history.js:111:
+  server\indstocks\history.js:112:    try {
+  server\indstocks\history.js:113:
+  server\indstocks\history.js:114:        response = await axios.get(url, {
+> server\indstocks\history.js:115:            headers: { Authorization: token },
+  server\indstocks\history.js:116:            timeout: 20000
+  server\indstocks\history.js:117:        });
+  server\indstocks\history.js:118:
+  server\indstocks\history.js:119:    } catch (error) {
+  server\indstocks\history.js:120:
+  server\indstocks\history.js:121:        const httpStatus = error?.response?.status;
+  server\indstocks\history.js:125:            data: error?.response?.data,
+  server\indstocks\history.js:126:            message: error?.message
+  server\indstocks\history.js:127:        });
+  server\indstocks\history.js:128:
+> server\indstocks\history.js:129:        if (httpStatus === 401 || httpStatus === 403) {
+  server\indstocks\history.js:130:
+  server\indstocks\history.js:131:            const sessionError = new Error(
+  server\indstocks\history.js:132:                "[INDSTOCKS HISTORY] IndStocks token invalid or expired."
+  server\indstocks\history.js:133:            );
+> server\indstocks\history.js:134:            sessionError.indstocksReason = "SESSION_EXPIRED";
+  server\indstocks\history.js:135:            throw sessionError;
+  server\indstocks\history.js:136:
+  server\indstocks\history.js:137:        }
+  server\indstocks\history.js:138:
+  server\indstocks\history.js:139:        const liveUnavailable = new Error(error?.message ?? "IndStocks live request failed.");
+  server\indstocks\history.js:140:        liveUnavailable.indstocksReason = "LIVE_UNAVAILABLE";
+  server\indstocks\history.js:194://
+  server\indstocks\history.js:195:// IndStocks appears to invalidate a previously issued
+  server\indstocks\history.js:196:// token whenever a new one is generated for the same
+  server\indstocks\history.js:197:// client id/MPIN (this project and OpenAlgo currently
+> server\indstocks\history.js:198:// share that client id). getAccessToken()'s own cache
+  server\indstocks\history.js:199:// can therefore believe a token is still valid for hours
+  server\indstocks\history.js:200:// while IndStocks has already killed it server-side.
+  server\indstocks\history.js:201://
+> server\indstocks\history.js:202:// On a 401/403 (SESSION_EXPIRED), force one token refresh
+> server\indstocks\history.js:203:// and retry the request exactly once before giving up.
+  server\indstocks\history.js:204://======================================================
+  server\indstocks\history.js:205:
+  server\indstocks\history.js:206:async function fetchLiveCandlesWithRecovery(params) {
+  server\indstocks\history.js:207:
+  server\indstocks\history.js:208:    try {
+  server\indstocks\history.js:209:
+  server\indstocks\history.js:210:        return await fetchLiveCandles(params);
+  server\indstocks\history.js:211:
+  server\indstocks\history.js:212:    } catch (error) {
+  server\indstocks\history.js:213:
+> server\indstocks\history.js:214:        if (error?.indstocksReason !== "SESSION_EXPIRED") {
+  server\indstocks\history.js:215:            throw error;
+  server\indstocks\history.js:216:        }
+  server\indstocks\history.js:217:
+  server\indstocks\history.js:218:        console.warn(
+> server\indstocks\history.js:219:            "[INDSTOCKS HISTORY] Session expired mid-request - refreshing token and retrying once."
+  server\indstocks\history.js:220:        );
+  server\indstocks\history.js:221:
+> server\indstocks\history.js:222:        await refreshToken();
+  server\indstocks\history.js:223:
+  server\indstocks\history.js:224:        return await fetchLiveCandles(params);
+  server\indstocks\history.js:225:
+  server\indstocks\history.js:226:    }
+  server\indstocks\history.js:227:
+  server\indstocks\history.js:228:}
+  server\indstocks\history.js:285:            });
+  server\indstocks\history.js:286:
+  server\indstocks\history.js:287:        } catch (wideError) {
+  server\indstocks\history.js:288:
+> server\indstocks\history.js:289:            console.log("[INDSTOCKS HISTORY] Wide window failed, retrying 24h:", wideError?.message);
+  server\indstocks\history.js:290:
+  server\indstocks\history.js:291:        }
+  server\indstocks\history.js:292:
+  server\indstocks\history.js:293:        if (candles.length === 0 && wideFromMs !== narrowFromMs) {
+  server\indstocks\history.js:294:
+  server\indstocks\history.js:295:            candles = await fetchLiveCandlesWithRecovery({
+
+
+
+----- SERVER ROUTES AND IMPORTS -----
+
+> server\index.js:1:let hasLoggedZerodhaFyersFallbackSuccess = false;
+> server\index.js:2:let hasLoggedZerodhaFallbackPersistenceSkipped = false;
+> server\index.js:3:let hasLoggedMissingZerodhaInstrument = false;
+  server\index.js:4://================================================
+  server\index.js:5:// NPM Server INDEX Page .\server\index.js.new2808
+  server\index.js:6://===============================================
+  server\index.js:7:
+  server\index.js:8:import dotenv from "dotenv";
+  server\index.js:27:import feedManager from "./feeds/FeedManager.js";
+  server\index.js:28:
+  server\index.js:29://==========================
+> server\index.js:30:// ZERODHA import
+  server\index.js:31://==========================
+  server\index.js:32:
+> server\index.js:33:import { searchSymbols } from "./zerodha/SymbolSearch.js";
+  server\index.js:34:
+  server\index.js:35:import {
+  server\index.js:36:    initializeInstrumentDatabase
+> server\index.js:37:} from "./zerodha/instruments/InstrumentDatabase.js";
+  server\index.js:38:
+  server\index.js:39:import {
+  server\index.js:40:    initializeInstrumentSynchronizer,
+  server\index.js:41:    startInstrumentSynchronization
+> server\index.js:42:} from "./zerodha/instruments/InstrumentSynchronizer.js";
+  server\index.js:43:
+  server\index.js:44:import {
+  server\index.js:45:    registerLoginRoutes,
+> server\index.js:46:    getLoginUrl as getZerodhaLoginUrl
+> server\index.js:47:} from "./zerodha/login.js";
+  server\index.js:48:
+  server\index.js:49:import {
+  server\index.js:50:    registerTokenRoutes
+> server\index.js:51:} from "./zerodha/token.js";
+  server\index.js:52:
+  server\index.js:53:import {
+  server\index.js:54:    getAllInstruments,
+  server\index.js:55:    instrumentCount,
+  server\index.js:56:    getInstrument,
+  server\index.js:57:    getByTradingSymbol
+> server\index.js:58:} from "./zerodha/instruments/instruments.js";
+  server\index.js:59:
+  server\index.js:60:import {
+  server\index.js:61:    getHistoricalData
+> server\index.js:62:} from "./zerodha/history.js";
+  server\index.js:63:
+  server\index.js:64:import {
+> server\index.js:65:    upsertCandles as upsertZerodhaCandles,
+> server\index.js:66:    zerodhaCandleDatabasePath
+> server\index.js:67:} from "./zerodha/data/ZerodhaCandleDatabase.js";
+  server\index.js:68:
+  server\index.js:69:import {
+> server\index.js:70:    isLoggedIn as isZerodhaLoggedIn
+> server\index.js:71:} from "./zerodha/token.js";
+  server\index.js:72:
+  server\index.js:73://==========================
+  server\index.js:74:// YAHOO import
+  server\index.js:75://==========================
+  server\index.js:76:import {
+  server\index.js:102:import {
+  server\index.js:103:    generateLoginUrl as generateFyersLoginUrl,
+  server\index.js:104:    exchangeAuthCode as exchangeFyersAuthCode,
+> server\index.js:105:    refreshAccessToken as refreshFyersAccessToken,
+  server\index.js:106:    getLoginStatus as getFyersLoginStatus,
+  server\index.js:107:    logout as fyersLogout
+  server\index.js:108:} from "./fyers/login.js";
+  server\index.js:109:
+  server\index.js:110:import {
+> server\index.js:111:    isLoggedIn as isFyersLoggedIn,
+  server\index.js:112:    getRefreshToken as getFyersRefreshToken
+  server\index.js:113:} from "./fyers/token.js";
+  server\index.js:114:
+  server\index.js:115:import {
+  server\index.js:116:    getHistory as getFyersHistory
+  server\index.js:135:
+  server\index.js:136:
+  server\index.js:137://============================
+> server\index.js:138:// ALICEBLUE import
+  server\index.js:139://============================
+  server\index.js:140:
+  server\index.js:141:import {
+> server\index.js:142:    generateLoginUrl as generateAliceBlueLoginUrl,
+> server\index.js:143:    exchangeAuthCode as exchangeAliceBlueAuthCode,
+> server\index.js:144:    loginFromRedirectUrl as aliceBlueLoginFromRedirectUrl,
+> server\index.js:145:    logout as aliceBlueLogout,
+> server\index.js:146:    getLoginStatus as getAliceBlueLoginStatus
+> server\index.js:147:} from "./aliceblue/login.js";
+  server\index.js:148:
+  server\index.js:149:import {
+> server\index.js:150:    createAliceBlueFeed
+> server\index.js:151:} from "./aliceblue/AliceBlueFeed.js";
+  server\index.js:152:
+  server\index.js:153:import {
+> server\index.js:154:    initializeAliceBlueSymbols,
+> server\index.js:155:    getAliceBlueContractBySymbol,
+  server\index.js:156:    startSymbolRefresh
+> server\index.js:157:} from "./aliceblue/symbolMaster.js";
+  server\index.js:158:
+> server\index.js:159:import aliceBlueOptionsRouter from "./aliceblue/optionsRoute.js";
+  server\index.js:160:import deltaExchangeOptionsRouter from "./deltaexchange/optionsRoute.js";
+> server\index.js:161:import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
+  server\index.js:162:
+  server\index.js:163:import {
+> server\index.js:164:    startAliceBlueSync
+> server\index.js:165:} from "./aliceblue/syncWorker.js";
+  server\index.js:166:
+  server\index.js:167:import {
+> server\index.js:168:    getTokenStatus as getAliceBlueTokenStatus,
+> server\index.js:169:    isLoggedIn as isAliceBlueLoggedIn
+> server\index.js:170:} from "./aliceblue/token.js";
+  server\index.js:171:
+  server\index.js:172://============================
+> server\index.js:173:// INDSTOCKS import
+  server\index.js:174://============================
+  server\index.js:175:
+  server\index.js:176:import {
+> server\index.js:177:    createIndstocksFeed
+> server\index.js:178:} from "./indstocks/INDstocksFeed.js";
+  server\index.js:179:
+  server\index.js:180:import {
+> server\index.js:181:    initializeIndstocksSymbols,
+> server\index.js:182:    startSymbolRefresh as startIndstocksSymbolRefresh
+> server\index.js:183:} from "./indstocks/symbolMaster.js";
+  server\index.js:184:
+  server\index.js:185:import {
+  server\index.js:186:    loadContractMaster,
+> server\index.js:187:    getAllIndstocksSymbols,
+> server\index.js:188:    searchIndstocksOptions
+> server\index.js:189:} from "./indstocks/symbolMaster.js";
+  server\index.js:190:
+  server\index.js:191:import {
+> server\index.js:192:    getTokenStatus as getIndstocksTokenStatus
+> server\index.js:193:} from "./indstocks/token.js";
+  server\index.js:194:
+> server\index.js:195:import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
+> server\index.js:196:import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
+> server\index.js:197:import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
+> server\index.js:198:import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
+  server\index.js:199:import telegramRoute from "./telegram/telegramRoute.js";
+  server\index.js:200:
+  server\index.js:201://================================================
+  server\index.js:202:const AJTRADE_FRONTEND_ORIGIN =
+  server\index.js:203:    "https://ajtrade.in";
+  server\index.js:233:);
+  server\index.js:234:
+  server\index.js:235:registerFeed(
+> server\index.js:236:    "aliceblue",
+> server\index.js:237:    createAliceBlueFeed()
+  server\index.js:238:);
+  server\index.js:239:
+  server\index.js:240:registerFeed(
+> server\index.js:241:    "indstocks",
+> server\index.js:242:    createIndstocksFeed()
+  server\index.js:243:);
+  server\index.js:244:
+  server\index.js:245:await feedManager.setFeed("yahoo");
+  server\index.js:246:await feedManager.start();
+  server\index.js:247:
+  server\index.js:251://);
+  server\index.js:252:
+  server\index.js:253:console.log(
+> server\index.js:254:    "MARKET DATA Available : YAHOO, BINANCE, DELTA EXCHANGE, FYERS, ALICEBLUE, INDSTOCKS"
+  server\index.js:255:);
+  server\index.js:256:
+  server\index.js:257://====================
+  server\index.js:258:// Options App use
+  server\index.js:259://====================
+  server\index.js:268:);
+  server\index.js:269:
+  server\index.js:270:app.use(
+> server\index.js:271:    "/api/aliceblue/options",
+> server\index.js:272:    aliceBlueOptionsRouter
+  server\index.js:273:);
+  server\index.js:274:
+  server\index.js:275:app.use(
+  server\index.js:276:    "/api/deltaexchange/options",
+  server\index.js:277:    deltaExchangeOptionsRouter
+  server\index.js:278:);
+  server\index.js:279:
+  server\index.js:280:app.use(
+> server\index.js:281:    "/api/aliceblue/symbols",
+> server\index.js:282:    aliceBlueEquitySearchRouter
+  server\index.js:283:);
+  server\index.js:284:
+  server\index.js:285:
+  server\index.js:286:app.use(
+> server\index.js:287:    "/api/indstocks/options",
+> server\index.js:288:    indstocksOptionsRouter
+  server\index.js:289:);
+  server\index.js:290:
+  server\index.js:291:app.use(
+> server\index.js:292:    "/api/indstocks/symbols",
+> server\index.js:293:    indstocksEquitySearchRouter
+  server\index.js:294:);
+  server\index.js:295:
+  server\index.js:296:app.use(
+> server\index.js:297:    "/api/zerodha/options",
+> server\index.js:298:    zerodhaOptionsRouter
+  server\index.js:299:);
+  server\index.js:300:
+  server\index.js:301:app.use(
+> server\index.js:302:    "/api/zerodha/symbols",
+> server\index.js:303:    zerodhaEquitySearchRouter
+  server\index.js:304:);
+  server\index.js:305:
+  server\index.js:306://=================================
+  server\index.js:307:
+  server\index.js:308:initializeInstrumentDatabase();
+  server\index.js:663:
+  server\index.js:664://====================================================
+  server\index.js:665:app.get(
+> server\index.js:666:    "/api/aliceblue/history",
+  server\index.js:667:    async (req, res) => {
+> server\index.js:668:        const tryIndstocksFallback = async (rawSymbol, tf) => {
+  server\index.js:669:            try {
+> server\index.js:670:                const indstocksFeed = feedManager.getFeed("indstocks");
+> server\index.js:671:                if (!indstocksFeed || typeof indstocksFeed.getHistory !== "function") { return null; }
+> server\index.js:672:                let indstocksSymbol = String(rawSymbol ?? "").trim();
+  server\index.js:673:                const optUnderlying = String(req.query.underlying ?? "").trim();
+  server\index.js:674:                const optExpiry = String(req.query.expiry ?? "").trim();
+  server\index.js:675:                const optStrike = req.query.strike;
+  server\index.js:676:                const optType = String(req.query.optionType ?? "").trim().toUpperCase();
+  server\index.js:677:                if (optUnderlying && optExpiry && optStrike && /^(CE|PE)$/.test(optType)) {
+> server\index.js:678:                    const optMatches = searchIndstocksOptions({ underlying: optUnderlying, expiry: optExpiry, strike: Number(optStrike), optionType: optType, limit: 5 });
+  server\index.js:679:                    const optContract = Array.isArray(optMatches) && optMatches.length > 0 ? optMatches[0] : null;
+  server\index.js:680:                    if (optContract?.exchange && optContract?.securityId) {
+> server\index.js:681:                        indstocksSymbol = `${optContract.exchange}_${optContract.securityId}`;
+> server\index.js:682:                        console.log("[ALICEBLUE HISTORY] IndStocks OPTION resolved:", { optUnderlying, optExpiry, optStrike, optType, indstocksSymbol });
+  server\index.js:683:                    }
+  server\index.js:684:                }
+> server\index.js:685:                else if (indstocksSymbol && !/^[A-Z]+_\d+$/i.test(indstocksSymbol)) {
+> server\index.js:686:                    const normalizedQuery = indstocksSymbol.toUpperCase().replace(/-EQ$/, "").replace(/\s+/g, "");
+> server\index.js:687:                    const allIndstocksSymbols = getAllIndstocksSymbols();
+> server\index.js:688:                    const indexMatch = Array.isArray(allIndstocksSymbols)
+> server\index.js:689:                        ? allIndstocksSymbols.find((m) => {
+  server\index.js:690:                            const type = String(m?.type ?? m?.instrumentType ?? "").toUpperCase();
+  server\index.js:691:                            if (!type.includes("INDEX")) return false;
+  server\index.js:692:                            const name = String(m?.tradingSymbol ?? m?.displayName ?? m?.symbol ?? "").toUpperCase().replace(/\s+/g, "");
+  server\index.js:693:                            return name === normalizedQuery;
+  server\index.js:694:                        })
+  server\index.js:695:                        : null;
+  server\index.js:696:                    if (indexMatch?.exchange && indexMatch?.securityId) {
+> server\index.js:697:                        indstocksSymbol = `${indexMatch.exchange}_${indexMatch.securityId}`;
+> server\index.js:698:                        console.log("[ALICEBLUE HISTORY] IndStocks name resolved:", { rawSymbol, indstocksSymbol });
+  server\index.js:699:                    }
+  server\index.js:700:                }
+> server\index.js:701:                const fallbackResult = await indstocksFeed.getHistory(indstocksSymbol, tf);
+  server\index.js:702:                const fallbackCandles =
+  server\index.js:703:                    Array.isArray(fallbackResult)
+  server\index.js:704:                        ? fallbackResult
+  server\index.js:705:                        : (Array.isArray(fallbackResult?.candles) ? fallbackResult.candles : []);
+  server\index.js:706:                return fallbackCandles.length > 0 ? fallbackCandles : null;
+  server\index.js:707:            } catch (fallbackError) {
+> server\index.js:708:                console.warn("[ALICEBLUE HISTORY] IndStocks fallback also failed:", fallbackError?.message ?? fallbackError);
+  server\index.js:709:                return null;
+  server\index.js:710:            }
+  server\index.js:711:        };
+  server\index.js:712:
+  server\index.js:713:        try {
+  server\index.js:734:
+  server\index.js:735:            const feed =
+  server\index.js:736:                feedManager.getFeed(
+> server\index.js:737:                    "aliceblue"
+  server\index.js:738:                );
+  server\index.js:739:
+  server\index.js:740:            if (!feed) {
+  server\index.js:741:                return res.status(500).json({
+  server\index.js:742:                    error:
+  server\index.js:754:                });
+  server\index.js:755:            }
+  server\index.js:756:
+> server\index.js:757:            let aliceBlueSymbol =
+  server\index.js:758:                String(
+  server\index.js:759:                    symbol ?? ""
+  server\index.js:760:                )
+  server\index.js:761:                    .trim()
+  server\index.js:762:                    .toUpperCase();
+  server\index.js:763:
+> server\index.js:764:            if (!aliceBlueSymbol) {
+  server\index.js:765:                return res.status(400).json({
+  server\index.js:766:                    error:
+  server\index.js:767:                        "Alice Blue history requires a symbol."
+  server\index.js:768:                });
+  server\index.js:769:            }
+  server\index.js:770:
+  server\index.js:771:            if (
+> server\index.js:772:                aliceBlueSymbol.includes("|")
+  server\index.js:773:            ) {
+  server\index.js:774:                const parts =
+> server\index.js:775:                    aliceBlueSymbol.split("|");
+  server\index.js:776:
+  server\index.js:777:                const exchange =
+  server\index.js:778:                    String(
+  server\index.js:779:                        parts[0] ?? ""
+  server\index.js:780:                    )
+  server\index.js:796:                    });
+  server\index.js:797:                }
+  server\index.js:798:
+> server\index.js:799:                aliceBlueSymbol =
+  server\index.js:800:                    `${exchange}|${token}`;
+  server\index.js:801:            }
+  server\index.js:802:            else {
+  server\index.js:803:                const resolver =
+  server\index.js:804:                    feed.resolveInstrument;
+  server\index.js:820:                // ADANIENT-EQ 29SEP 3000PE
+  server\index.js:821:                //
+  server\index.js:822:                // must NOT be passed directly to the legacy
+> server\index.js:823:                // AliceBlueFeed resolver.
+  server\index.js:824:                //
+  server\index.js:825:                // Resolve through the authoritative Alice Blue
+  server\index.js:826:                // option master when canonical option metadata is
+  server\index.js:827:                // available.
+  server\index.js:828:                //--------------------------------------------------
+  server\index.js:829:
+  server\index.js:830:                const optionMatch =
+> server\index.js:831:                    aliceBlueSymbol.match(
+  server\index.js:832:                        /^([A-Z0-9&.-]+)(?:-EQ)?\s+(\d{1,2}[A-Z]{3})\s+(\d+(?:\.\d+)?)(CE|PE)$/i
+  server\index.js:833:                    );
+  server\index.js:834:
+  server\index.js:835:                let resolved = null;
+  server\index.js:836:
+  server\index.js:915:								`${currentYear + 1}-${month}-${day}`;
+  server\index.js:916:						}
+  server\index.js:917:
+> server\index.js:918:                        const { searchAliceBlueOptions } =
+  server\index.js:919:                            await import(
+> server\index.js:920:                                "./aliceblue/symbolMaster.js"
+  server\index.js:921:                            );
+  server\index.js:922:
+  server\index.js:923:                        const matches =
+> server\index.js:924:                            searchAliceBlueOptions({
+  server\index.js:925:                                underlying,
+  server\index.js:926:                                expiry,
+  server\index.js:927:                                strike,
+  server\index.js:928:                                optionType,
+  server\index.js:929:                                limit: 5
+  server\index.js:953:				if (!resolved) {
+  server\index.js:954:				
+  server\index.js:955:					const normalizedIndex =
+> server\index.js:956:						String(aliceBlueSymbol ?? "")
+  server\index.js:957:							.trim()
+  server\index.js:958:							.toUpperCase();
+  server\index.js:959:				
+  server\index.js:960:					const indexAliases = {
+  server\index.js:961:						"NIFTY": "NIFTY",
+  server\index.js:973:					if (indexSymbol) {
+  server\index.js:974:				
+  server\index.js:975:						const {
+> server\index.js:976:							searchAliceBlueSymbols
+  server\index.js:977:						} = await import(
+> server\index.js:978:							"./aliceblue/symbolMaster.js"
+  server\index.js:979:						);
+  server\index.js:980:				
+  server\index.js:981:						const matches =
+> server\index.js:982:							searchAliceBlueSymbols({
+  server\index.js:983:								query: indexSymbol,
+  server\index.js:984:								limit: 50
+  server\index.js:985:							});
+  server\index.js:986:				
+  server\index.js:987:						const indexContract =
+  server\index.js:1025:				if (!resolved) {
+  server\index.js:1026:					resolved =
+  server\index.js:1027:						resolver(
+> server\index.js:1028:							aliceBlueSymbol
+  server\index.js:1029:						);
+  server\index.js:1030:				}
+  server\index.js:1031:
+  server\index.js:1032:                if (
+  server\index.js:1033:                    !resolved ||
+  server\index.js:1036:                ) {
+  server\index.js:1037:                    return res.status(404).json({
+  server\index.js:1038:                        error:
+> server\index.js:1039:                            `Unable to resolve Alice Blue instrument: ${aliceBlueSymbol}`
+  server\index.js:1040:                    });
+  server\index.js:1041:                }
+  server\index.js:1042:
+> server\index.js:1043:                aliceBlueSymbol =
+  server\index.js:1044:                    `${String(
+  server\index.js:1045:                        resolved.exchange
+  server\index.js:1046:                    ).toUpperCase()}|${String(
+  server\index.js:1047:                        resolved.token
+  server\index.js:1048:                    )}`;
+  server\index.js:1049:            }
+  server\index.js:1050:
+  server\index.js:1051:            if (
+> server\index.js:1052:                aliceBlueSymbol.includes("|")
+  server\index.js:1053:            ) {
+  server\index.js:1054:                const parts =
+> server\index.js:1055:                    aliceBlueSymbol.split("|");
+  server\index.js:1056:
+  server\index.js:1057:                const exchange =
+  server\index.js:1058:                    String(
+  server\index.js:1059:                        parts[0] ?? ""
+  server\index.js:1060:                    )
+  server\index.js:1074:                        error:
+  server\index.js:1075:                            "Invalid Alice Blue symbol. Expected EXCHANGE|TOKEN.",
+  server\index.js:1076:                        symbol:
+> server\index.js:1077:                            aliceBlueSymbol
+  server\index.js:1078:                    });
+  server\index.js:1079:                }
+  server\index.js:1080:
+> server\index.js:1081:                aliceBlueSymbol =
+  server\index.js:1082:                    `${exchange}|${token}`;
+  server\index.js:1083:            }
+  server\index.js:1084:            else {
+  server\index.js:1085:                const requestedExchange =
+  server\index.js:1086:                    String(
+  server\index.js:1092:
+  server\index.js:1093:                const normalizedSymbol =
+  server\index.js:1094:                    String(
+> server\index.js:1095:                        aliceBlueSymbol ?? ""
+  server\index.js:1096:                    )
+  server\index.js:1097:                        .trim()
+  server\index.js:1098:                        .toUpperCase();
+  server\index.js:1099:
+  server\index.js:1100:                const exchange =
+  server\index.js:1107:                    );
+  server\index.js:1108:
+  server\index.js:1109:                const contract =
+> server\index.js:1110:                    getAliceBlueContractBySymbol(
+> server\index.js:1111:                        aliceBlueSymbol,
+  server\index.js:1112:                        exchange
+  server\index.js:1113:                    );
+  server\index.js:1114:
+  server\index.js:1115:                if (!contract) {
+  server\index.js:1116:                    console.error(
+> server\index.js:1117:                        "[ALICEBLUE HISTORY] CONTRACT NOT FOUND:",
+  server\index.js:1118:                        {
+  server\index.js:1119:                            requested:
+> server\index.js:1120:                                aliceBlueSymbol,
+  server\index.js:1121:                            exchange,
+  server\index.js:1122:                            symbolMaster:
+  server\index.js:1123:                                "NOT LOADED"
+  server\index.js:1124:                        }
+  server\index.js:1125:                    );
+  server\index.js:1128:                        error:
+  server\index.js:1129:                            "Alice Blue symbol could not be resolved.",
+  server\index.js:1130:                        symbol:
+> server\index.js:1131:                            aliceBlueSymbol,
+  server\index.js:1132:                        exchange
+  server\index.js:1133:                    });
+  server\index.js:1134:                }
+  server\index.js:1135:
+> server\index.js:1136:                aliceBlueSymbol =
+  server\index.js:1137:                    `${contract.exchange}|${contract.token}`;
+  server\index.js:1138:            }
+  server\index.js:1139:
+  server\index.js:1140:            const result =
+  server\index.js:1141:                await feed.getHistory(
+> server\index.js:1142:                    aliceBlueSymbol,
+  server\index.js:1143:                    timeframe
+  server\index.js:1144:                );
+  server\index.js:1145:
+  server\index.js:1146:            //--------------------------------------------------
+  server\index.js:1147:            // getHistory() now returns { candles, freshness }.
+  server\index.js:1161:                    : (result?.freshness ?? null);
+  server\index.js:1162:
+  server\index.js:1163:            if (!candles || candles.length === 0) {
+> server\index.js:1164:                const fallbackCandles = await tryIndstocksFallback(symbol, timeframe);
+  server\index.js:1165:                if (fallbackCandles) {
+> server\index.js:1166:                    return res.json({ candles: fallbackCandles, freshness: null, source: "indstocks" });
+  server\index.js:1167:                }
+  server\index.js:1168:            }
+  server\index.js:1169:
+  server\index.js:1170:            return res.json({
+  server\index.js:1171:                candles,
+  server\index.js:1174:        }
+  server\index.js:1175:		
+  server\index.js:1176:        catch (error) {
+> server\index.js:1177:            const fallbackCandles = await tryIndstocksFallback(req.query.symbol, req.query.timeframe ?? "1m");
+  server\index.js:1178:            if (fallbackCandles) {
+> server\index.js:1179:                return res.json({ candles: fallbackCandles, freshness: null, source: "indstocks" });
+  server\index.js:1180:            }
+  server\index.js:1181:
+  server\index.js:1182:            console.error(
+> server\index.js:1183:                "[ALICEBLUE HISTORY ROUTE] ERROR",
+  server\index.js:1184:                {
+  server\index.js:1185:                    message:
+  server\index.js:1186:                        error?.message,
+  server\index.js:1187:                    stack:
+  server\index.js:1188:                        error?.stack,
+  server\index.js:1189:                    response:
+  server\index.js:1190:                        error?.response?.data,
+  server\index.js:1191:                    reason:
+> server\index.js:1192:                        error?.aliceBlueReason
+  server\index.js:1193:                }
+  server\index.js:1194:            );
+  server\index.js:1195:
+  server\index.js:1196:            const statusByReason = {
+  server\index.js:1197:                MARKET_HOURS_RESTRICTED: 503,
+  server\index.js:1201:            };
+  server\index.js:1202:
+  server\index.js:1203:            const status =
+> server\index.js:1204:                statusByReason[error?.aliceBlueReason] ??
+  server\index.js:1205:                error?.response?.status ??
+  server\index.js:1206:                500;
+  server\index.js:1207:
+  server\index.js:1208:            return res.status(status).json({
+  server\index.js:1209:                error:
+  server\index.js:1210:                    "Alice Blue historical data request failed.",
+  server\index.js:1211:                reason:
+> server\index.js:1212:                    error?.aliceBlueReason ?? "UNKNOWN",
+  server\index.js:1213:                details:
+  server\index.js:1214:                    error?.message ??
+  server\index.js:1215:                    "Unknown Alice Blue history error."
+  server\index.js:1216:            });
+  server\index.js:1217:        }
+  server\index.js:1219:);
+  server\index.js:1220:
+  server\index.js:1221://=======================
+> server\index.js:1222:// INDSTOCKS API get
+  server\index.js:1223://=======================
+  server\index.js:1224:
+  server\index.js:1225:app.get(
+> server\index.js:1226:    "/api/indstocks/status",
+  server\index.js:1227:    (req, res) => {
+  server\index.js:1228:        try {
+> server\index.js:1229:            const status = getIndstocksTokenStatus();
+  server\index.js:1230:            res.json({
+  server\index.js:1231:                loggedIn: status.hasToken,
+  server\index.js:1232:                status: status.hasToken ? "connected" : "login_required",
+  server\index.js:1233:                message:
+  server\index.js:1234:                    status.hasToken
+  server\index.js:1235:                        ? `Token valid, ${status.minutesRemaining}m remaining.`
+> server\index.js:1236:                        : "No active IndStocks token yet.",
+  server\index.js:1237:                ...status
+  server\index.js:1238:            });
+  server\index.js:1239:        }
+  server\index.js:1240:        catch (error) {
+> server\index.js:1241:            console.error("[INDSTOCKS STATUS]", error);
+  server\index.js:1242:            res.status(500).json({
+  server\index.js:1243:                loggedIn: false,
+  server\index.js:1244:                status: "server_unavailable",
+> server\index.js:1245:                message: error?.message ?? "Unable to read IndStocks token status."
+  server\index.js:1246:            });
+  server\index.js:1247:        }
+  server\index.js:1248:    }
+  server\index.js:1249:);
+  server\index.js:1250:
+  server\index.js:1251:app.get(
+> server\index.js:1252:    "/api/indstocks/history",
+  server\index.js:1253:    async (req, res) => {
+  server\index.js:1254:        try {
+  server\index.js:1255:            const symbol =
+  server\index.js:1256:                decodeURIComponent(String(req.query.symbol ?? "")).trim();
+  server\index.js:1257:
+  server\index.js:1260:
+  server\index.js:1261:            if (!symbol) {
+  server\index.js:1262:                return res.status(400).json({
+> server\index.js:1263:                    error: "IndStocks symbol is required."
+  server\index.js:1264:                });
+  server\index.js:1265:            }
+  server\index.js:1266:
+  server\index.js:1267:            const feed =
+> server\index.js:1268:                feedManager.getFeed("indstocks");
+  server\index.js:1269:
+  server\index.js:1270:            if (!feed) {
+  server\index.js:1271:                return res.status(500).json({
+> server\index.js:1272:                    error: "IndStocks feed is not registered."
+  server\index.js:1273:                });
+  server\index.js:1274:            }
+  server\index.js:1275:
+  server\index.js:1276:            const candles =
+  server\index.js:1277:                await feed.getHistory(symbol, timeframe);
+  server\index.js:1283:        }
+  server\index.js:1284:        catch (error) {
+  server\index.js:1285:
+> server\index.js:1286:            console.error("[INDSTOCKS HISTORY ROUTE] FAILED", {
+  server\index.js:1287:                message: error?.message,
+> server\index.js:1288:                reason: error?.indstocksReason
+  server\index.js:1289:            });
+  server\index.js:1290:
+  server\index.js:1291:            const statusByReason = {
+  server\index.js:1292:                SESSION_EXPIRED: 401
+  server\index.js:1293:            };
+  server\index.js:1294:
+  server\index.js:1295:            const status =
+> server\index.js:1296:                statusByReason[error?.indstocksReason] ??
+  server\index.js:1297:                error?.response?.status ??
+  server\index.js:1298:                500;
+  server\index.js:1299:
+  server\index.js:1300:            return res.status(status).json({
+> server\index.js:1301:                error: "IndStocks historical data request failed.",
+> server\index.js:1302:                reason: error?.indstocksReason ?? "UNKNOWN",
+> server\index.js:1303:                details: error?.message ?? "Unknown IndStocks history error."
+  server\index.js:1304:            });
+  server\index.js:1305:
+  server\index.js:1306:        }
+  server\index.js:1307:    }
+  server\index.js:1308:);
+  server\index.js:1309:
+  server\index.js:1310://======================================
+  server\index.js:1311:app.get(
+> server\index.js:1312:    "/api/zerodha/instruments",
+  server\index.js:1313:    (req, res) => {
+  server\index.js:1314:        try {
+  server\index.js:1315:            res.json({
+  server\index.js:1316:                success: true,
+  server\index.js:1317:                count:
+  server\index.js:1322:        }
+  server\index.js:1323:        catch (error) {
+  server\index.js:1324:            console.error(
+> server\index.js:1325:                "[ZERODHA INSTRUMENTS]",
+  server\index.js:1326:                error
+  server\index.js:1327:            );
+  server\index.js:1328:
+  server\index.js:1329:            res.status(500).json({
+  server\index.js:1330:                success: false,
+  server\index.js:1336:);
+  server\index.js:1337:
+  server\index.js:1338://=================
+> server\index.js:1339:// ZERODHA API get
+  server\index.js:1340://=================
+> server\index.js:1341:function zerodhaCanonicalExpiryToISO(value) {
+  server\index.js:1342:    const raw = String(value ?? "").trim().toUpperCase();
+  server\index.js:1343:    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) { return raw; }
+  server\index.js:1344:    const months = { JAN:"01",FEB:"02",MAR:"03",APR:"04",MAY:"05",JUN:"06",JUL:"07",AUG:"08",SEP:"09",OCT:"10",NOV:"11",DEC:"12" };
+  server\index.js:1345:    const m = raw.match(/^(\d{1,2})[\s-]*(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)$/);
+  server\index.js:1346:    if (!m) { return raw; }
+  server\index.js:1356:}
+  server\index.js:1357:
+  server\index.js:1358:app.get(
+> server\index.js:1359:    "/api/zerodha/history/:symbol",
+  server\index.js:1360:    async (req, res) => {
+  server\index.js:1361:        try {
+  server\index.js:1362:            const symbol =
+  server\index.js:1363:                decodeURIComponent(
+  server\index.js:1364:                    req.params.symbol
+  server\index.js:1386:                const canonicalType = String(req.query.optionType ?? "").trim().toUpperCase();
+  server\index.js:1387:                let fyersCandles = null;
+  server\index.js:1388:                if (canonicalUnderlying && canonicalExpiry && canonicalStrike && /^(CE|PE)$/.test(canonicalType)) {
+> server\index.js:1389:                    const isoExpiry = zerodhaCanonicalExpiryToISO(canonicalExpiry);
+  server\index.js:1390:                    const contract = getFyersOptionContract({
+  server\index.js:1391:                        underlying: canonicalUnderlying,
+  server\index.js:1392:                        expiry: isoExpiry,
+  server\index.js:1393:                        strike: Number(canonicalStrike),
+  server\index.js:1394:                        optionType: canonicalType
+  server\index.js:1398:                    }
+  server\index.js:1399:                }
+  server\index.js:1400:                if (!fyersCandles) {
+> server\index.js:1401:                    const zerodhaRow = getInstrument("NSE", fallbackSymbol) || getInstrument("NFO", fallbackSymbol) || getInstrument("BSE", fallbackSymbol) || getByTradingSymbol(fallbackSymbol);
+> server\index.js:1402:                    if (zerodhaRow) {
+> server\index.js:1403:                        const isOption = zerodhaRow.instrument_type === "CE" || zerodhaRow.instrument_type === "PE";
+  server\index.js:1404:                        if (isOption) {
+> server\index.js:1405:                            const cleanUnderlying = String(zerodhaRow.name ?? "").replace(/^"+|"+$/g, "").trim();
+  server\index.js:1406:                            const contract = getFyersOptionContract({
+  server\index.js:1407:                                underlying: cleanUnderlying,
+> server\index.js:1408:                                expiry: zerodhaRow.expiry,
+> server\index.js:1409:                                strike: Number(zerodhaRow.strike),
+> server\index.js:1410:                                optionType: zerodhaRow.instrument_type
+  server\index.js:1411:                            });
+  server\index.js:1412:                            if (contract?.symbolTicker) {
+  server\index.js:1413:                                fyersCandles = await getFyersHistory(contract.symbolTicker, fallbackTimeframe);
+  server\index.js:1414:                            }
+  server\index.js:1415:                        } else {
+  server\index.js:1420:                }
+  server\index.js:1421:                if (Array.isArray(fyersCandles) && fyersCandles.length > 0) {
+  server\index.js:1422:
+> server\index.js:1423:                    if (!hasLoggedZerodhaFyersFallbackSuccess) {
+  server\index.js:1424:                        console.log(
+> server\index.js:1425:                            "[ZERODHA HISTORY] FYERS fallback succeeded:",
+  server\index.js:1426:                            {
+  server\index.js:1427:                                symbol: fallbackSymbol,
+  server\index.js:1428:                                count: fyersCandles.length
+  server\index.js:1429:                            }
+  server\index.js:1430:                        );
+> server\index.js:1431:                        hasLoggedZerodhaFyersFallbackSuccess = true;
+  server\index.js:1432:                    }
+  server\index.js:1433:
+  server\index.js:1434:                    //--------------------------------------------------
+> server\index.js:1435:                    // Persist FYERS fallback candles into Zerodha
+  server\index.js:1436:                    // SQLite candle cache.
+  server\index.js:1437:                    //--------------------------------------------------
+  server\index.js:1438:
+> server\index.js:1439:                    const zerodhaCacheInstrument =
+  server\index.js:1440:                        getInstrument("NSE", fallbackSymbol) ||
+  server\index.js:1441:                        getInstrument("NFO", fallbackSymbol) ||
+  server\index.js:1442:                        getInstrument("BSE", fallbackSymbol) ||
+  server\index.js:1443:                        getByTradingSymbol(fallbackSymbol);
+  server\index.js:1444:
+> server\index.js:1445:                    if (zerodhaCacheInstrument?.instrument_token) {
+  server\index.js:1446:
+> server\index.js:1447:                        const zerodhaInterval =
+  server\index.js:1448:                            fallbackTimeframe === "1m" ||
+  server\index.js:1449:                            fallbackTimeframe === "1minute"
+  server\index.js:1450:                                ? "minute"
+  server\index.js:1451:                                : fallbackTimeframe === "3m" ||
+  server\index.js:1452:                                  fallbackTimeframe === "3minute"
+  server\index.js:1472:                                                            : "minute";
+  server\index.js:1473:
+  server\index.js:1474:                        const saved =
+> server\index.js:1475:                            upsertZerodhaCandles(
+> server\index.js:1476:                                zerodhaCacheInstrument.instrument_token,
+> server\index.js:1477:                                zerodhaInterval,
+  server\index.js:1478:                                fyersCandles,
+  server\index.js:1479:                                {
+  server\index.js:1480:                                    exchange:
+> server\index.js:1481:                                        zerodhaCacheInstrument.exchange ||
+  server\index.js:1482:                                        "NSE",
+  server\index.js:1483:
+  server\index.js:1484:                                    trading_symbol:
+> server\index.js:1485:                                        zerodhaCacheInstrument.tradingsymbol ||
+  server\index.js:1486:                                        fallbackSymbol
+  server\index.js:1487:                                }
+  server\index.js:1488:                            );
+  server\index.js:1489:
+  server\index.js:1490:// console.log();
+  server\index.js:1492://     "======================================"
+  server\index.js:1493:// );
+  server\index.js:1494:// console.log(
+> server\index.js:1495://     "ZERODHA CANDLE SQLITE FALLBACK PERSISTENCE"
+  server\index.js:1496:// );
+  server\index.js:1497:// console.log(
+  server\index.js:1498://     "======================================"
+  server\index.js:1499:// );
+  server\index.js:1500:// console.log(
+  server\index.js:1501://     "Database         :",
+> server\index.js:1502://     zerodhaCandleDatabasePath()
+  server\index.js:1503:// );
+  server\index.js:1504:// console.log(
+  server\index.js:1505://     "Instrument Token :",
+> server\index.js:1506://     zerodhaCacheInstrument.instrument_token
+  server\index.js:1507:// );
+  server\index.js:1508:// console.log(
+  server\index.js:1509://     "Interval         :",
+> server\index.js:1510://     zerodhaInterval
+  server\index.js:1511:// );
+  server\index.js:1512:// console.log(
+  server\index.js:1513://     "Received Bars    :",
+  server\index.js:1514://     fyersCandles.length
+  server\index.js:1515:// );
+  server\index.js:1523:
+  server\index.js:1524:                        if (saved !== fyersCandles.length) {
+  server\index.js:1525:                            throw new Error(
+> server\index.js:1526:                                `[ZERODHA CANDLE DB] FYERS fallback persistence mismatch: received ${fyersCandles.length} candles but upserted ${saved}.`
+  server\index.js:1527:                            );
+  server\index.js:1528:                        }
+  server\index.js:1529:                    } else {
+  server\index.js:1530:
+> server\index.js:1531:                        if (!hasLoggedZerodhaFallbackPersistenceSkipped) {
+  server\index.js:1532:                            console.warn(
+> server\index.js:1533:                                "[ZERODHA CANDLE DB] FYERS fallback succeeded, but Zerodha instrument was not found. SQLite persistence skipped:",
+  server\index.js:1534:                                fallbackSymbol
+  server\index.js:1535:                            );
+> server\index.js:1536:                            hasLoggedZerodhaFallbackPersistenceSkipped = true;
+  server\index.js:1537:                        }
+  server\index.js:1538:                    }
+  server\index.js:1539:
+  server\index.js:1540:                    return res.json(fyersCandles);
+  server\index.js:1541:                }
+  server\index.js:1542:            } catch (fallbackError) {
+> server\index.js:1543:                console.warn("[ZERODHA HISTORY] FYERS fallback also failed:", fallbackError?.message ?? fallbackError);
+  server\index.js:1544:            }
+  server\index.js:1545:
+  server\index.js:1546:			const historyErrorMessage = String(error?.message ?? error);
+  server\index.js:1547:			
+  server\index.js:1548:			if (/^Instrument not found:/i.test(historyErrorMessage)) {
+> server\index.js:1549:				if (!hasLoggedMissingZerodhaInstrument) {
+  server\index.js:1550:					console.warn(
+> server\index.js:1551:						"[ZERODHA HISTORY] Zerodha instrument unavailable; FYERS fallback was unsuccessful for this request."
+  server\index.js:1552:					);
+> server\index.js:1553:					hasLoggedMissingZerodhaInstrument = true;
+  server\index.js:1554:				}
+  server\index.js:1555:			} else {
+> server\index.js:1556:				console.error("[ZERODHA HISTORY]", error);
+  server\index.js:1557:			}
+  server\index.js:1558:
+  server\index.js:1559:            res.status(500).json({
+  server\index.js:1560:                error:
+> server\index.js:1561:                    "Unable to fetch Zerodha history",
+  server\index.js:1562:                details:
+  server\index.js:1563:                    error.message
+  server\index.js:1564:            });
+  server\index.js:1565:        }
+  server\index.js:1566:    }
+  server\index.js:2024:
+  server\index.js:2025:
+  server\index.js:2026:/*=======================
+> server\index.js:2027:  ZERODHA LOGIN API
+  server\index.js:2028:=======================*/
+  server\index.js:2029:
+> server\index.js:2030:app.get("/api/zerodha/login", (req, res) => {
+  server\index.js:2031:    try {
+> server\index.js:2032:        if (isZerodhaLoggedIn()) {
+  server\index.js:2033:            return res.status(200).type("html").send(`
+  server\index.js:2034:                <!doctype html>
+  server\index.js:2035:                <html>
+  server\index.js:2036:                <head>
+  server\index.js:2037:                    <meta charset="utf-8">
+> server\index.js:2038:                    <title>Zerodha Already Connected</title>
+  server\index.js:2039:                </head>
+  server\index.js:2040:                <body>
+> server\index.js:2041:                    <h2>Zerodha is already connected.</h2>
+  server\index.js:2042:                    <p>No additional login is required.</p>
+  server\index.js:2043:                    <script>
+  server\index.js:2044:                        if (window.opener && !window.opener.closed) {
+  server\index.js:2045:                            window.opener.postMessage(
+> server\index.js:2046:                                { type: "ZERODHA_LOGIN_SUCCESS" },
+  server\index.js:2047:                                "https://ajtrade.in"
+  server\index.js:2048:                            );
+  server\index.js:2049:                        }
+  server\index.js:2050:                        window.close();
+  server\index.js:2051:                    </script>
+  server\index.js:2054:            `);
+  server\index.js:2055:        }
+  server\index.js:2056:
+> server\index.js:2057:        return res.redirect(getZerodhaLoginUrl());
+  server\index.js:2058:    } catch (error) {
+  server\index.js:2059:        return res.status(500).json({
+  server\index.js:2060:            success: false,
+> server\index.js:2061:            provider: "zerodha",
+> server\index.js:2062:            error: error?.message ?? "Unable to generate Zerodha login URL."
+  server\index.js:2063:        });
+  server\index.js:2064:    }
+  server\index.js:2065:});
+  server\index.js:2066:
+  server\index.js:2067://======================
+  server\index.js:2298:);
+  server\index.js:2299:
+  server\index.js:2300://=======================
+> server\index.js:2301:// ALICEBLUE API get
+  server\index.js:2302://=======================
+> server\index.js:2303:app.get("/api/aliceblue/login", (req, res) => {
+  server\index.js:2304:    try {
+> server\index.js:2305:        if (isAliceBlueLoggedIn()) {
+  server\index.js:2306:            return res.status(200).type("html").send(`
+  server\index.js:2307:                <!doctype html>
+  server\index.js:2308:                <html>
+  server\index.js:2309:                <head><title>Alice Blue Already Connected</title></head>
+  server\index.js:2310:                <body>
+  server\index.js:2314:                        if (window.opener && !window.opener.closed) {
+  server\index.js:2315:                            window.opener.postMessage({
+  server\index.js:2316:                                type: "AJTRADE_BROKER_AUTH",
+> server\index.js:2317:                                provider: "aliceblue",
+  server\index.js:2318:                                status: "success"
+  server\index.js:2319:                            }, "*");
+  server\index.js:2320:                        }
+  server\index.js:2321:                        window.close();
+  server\index.js:2322:                    </script>
+  server\index.js:2325:            `);
+  server\index.js:2326:        }
+  server\index.js:2327:
+> server\index.js:2328:        res.redirect(generateAliceBlueLoginUrl());
+  server\index.js:2329:    } catch (error) {
+  server\index.js:2330:        res.status(500).json({
+  server\index.js:2331:            ok: false,
+> server\index.js:2332:            provider: "aliceblue",
+  server\index.js:2333:            error: error?.message ?? "Unable to generate Alice Blue login URL."
+  server\index.js:2334:        });
+  server\index.js:2335:    }
+  server\index.js:2336:});
+  server\index.js:2337:
+  server\index.js:2338:app.get(
+> server\index.js:2339:    "/api/aliceblue/callback",
+  server\index.js:2340:    async (req, res) => {
+  server\index.js:2341:        try {
+  server\index.js:2342:            const authCode =
+  server\index.js:2343:                String(
+  server\index.js:2344:                    req.query.authCode ??
+  server\index.js:2372:            }
+  server\index.js:2373:
+  server\index.js:2374:            console.log(
+> server\index.js:2375:                "[ALICEBLUE CALLBACK] Received:",
+  server\index.js:2376:                {
+  server\index.js:2377:                    userId,
+  server\index.js:2378:                    appCode:
+  server\index.js:2379:                        appCode || null,
+  server\index.js:2380:                    hasAuthCode:
+  server\index.js:2384:
+  server\index.js:2385:            const redirectUrl =
+  server\index.js:2386:                new URL(
+> server\index.js:2387:                    "/api/aliceblue/callback",
+  server\index.js:2388:                    "https://localhost:3001"
+  server\index.js:2389:                );
+  server\index.js:2390:
+  server\index.js:2391:            redirectUrl.searchParams.set(
+  server\index.js:2392:                "authCode",
+  server\index.js:2406:            }
+  server\index.js:2407:
+  server\index.js:2408:            const session =
+> server\index.js:2409:                await aliceBlueLoginFromRedirectUrl(
+  server\index.js:2410:                    redirectUrl.toString()
+  server\index.js:2411:                );
+  server\index.js:2412:
+  server\index.js:2413:            console.log(
+> server\index.js:2414:                "[ALICEBLUE CALLBACK] Login successful:",
+  server\index.js:2415:                {
+  server\index.js:2416:                    userId:
+  server\index.js:2417:                        session?.userId,
+  server\index.js:2418:                    clientId:
+  server\index.js:2419:                        session?.clientId,
+  server\index.js:2447:                    type:
+  server\index.js:2448:                        "AJTRADE_BROKER_AUTH",
+  server\index.js:2449:                    provider:
+> server\index.js:2450:                        "aliceblue",
+  server\index.js:2451:                    status:
+  server\index.js:2452:                        "success"
+  server\index.js:2453:                },
+  server\index.js:2454:                AJTRADE_FRONTEND_ORIGIN
+  server\index.js:2455:            );
+  server\index.js:2475:        }
+  server\index.js:2476:        catch (error) {
+  server\index.js:2477:            console.error(
+> server\index.js:2478:                "[ALICEBLUE CALLBACK] Authentication failed:",
+  server\index.js:2479:                {
+  server\index.js:2480:                    message:
+  server\index.js:2481:                        error?.message,
+  server\index.js:2482:                    response:
+  server\index.js:2483:                        error?.response?.data,
+  server\index.js:2510:                    type:
+  server\index.js:2511:                        "AJTRADE_BROKER_AUTH",
+  server\index.js:2512:                    provider:
+> server\index.js:2513:                        "aliceblue",
+  server\index.js:2514:                    status:
+  server\index.js:2515:                        "error",
+  server\index.js:2516:                    message:
+  server\index.js:2517:                        ${JSON.stringify(
+  server\index.js:2518:                            error?.message ??
+  server\index.js:2534:);
+  server\index.js:2535:
+  server\index.js:2536://=======================
+> server\index.js:2537:// ALICEBLUE API get
+  server\index.js:2538://=======================
+  server\index.js:2539:
+  server\index.js:2540:app.get(
+> server\index.js:2541:    "/api/aliceblue/status",
+  server\index.js:2542:    (req, res) => {
+  server\index.js:2543:        try {
+  server\index.js:2544:            res.json(
+> server\index.js:2545:                getAliceBlueTokenStatus()
+  server\index.js:2546:            );
+  server\index.js:2547:        }
+  server\index.js:2548:        catch (error) {
+  server\index.js:2549:            console.error(
+> server\index.js:2550:                "[ALICEBLUE STATUS]",
+  server\index.js:2551:                error
+  server\index.js:2552:            );
+  server\index.js:2553:
+  server\index.js:2554:            res.status(500).json({
+  server\index.js:2555:                loggedIn: false,
+  server\index.js:2564:);
+  server\index.js:2565:
+  server\index.js:2566:app.get(
+> server\index.js:2567:    "/api/aliceblue/logout",
+  server\index.js:2568:    (req, res) => {
+  server\index.js:2569:        try {
+> server\index.js:2570:            aliceBlueLogout();
+  server\index.js:2571:
+  server\index.js:2572:            res.json({
+  server\index.js:2573:                success: true,
+> server\index.js:2574:                provider: "aliceblue",
+  server\index.js:2575:                loggedIn: false
+  server\index.js:2576:            });
+  server\index.js:2577:        }
+  server\index.js:2578:        catch (error) {
+  server\index.js:2579:            console.error(
+> server\index.js:2580:                "[ALICEBLUE LOGOUT]",
+  server\index.js:2581:                error
+  server\index.js:2582:            );
+  server\index.js:2583:
+  server\index.js:2584:            res.status(500).json({
+  server\index.js:2585:                success: false,
+> server\index.js:2586:                provider: "aliceblue",
+  server\index.js:2587:                error:
+  server\index.js:2588:                    error?.message ??
+  server\index.js:2589:                    "Unable to logout Alice Blue."
+  server\index.js:2590:            });
+  server\index.js:2591:        }
+  server\index.js:2597:    3001;
+  server\index.js:2598:
+  server\index.js:2599:try {
+> server\index.js:2600:    const aliceBlueSymbolStatus =
+> server\index.js:2601:        await initializeAliceBlueSymbols({
+  server\index.js:2602:            downloadIfMissing: true
+  server\index.js:2603:        });
+  server\index.js:2604:
+  server\index.js:2605:    startSymbolRefresh();
+  server\index.js:2606:
+  server\index.js:2607:    console.log(
+> server\index.js:2608:        "[ALICEBLUE SYMBOLS] Initialized:",
+> server\index.js:2609:        aliceBlueSymbolStatus
+  server\index.js:2610:    );
+  server\index.js:2611:}
+  server\index.js:2612:catch (error) {
+  server\index.js:2613:    console.error(
+> server\index.js:2614:        "[ALICEBLUE SYMBOLS] Initialization failed:",
+  server\index.js:2615:        error?.message ??
+  server\index.js:2616:        error
+  server\index.js:2617:    );
+  server\index.js:2618:}
+  server\index.js:2619:
+  server\index.js:2620://--------------------------------------------------
+> server\index.js:2621:// ALICEBLUE BACKGROUND SYNC WORKER
+  server\index.js:2622://
+  server\index.js:2623:// Started unconditionally at boot, independent of
+  server\index.js:2624:// login state - fetchAndCacheLive() no-ops safely
+  server\index.js:2625:// (returns null, logs, moves on) until a session
+  server\index.js:2626:// exists. Once the user logs in, the very next
+  server\index.js:2628:// further action needed.
+  server\index.js:2629://--------------------------------------------------
+  server\index.js:2630:
+> server\index.js:2631:startAliceBlueSync();
+  server\index.js:2632:
+  server\index.js:2633:try {
+  server\index.js:2634:    const fyersSymbolStatus =
+  server\index.js:2635:        await initializeFyersSymbolMaster({
+  server\index.js:2636:            downloadIfMissing: true
+  server\index.js:2652:    );
+  server\index.js:2653:}
+  server\index.js:2654:try {
+> server\index.js:2655:    const indstocksSymbolStatus =
+> server\index.js:2656:        await initializeIndstocksSymbols({
+  server\index.js:2657:            downloadIfMissing: true
+  server\index.js:2658:        });
+  server\index.js:2659:
+> server\index.js:2660:    startIndstocksSymbolRefresh();
+  server\index.js:2661:
+  server\index.js:2662:    console.log(
+> server\index.js:2663:        "[INDSTOCKS SYMBOLS] Initialized:",
+> server\index.js:2664:        indstocksSymbolStatus
+  server\index.js:2665:    );
+  server\index.js:2666:}
+  server\index.js:2667:catch (error) {
+  server\index.js:2668:    console.error(
+> server\index.js:2669:        "[INDSTOCKS SYMBOLS] Initialization failed:",
+  server\index.js:2670:        error?.message ??
+  server\index.js:2671:        error
+  server\index.js:2672:    );
+  server\index.js:2673:}
+  server\index.js:2674:
+  server\index.js:2752:        );
+  server\index.js:2753:
+  server\index.js:2754:        console.log(
+> server\index.js:2755:            "ZERODHA ROUTE LOADED"
+  server\index.js:2756:        );
+  server\index.js:2757:
+  server\index.js:2758:        console.log(
+  server\index.js:2759:            "FYERS FEED LOADED"
+  server\index.js:2760:        );
+
+

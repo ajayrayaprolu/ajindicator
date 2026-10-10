@@ -102,19 +102,22 @@ import {
 import {
     generateLoginUrl as generateFyersLoginUrl,
     exchangeAuthCode as exchangeFyersAuthCode,
+    refreshAccessToken as refreshFyersAccessToken,
     getLoginStatus as getFyersLoginStatus,
     logout as fyersLogout
 } from "./fyers/login.js";
+
+import {
+    isLoggedIn as isFyersLoggedIn,
+    getRefreshToken as getFyersRefreshToken
+} from "./fyers/token.js";
 
 import {
     getHistory as getFyersHistory
 } from "./fyers/history.js";
 
 import {
-    resolveFyersSymbol
-} from "./fyers/symbolMaster.js";
-
-import {
+	resolveFyersSymbol,
     initializeFyersSymbolMaster,
 	getFyersContractByTicker,
     getFyersOptionContract,
@@ -130,9 +133,6 @@ import {
     startFyersEquityRefresh
 } from "./fyers/equityMaster.js";
 
-import {
-    isLoggedIn as isFyersLoggedIn
-} from "./fyers/token.js";
 
 //============================
 // ALICEBLUE import
@@ -1355,6 +1355,9 @@ function zerodhaCanonicalExpiryToISO(value) {
     return expiry;
 }
 
+//====================================
+// Zerodha history and fyers fallback
+//=====================================
 app.get(
     "/api/zerodha/history/:symbol",
     async (req, res) => {
@@ -1397,27 +1400,62 @@ app.get(
                         fyersCandles = await getFyersHistory(contract.symbolTicker, fallbackTimeframe);
                     }
                 }
-                if (!fyersCandles) {
-                    const zerodhaRow = getInstrument("NSE", fallbackSymbol) || getInstrument("NFO", fallbackSymbol) || getInstrument("BSE", fallbackSymbol) || getByTradingSymbol(fallbackSymbol);
-                    if (zerodhaRow) {
-                        const isOption = zerodhaRow.instrument_type === "CE" || zerodhaRow.instrument_type === "PE";
-                        if (isOption) {
-                            const cleanUnderlying = String(zerodhaRow.name ?? "").replace(/^"+|"+$/g, "").trim();
-                            const contract = getFyersOptionContract({
-                                underlying: cleanUnderlying,
-                                expiry: zerodhaRow.expiry,
-                                strike: Number(zerodhaRow.strike),
-                                optionType: zerodhaRow.instrument_type
-                            });
-                            if (contract?.symbolTicker) {
-                                fyersCandles = await getFyersHistory(contract.symbolTicker, fallbackTimeframe);
-                            }
-                        } else {
-                            const fyersSymbol = resolveFyersSymbol(fallbackSymbol);
-                            fyersCandles = await getFyersHistory(fyersSymbol, fallbackTimeframe);
-                        }
-                    }
-                }
+
+				if (!fyersCandles) {
+					const zerodhaRow =
+						getInstrument("NSE", fallbackSymbol) ||
+						getInstrument("NFO", fallbackSymbol) ||
+						getInstrument("BSE", fallbackSymbol) ||
+						getByTradingSymbol(fallbackSymbol);
+				
+					if (zerodhaRow) {
+						const isOption =
+							zerodhaRow.instrument_type === "CE" ||
+							zerodhaRow.instrument_type === "PE";
+				
+						if (isOption) {
+							const cleanUnderlying = String(
+								zerodhaRow.name ?? ""
+							).replace(/^"+|"+$/g, "").trim();
+				
+							const contract = getFyersOptionContract({
+								underlying: cleanUnderlying,
+								expiry: zerodhaRow.expiry,
+								strike: Number(zerodhaRow.strike),
+								optionType: zerodhaRow.instrument_type
+							});
+				
+							if (contract?.symbolTicker) {
+								fyersCandles = await getFyersHistory(
+									contract.symbolTicker,
+									fallbackTimeframe
+								);
+							}
+						} else {
+							const fyersSymbol = resolveFyersSymbol(fallbackSymbol);
+				
+							fyersCandles = await getFyersHistory(
+								fyersSymbol,
+								fallbackTimeframe
+							);
+						}
+					} else if (
+						!canonicalUnderlying ||
+						!canonicalExpiry ||
+						!canonicalStrike ||
+						!/^(CE|PE)$/.test(canonicalType)
+					) {
+						// Try FYERS for regular symbols even when
+						// the Zerodha instrument master has no match.
+						const fyersSymbol = resolveFyersSymbol(fallbackSymbol);
+				
+						fyersCandles = await getFyersHistory(
+							fyersSymbol,
+							fallbackTimeframe
+						);
+					}
+				}
+
                 if (Array.isArray(fyersCandles) && fyersCandles.length > 0) {
 
                     if (!hasLoggedZerodhaFyersFallbackSuccess) {
@@ -1486,40 +1524,6 @@ app.get(
                                         fallbackSymbol
                                 }
                             );
-
-// console.log();
-// console.log(
-//     "======================================"
-// );
-// console.log(
-//     "ZERODHA CANDLE SQLITE FALLBACK PERSISTENCE"
-// );
-// console.log(
-//     "======================================"
-// );
-// console.log(
-//     "Database         :",
-//     zerodhaCandleDatabasePath()
-// );
-// console.log(
-//     "Instrument Token :",
-//     zerodhaCacheInstrument.instrument_token
-// );
-// console.log(
-//     "Interval         :",
-//     zerodhaInterval
-// );
-// console.log(
-//     "Received Bars    :",
-//     fyersCandles.length
-// );
-// console.log(
-//     "Upserted Bars    :",
-//     saved
-// );
-// console.log(
-//     "======================================"
-// );
 
                         if (saved !== fyersCandles.length) {
                             throw new Error(
@@ -2023,39 +2027,22 @@ app.get(
 );
 
 
+
 /*=======================
   ZERODHA LOGIN API
 =======================*/
 
 app.get("/api/zerodha/login", (req, res) => {
     try {
-        if (isZerodhaLoggedIn()) {
-            return res.status(200).type("html").send(`
-                <!doctype html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>Zerodha Already Connected</title>
-                </head>
-                <body>
-                    <h2>Zerodha is already connected.</h2>
-                    <p>No additional login is required.</p>
-                    <script>
-                        if (window.opener && !window.opener.closed) {
-                            window.opener.postMessage(
-                                { type: "ZERODHA_LOGIN_SUCCESS" },
-                                "https://ajtrade.in"
-                            );
-                        }
-                        window.close();
-                    </script>
-                </body>
-                </html>
-            `);
-        }
+        console.log("[ZERODHA LOGIN] Initiating fresh login.");
 
         return res.redirect(getZerodhaLoginUrl());
     } catch (error) {
+        console.error(
+            "[ZERODHA LOGIN] Failed to generate login URL:",
+            error?.message
+        );
+
         return res.status(500).json({
             success: false,
             provider: "zerodha",
@@ -2064,44 +2051,38 @@ app.get("/api/zerodha/login", (req, res) => {
     }
 });
 
+
 //======================
 // Fyers API get
 //======================
 
 app.get("/api/fyers/login", (req, res) => {
     try {
-        if (isFyersLoggedIn()) {
-            return res.status(200).type("html").send(`
-                <!doctype html>
-                <html>
-                <head><title>FYERS Already Connected</title></head>
-                <body>
-                    <h2>FYERS is already connected.</h2>
-                    <p>No additional login is required.</p>
-                    <script>
-                        if (window.opener && !window.opener.closed) {
-                            window.opener.postMessage({
-                                type: "AJTRADE_BROKER_AUTH",
-                                provider: "fyers",
-                                status: "success"
-                            }, "*");
-                        }
-                        window.close();
-                    </script>
-                </body>
-                </html>
-            `);
-        }
+        console.log(
+            "[FYERS LOGIN] Automatic token refresh disabled. Starting interactive login."
+        );
 
-        res.redirect(generateFyersLoginUrl());
+        return res.redirect(generateFyersLoginUrl());
+
     } catch (error) {
-        res.status(500).json({
+        console.error(
+            "[FYERS LOGIN] Route failed:",
+            error?.message
+        );
+
+        return res.status(500).json({
             ok: false,
             provider: "fyers",
-            error: error?.message ?? "Unable to generate FYERS login URL."
+            error:
+                error?.message ??
+                "Unable to generate FYERS login URL."
         });
     }
 });
+
+//======================
+// Fyers callback
+//=====================
 
 app.get(
     "/api/fyers/callback",
@@ -2155,14 +2136,14 @@ app.get(
             window.opener &&
             !window.opener.closed
         ) {
-            window.opener.postMessage(
-                {
-                    type: "AJTRADE_BROKER_AUTH",
-                    provider: "fyers",
-                    status: "success"
-                },
-                AJTRADE_FRONTEND_ORIGIN
-            );
+			window.opener.postMessage(
+				{
+					type: "AJTRADE_BROKER_AUTH",
+					provider: "fyers",
+					status: "success"
+				},
+				${JSON.stringify(AJTRADE_FRONTEND_ORIGIN)}
+			);
         }
     }
     catch (e) {
@@ -2220,7 +2201,7 @@ app.get(
                             "FYERS authentication failed."
                         )}
                 },
-                AJTRADE_FRONTEND_ORIGIN
+                ${JSON.stringify(AJTRADE_FRONTEND_ORIGIN)}
             );
         }
     }
@@ -2231,7 +2212,13 @@ app.get(
 <pre>${String(
     error?.message ??
     "Unknown error"
-)}</pre>
+).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+}[char]))}</pre>
 </body>
 </html>
                 `);
@@ -2372,16 +2359,14 @@ app.get(
                 );
             }
 
-            console.log(
-                "[ALICEBLUE CALLBACK] Received:",
-                {
-                    userId,
-                    appCode:
-                        appCode || null,
-                    hasAuthCode:
-                        Boolean(authCode)
-                }
-            );
+			console.log(
+				"[ALICEBLUE CALLBACK] Received.",
+				{
+					hasUserId: Boolean(userId),
+					hasAppCode: Boolean(appCode),
+					hasAuthCode: Boolean(authCode)
+				}
+			);
 
             const redirectUrl =
                 new URL(
@@ -2411,125 +2396,121 @@ app.get(
                     redirectUrl.toString()
                 );
 
-            console.log(
-                "[ALICEBLUE CALLBACK] Login successful:",
-                {
-                    userId:
-                        session?.userId,
-                    clientId:
-                        session?.clientId,
-                    hasSession:
-                        Boolean(
-                            session?.userSession
-                        )
-                }
-            );
+			console.log(
+				"[ALICEBLUE CALLBACK] Login successful.",
+				{
+					hasSession: Boolean(session?.userSession),
+					hasClientId: Boolean(session?.clientId)
+				}
+			);
 
             res
-                .status(200)
-                .type("html")
-                .send(`
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Alice Blue Connected</title>
-</head>
-<body>
-<script>
-(function () {
-    try {
-        if (
-            window.opener &&
-            !window.opener.closed
-        ) {
-            window.opener.postMessage(
-                {
-                    type:
-                        "AJTRADE_BROKER_AUTH",
-                    provider:
-                        "aliceblue",
-                    status:
-                        "success"
-                },
-                AJTRADE_FRONTEND_ORIGIN
-            );
-        }
-    }
-    catch (e) {
-        console.error(e);
-    }
-
-    setTimeout(
-        function () {
-            window.close();
-        },
-        300
-    );
-})();
-</script>
-<h3>Alice Blue authentication successful.</h3>
-<p>You can close this window.</p>
-</body>
-</html>
-                `);
-        }
+            .status(200)
+            .type("html")
+            .send(`
+				<!doctype html>
+				<html>
+				<head>
+				<meta charset="utf-8">
+				<title>Alice Blue Connected</title>
+				</head>
+				<body>
+				<script>
+				(function () {
+					try {
+						if (
+							window.opener &&
+							!window.opener.closed
+						) {
+							window.opener.postMessage(
+								{
+									type:
+										"AJTRADE_BROKER_AUTH",
+									provider:
+										"aliceblue",
+									status:
+										"success"
+								},
+								AJTRADE_FRONTEND_ORIGIN
+							);
+						}
+					}
+					catch (e) {
+						console.error(e);
+					}
+				
+					setTimeout(
+						function () {
+							window.close();
+						},
+						300
+					);
+				})();
+				</script>
+				<h3>Alice Blue authentication successful.</h3>
+				<p>You can close this window.</p>
+				</body>
+				</html>
+		`);
+	}
+							
         catch (error) {
-            console.error(
-                "[ALICEBLUE CALLBACK] Authentication failed:",
-                {
-                    message:
-                        error?.message,
-                    response:
-                        error?.response?.data,
-                    status:
-                        error?.response?.status
-                }
-            );
 
+			console.error(
+				"[ALICEBLUE CALLBACK] Authentication failed.",
+				{
+					httpStatus:
+						error?.response?.status ?? null,
+					providerStatus:
+						typeof error?.response?.data?.status === "string"
+							? error.response.data.status
+							: null,
+					responseKeys:
+						error?.response?.data &&
+						typeof error.response.data === "object"
+							? Object.keys(error.response.data)
+							: [],
+					errorType:
+						error?.name ?? "Error"
+				}
+			);
             res
-                .status(500)
-                .type("html")
-                .send(`
-<!doctype html>
-<html>
-<body>
-<h3>Alice Blue authentication failed</h3>
-<pre>${String(
-    error?.message ??
-    error
-)}</pre>
-<script>
-(function () {
-    try {
-        if (
-            window.opener &&
-            !window.opener.closed
-        ) {
-            window.opener.postMessage(
-                {
-                    type:
-                        "AJTRADE_BROKER_AUTH",
-                    provider:
-                        "aliceblue",
-                    status:
-                        "error",
-                    message:
-                        ${JSON.stringify(
-                            error?.message ??
-                            "Alice Blue authentication failed."
-                        )}
-                },
-                AJTRADE_FRONTEND_ORIGIN
-            );
-        }
-    }
-    catch (e) {}
-})();
-</script>
-</body>
-</html>
-                `);
+            .status(500)
+            .type("html")
+            .send(`
+				<!doctype html>
+				<html>
+				<body>
+				<h3>Alice Blue authentication failed</h3>
+				<p>Authentication failed. Return to the trading platform and try again.</p>
+				<script>
+				(function () {
+					try {
+						if (
+							window.opener &&
+							!window.opener.closed
+						) {
+							window.opener.postMessage(
+								{
+									type:
+										"AJTRADE_BROKER_AUTH",
+									provider:
+										"aliceblue",
+									status:
+										"error",
+									message:
+										"Alice Blue authentication failed."
+								},
+								AJTRADE_FRONTEND_ORIGIN
+							);
+						}
+					}
+					catch (e) {}
+				})();
+				</script>
+				</body>
+				</html>
+			`);
         }
     }
 );

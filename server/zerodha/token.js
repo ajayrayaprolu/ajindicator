@@ -98,30 +98,47 @@ export function loadSession() {
 // SAVE SESSION
 //------------------------------------------------------
 
-export function saveSession(
-    session
-) {
+export function saveSession(session) {
+    if (
+        !session ||
+        typeof session !== "object" ||
+        Array.isArray(session)
+    ) {
+        throw new Error("[ZERODHA TOKEN] Invalid session.");
+    }
 
-    fs.writeFileSync(
+    const tempFile = `${SESSION_FILE}.tmp`;
 
-        SESSION_FILE,
+    try {
+        fs.mkdirSync(path.dirname(SESSION_FILE), {
+            recursive: true
+        });
 
-        JSON.stringify(
+        fs.writeFileSync(
+            tempFile,
+            JSON.stringify(session, null, 4),
+            "utf8"
+        );
 
-            session,
+        fs.renameSync(tempFile, SESSION_FILE);
 
-            null,
+        return session;
+    } catch (error) {
+        try {
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(tempFile);
+            }
+        } catch {
+            // Ignore temporary-file cleanup errors.
+        }
 
-            4
+        console.error(
+            "[ZERODHA TOKEN] Session save failed:",
+            error?.code || error?.name || "UnknownError"
+        );
 
-        ),
-
-        "utf8"
-
-    );
-
-    return session;
-
+        throw new Error("[ZERODHA TOKEN] Failed to save session.");
+    }
 }
 
 //------------------------------------------------------

@@ -13,7 +13,7 @@
 //      ↓
 // Cache Miss
 //      ↓
-// Kite Historical API
+// Fall back Historical API
 //      ↓
 // Candle Conversion
 //      ↓

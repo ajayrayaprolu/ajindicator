@@ -1024,14 +1024,6 @@ export class AJDebugBuilder {
 			"AUTH",
 			authorityText
 		),
-		// AJ DISPLAY: CONF row - the authority gates on CONFIDENCE, a different number
-		// from the score (TOTAL). Score 100 with confidence 53 < 60 means no trade.
-		col(
-			"CONF",
-			String(Math.round((confidence.aiConfidence ?? 0) * 10) / 10),
-			"NEED",
-			String(AJRuntimeParameters.authorityConfidenceThreshold)
-		),
 		
 		...(!authority.executionAllowed
 		? [

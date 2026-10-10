@@ -100,19 +100,41 @@ function readSessionFile() {
 }
 
 function writeSessionFile(accessToken, expiresAt) {
+    const tempFile = `${SESSION_FILE}.tmp`;
+
     try {
         ensureDataDir();
+
         fs.writeFileSync(
-            SESSION_FILE,
+            tempFile,
             JSON.stringify(
-                { accessToken, expiresAt, savedAt: new Date().toISOString() },
-                null, 2
+                {
+                    accessToken,
+                    expiresAt,
+                    savedAt: new Date().toISOString()
+                },
+                null,
+                2
             ),
             "utf8"
         );
-        console.log("[INDSTOCKS TOKEN] Session cached at:", SESSION_FILE);
+
+        fs.renameSync(tempFile, SESSION_FILE);
+
+        console.log("[INDSTOCKS TOKEN] Session saved successfully");
     } catch (error) {
-        console.warn("[INDSTOCKS TOKEN] Failed to write session cache:", error?.message ?? error);
+        try {
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(tempFile);
+            }
+        } catch {
+            // Ignore temporary-file cleanup errors.
+        }
+
+        console.warn(
+            "[INDSTOCKS TOKEN] Session save failed:",
+            error?.code || error?.name || "UnknownError"
+        );
     }
 }
 
@@ -214,7 +236,7 @@ async function requestNewToken() {
     if (status === 401 || status === 403) {
         consecutiveFailures += 1;
         enterCooldown(BACKOFF_MAX_MS, `credentials rejected (HTTP ${status})`);
-        console.error("[INDSTOCKS TOKEN] Credentials rejected:", { status, data });
+        console.error("[INDSTOCKS TOKEN] Credentials rejected.", { status });
         const err = new Error("[INDSTOCKS TOKEN] Credentials rejected - check CLIENT_ID / MPIN / TOTP secret.");
         err.indstocksReason = "BAD_CREDENTIALS";
         throw err;
@@ -224,7 +246,7 @@ async function requestNewToken() {
         consecutiveFailures += 1;
         const wait = Math.min(BACKOFF_BASE_MS * 2 ** (consecutiveFailures - 1), BACKOFF_MAX_MS);
         enterCooldown(wait, `HTTP ${status}`);
-        console.error("[INDSTOCKS TOKEN] Unexpected status:", { status, data });
+        console.error("[INDSTOCKS TOKEN] Unexpected HTTP status.", { status });
         const err = new Error(`[INDSTOCKS TOKEN] Login failed with HTTP ${status}.`);
         err.indstocksReason = "HTTP_ERROR";
         throw err;
@@ -236,8 +258,15 @@ async function requestNewToken() {
     if (!accessToken) {
         consecutiveFailures += 1;
         enterCooldown(BACKOFF_MAX_MS, "unexpected response shape");
-        console.error("[INDSTOCKS TOKEN] Unexpected response shape:", JSON.stringify(data));
-        const err = new Error("[INDSTOCKS TOKEN] No access token in response - see logged shape above.");
+        console.error("[INDSTOCKS TOKEN] Unexpected response shape.", {
+			status,
+			responseType: typeof data,
+			responseKeys:
+				data && typeof data === "object"
+					? Object.keys(data)
+					: []
+		});
+        const err = new Error("[INDSTOCKS TOKEN] No access token in response.");
         err.indstocksReason = "BAD_SHAPE";
         throw err;
     }
@@ -320,3 +349,5 @@ export function getTokenStatus() {
 }
 
 export default { getAccessToken, refreshToken, getTokenStatus };
+
+

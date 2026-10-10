@@ -126,22 +126,18 @@ export async function exchangeAuthCode(
         throw new Error(
             "[ALICEBLUE LOGIN] userId is required."
         );
-
     }
 
     if (
         !authCode
     ) {
-
         throw new Error(
             "[ALICEBLUE LOGIN] authCode is required."
         );
-
     }
 
     const apiSecret =
         getApiSecret();
-
     if (
         !apiSecret
     ) {
@@ -149,7 +145,6 @@ export async function exchangeAuthCode(
         throw new Error(
             "[ALICEBLUE LOGIN] ALICEBLUE_API_SECRET missing."
         );
-
     }
 
     const checksum =
@@ -165,77 +160,68 @@ export async function exchangeAuthCode(
             `${ALICEBLUE_BASE}/open-api/od/v1/vendor/getUserDetails`,
 
             {
-
                 checkSum:
                     checksum
-
             },
-
             {
-
                 headers: {
-
                     "Content-Type":
                         "application/json"
-
                 },
-
                 timeout:
                     15000
-
             }
-
         );
 
     const data =
         response.data;
 
-    if (
-        !data ||
-        (
-            data.stat !== "Ok" &&
-            data.status !== "Ok"
-        ) ||
-        !data.userSession
-    ) {
-
-        throw new Error(
-
-            `[ALICEBLUE LOGIN] Session generation failed: ${
-                data?.emsg ??
-                data?.message ??
-                JSON.stringify(data)
-            }`
-
-        );
-
-    }
+	if (
+		!data ||
+		(
+			data.stat !== "Ok" &&
+			data.status !== "Ok"
+		) ||
+		!data.userSession
+	) {
+		console.error(
+			"[ALICEBLUE LOGIN] Session generation failed.",
+			{
+				responseStatus:
+					typeof data?.stat === "string"
+						? data.stat
+						: typeof data?.status === "string"
+							? data.status
+							: null,
+				hasUserSession: Boolean(data?.userSession),
+				responseKeys:
+					data && typeof data === "object"
+						? Object.keys(data)
+						: []
+			}
+		);
+	
+		throw new Error(
+			"[ALICEBLUE LOGIN] Session generation failed."
+		);
+	}
 
     const session = {
-
         appCode:
             getAppCode(),
-
         userId,
-
         authCode,
-
         clientId:
             data.clientId ??
             userId,
-
         userSession:
             data.userSession,
-
         generatedAt:
             new Date().toISOString()
-
     };
-
     saveSession(
         session
     );
-
     console.log(
         "[ALICEBLUE LOGIN] User session saved."
     );

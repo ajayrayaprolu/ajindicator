@@ -659,9 +659,58 @@ async function main() {
         console.log("");
 
         // Open broker login routes only after all services are ready.
-        openUrl(`${BACKEND_URL}/api/fyers/login`);
-        openUrl(`${BACKEND_URL}/api/aliceblue/login`);
-        openUrl(`${BACKEND_URL}/api/zerodha/login`);
+		// Check saved broker sessions without opening browser windows.
+		const brokerChecks = [
+			{
+				name: "FYERS",
+				url: `${BACKEND_URL}/api/fyers/status`,
+				valid: data => data?.loggedIn === true
+			},
+			{
+				name: "ALICEBLUE",
+				url: `${BACKEND_URL}/api/aliceblue/status`,
+				valid: data => data?.loggedIn === true
+			},
+			{
+				name: "ZERODHA",
+				url: `${BACKEND_URL}/api/zerodha/session/validate`,
+				valid: data => data?.valid === true
+			}
+		];
+		
+		const https = await import("node:https");
+		const axios = (await import("axios")).default;
+		
+		const agent = new https.Agent({
+			rejectUnauthorized: false
+		});
+		
+		console.log("\n========== BROKER SESSION CHECK ==========");
+		
+		for (const broker of brokerChecks) {
+			try {
+				const response = await axios.get(broker.url, {
+					httpsAgent: agent,
+					timeout: 8000
+				});
+		
+				console.log(
+					`[${broker.name}] ${
+						broker.valid(response.data)
+							? "SESSION PRESENT (not API-verified)"
+							: "LOGIN REQUIRED"
+					}`
+				);
+			} catch (error) {
+				console.log(
+					`[${broker.name}] CHECK FAILED: ${error.message}`
+				);
+			}
+		}
+		
+		agent.destroy();
+		
+		console.log("==========================================\n");
 
         // Keep the startup supervisor alive.
         await new Promise(() => {});

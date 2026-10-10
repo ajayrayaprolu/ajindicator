@@ -449,7 +449,7 @@ export async function refreshInstrumentMaster() {
     catch (error) {
 
         console.error(
-            "[Master Contract Database Sync] Refresh failed:",
+            "[MASTER CONTRACT DATABASE SYNC] Refresh failed:",
             error?.message
         );
 
@@ -479,7 +479,7 @@ export function startInstrumentSynchronization() {
         );
 
     console.log(
-        "[Master Contract Database Sync]",
+        "[MASTER CONTRACT DATABASE SYNC]",
         "Automatic refresh enabled:",
         "30 minutes"
     );

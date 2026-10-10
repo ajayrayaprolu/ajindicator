@@ -87,26 +87,56 @@ export function loadSession() {
 export function saveSession(session) {
     if (
         !session ||
-        typeof session !== "object"
+        typeof session !== "object" ||
+        Array.isArray(session)
     ) {
         throw new Error(
             "[ALICEBLUE TOKEN] Invalid session."
         );
     }
 
-    ensureDirectory();
+    const tempFile = `${SESSION_FILE}.tmp`;
 
-    fs.writeFileSync(
-        SESSION_FILE,
-        JSON.stringify(
-            session,
-            null,
-            4
-        ),
-        "utf8"
-    );
+    try {
+        ensureDirectory();
 
-    return session;
+        // Write the complete session to a temporary file first.
+        fs.writeFileSync(
+            tempFile,
+            JSON.stringify(session, null, 4),
+            "utf8"
+        );
+
+        // Replace the target session file after the write succeeds.
+        fs.renameSync(
+            tempFile,
+            SESSION_FILE
+        );
+
+        console.log(
+            "[ALICEBLUE TOKEN] Session saved successfully."
+        );
+
+        return session;
+    } catch (error) {
+        // Remove any leftover temporary file.
+        try {
+            if (fs.existsSync(tempFile)) {
+                fs.unlinkSync(tempFile);
+            }
+        } catch {
+            // Ignore temporary-file cleanup errors.
+        }
+
+        console.error(
+            "[ALICEBLUE TOKEN] Session save failed:",
+            error?.code || error?.name || "UnknownError"
+        );
+
+        throw new Error(
+            "[ALICEBLUE TOKEN] Failed to save session."
+        );
+    }
 }
 
 export function clearSession() {

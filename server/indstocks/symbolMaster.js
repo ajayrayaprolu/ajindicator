@@ -257,7 +257,7 @@ export async function downloadContractMaster() {
 
     const token = await getAccessToken();
 
-    console.log("[INDSTOCKS SYMBOLS] Downloading instrument masters...");
+    console.log("[INDSTOCKS SYMBOLS] Downloading master contracts...");
 
     const allContracts = [];
 
