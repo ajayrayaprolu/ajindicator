@@ -1,6 +1,6 @@
 // ============================================================
 // src/pages/AlgoHome.tsx
-// AJ Institutional ΓÇö Algo Home Dashboard
+// AJ Institutional — Algo Home Dashboard
 //
 // Phase 2:
 // - Reuses existing broker symbol-search APIs.
@@ -15,6 +15,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import ChartWindow from "../components/ChartWindow";
 
 import {
   ArrowDownRight,
@@ -116,16 +117,16 @@ const orders = [
 ];
 
 const history = [
-  ["09 Sep", "NIFTY 25,400 CE", "BUY ΓåÆ EXIT", "+Γé╣3,420"],
-  ["08 Sep", "BANKNIFTY 56,800 CE", "BUY ΓåÆ EXIT", "+Γé╣1,870"],
-  ["08 Sep", "RELIANCE 1240 CE", "BUY ΓåÆ SL", "-Γé╣620"],
-  ["07 Sep", "NIFTY 25,300 CE", "BUY ΓåÆ TARGET", "+Γé╣2,190"],
+  ["09 Sep", "NIFTY 25,400 CE", "BUY → EXIT", "+₹3,420"],
+  ["08 Sep", "BANKNIFTY 56,800 CE", "BUY → EXIT", "+₹1,870"],
+  ["08 Sep", "RELIANCE 1240 CE", "BUY → SL", "-₹620"],
+  ["07 Sep", "NIFTY 25,300 CE", "BUY → TARGET", "+₹2,190"],
 ];
 
 const fallbackInstruments: Instrument[] = [];
 
 function money(value: number) {
-  return `${value < 0 ? "-" : ""}Γé╣${Math.abs(value).toLocaleString("en-IN")}`;
+  return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
 }
 
 function openTerminal() {
@@ -386,7 +387,7 @@ function instrumentSecondaryLabel(
     parts.push(String(instrument.expiry));
   }
 
-  return parts.join(" ┬╖ ");
+  return parts.join(" · ");
 }
 
 export default function AlgoHome() {
@@ -414,6 +415,7 @@ export default function AlgoHome() {
 
   const [strategyPaused, setStrategyPaused] =
     useState(false);
+  const [chartTimeframe, setChartTimeframe] = useState("5");
 
   const [searchText, setSearchText] =
     useState("");
@@ -907,13 +909,415 @@ export default function AlgoHome() {
           gap: 3px;
         }
 
+        .aj-page-layout {
+          display: grid;
+          grid-template-columns: 184px minmax(0, 1fr);
+          align-items: start;
+          gap: 16px;
+        }
+        .aj-page-main {
+          min-width: 0;
+          width: 100%;
+        }
+        .aj-side-nav {
+          position: sticky;
+          top: 92px;
+          min-width: 0;
+          padding: 12px 9px;
+          border: 1px solid rgba(96,165,250,.16);
+          border-radius: 13px;
+          background: rgba(5,12,29,.88);
+        }
+        .aj-side-nav-heading {
+          padding: 8px 10px 12px;
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 850;
+          letter-spacing: 1.5px;
+        }
+        .aj-side-nav-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+          padding: 10px;
+          margin: 2px 0;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          color: #9aabc4;
+          font-size: 11px;
+          font-weight: 650;
+          line-height: 1.3;
+        }
+        .aj-side-nav-item > span {
+          display: inline-flex;
+          flex: 0 0 17px;
+          align-items: center;
+          justify-content: center;
+          color: #8298b9;
+          font-size: 15px;
+        }
+        .aj-side-nav-item.is-current {
+          border-color: rgba(96,165,250,.25);
+          color: #e2edff;
+          background: rgba(37,99,235,.17);
+        }
+        .aj-side-nav-item.is-current > span {
+          color: #60a5fa;
+        }
+        .aj-targets-ladder .aj-target-name {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+        }
+        .aj-targets-ladder .aj-target-step {
+          position: relative;
+        }
+        .aj-targets-ladder .aj-target-step::before {
+          content: "↑";
+          position: absolute;
+          left: 8px;
+          top: -12px;
+          width: 16px;
+          height: 17px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #7dd3a7;
+          font-size: 15px;
+          font-weight: 900;
+          line-height: 1;
+          pointer-events: none;
+          z-index: 2;
+        }
+        .aj-target-check {
+          display: inline-flex;
+          flex: 0 0 16px;
+          width: 16px;
+          height: 16px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(74,222,128,.7);
+          border-radius: 50%;
+          color: #4ade80;
+          font-size: 10px;
+          font-weight: 850;
+          line-height: 1;
+        }
+        .aj-target-check.is-hit {
+          border-color: #4ade80;
+          color: #052e16;
+          background: #4ade80;
+        }
+        @media (max-width: 900px) {
+          .aj-page-layout {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          .aj-side-nav {
+            position: static;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 3px;
+          }
+          .aj-side-nav-heading {
+            grid-column: 1 / -1;
+          }
+        }
+        @media (max-width: 620px) {
+          .aj-side-nav {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .aj-side-nav-item {
+            padding: 8px 6px;
+            gap: 6px;
+            font-size: 10px;
+          }
+        }
         .aj-grid {
           display: grid;
-          grid-template-columns: .8fr 1.2fr;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          align-items: start;
           gap: 18px;
           margin-bottom: 18px;
         }
 
+        .aj-chart-toolbar {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: start;
+          margin-bottom: 12px;
+          min-width: 0;
+        }
+
+        .aj-chart-toolbar-main {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .aj-chart-toolbar .aj-search { margin-bottom: 0; min-width: 0; }
+        .aj-chart-toolbar .aj-search-input-wrap { min-height: 38px; }
+        .aj-chart-toolbar .aj-indicators { gap: 5px; }
+        .aj-chart-toolbar .aj-indicator { padding: 5px 7px; font-size: 9px; }
+
+        .aj-timeframe-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          color: #74839b;
+          font-size: 8px;
+          font-weight: 800;
+        }
+
+        .aj-timeframe-control {
+          min-height: 38px;
+          padding: 0 9px;
+          border: 1px solid rgba(96,165,250,.24);
+          border-radius: 9px;
+          color: #e2e8f0;
+          background: #0b1424;
+        }
+
+        .aj-option-summary {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 7px;
+          margin-bottom: 12px;
+        }
+
+        .aj-option-field {
+          min-width: 0;
+          padding: 9px;
+          border: 1px solid rgba(148,163,184,.12);
+          border-radius: 9px;
+          background: rgba(2,6,23,.32);
+        }
+
+        .aj-option-field span {
+          display: block;
+          margin-bottom: 5px;
+          color: #74839b;
+          font-size: 8px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+
+        .aj-option-field strong {
+          display: block;
+          overflow-wrap: anywhere;
+          color: #e7edf7;
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .aj-positive { color: #4ade80 !important; }
+        .aj-pending { color: #fbbf24 !important; }
+
+        .aj-option-actions {
+          display: grid;
+          grid-template-columns: 1.2fr .8fr 1fr;
+          gap: 8px;
+          margin: 10px 0 14px;
+        }
+
+        .aj-option-actions > button {
+          min-width: 0;
+          justify-content: center;
+        }
+
+        .aj-execution-lower-grid {
+          display: grid;
+          grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+          gap: 10px;
+          align-items: stretch;
+        }
+
+        .aj-pipeline-card, .aj-targets-card {
+          min-width: 0;
+          padding: 12px;
+          border: 1px solid rgba(96,165,250,.16);
+          border-radius: 12px;
+          background: rgba(2,6,23,.28);
+        }
+
+        .aj-pipeline-steps {
+          display: grid;
+          gap: 7px;
+          margin-top: 11px;
+        }
+
+        .aj-pipeline-step {
+          display: grid;
+          grid-template-columns: 22px minmax(0, 1fr);
+          gap: 5px 7px;
+          align-items: center;
+          padding: 9px 8px;
+          border: 1px solid rgba(148,163,184,.12);
+          border-radius: 8px;
+          background: rgba(15,23,42,.56);
+        }
+
+        .aj-pipeline-number { color: #64748b; font-size: 9px; font-weight: 800; }
+        .aj-pipeline-label { color: #cbd5e1; font-size: 10px; font-weight: 750; }
+        .aj-pipeline-step strong { grid-column: 2; font-size: 9px; }
+
+        .aj-targets-compact {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 7px;
+          margin-top: 11px;
+        }
+
+        .aj-targets-compact .aj-target {
+          gap: 5px;
+          padding: 10px 8px;
+          font-size: 9px;
+        }
+
+        .aj-lifecycle-track {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 13px;
+        }
+        .aj-lifecycle-stage {
+          position: relative;
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: center;
+          gap: 7px;
+          padding: 8px 3px;
+          text-align: center;
+          border: 1px solid rgba(148,163,184,.14);
+          border-radius: 9px;
+          background: rgba(15,23,42,.45);
+        }
+        .aj-lifecycle-stage:not(:last-child)::after {
+          content: "→";
+          position: absolute;
+          top: 14px;
+          right: -11px;
+          z-index: 2;
+          color: #64748b;
+          font-size: 14px;
+          font-weight: 800;
+        }
+        .aj-lifecycle-marker {
+          display: flex;
+          width: 27px;
+          height: 27px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(148,163,184,.35);
+          border-radius: 50%;
+          color: #94a3b8;
+          background: rgba(15,23,42,.9);
+          font-size: 13px;
+          font-weight: 900;
+        }
+        .aj-lifecycle-marker.is-active {
+          border-color: rgba(74,222,128,.65);
+          color: #052e16;
+          background: #4ade80;
+        }
+        .aj-lifecycle-label {
+          color: #cbd5e1;
+          font-size: 10px;
+          font-weight: 750;
+        }
+        .aj-lifecycle-stage strong {
+          color: #94a3b8;
+          font-size: 9px;
+          overflow-wrap: anywhere;
+        }
+        .aj-lifecycle-stage strong.is-active { color: #4ade80; }
+
+        .aj-pipeline-steps {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+          margin-top: 11px;
+        }
+        .aj-pipeline-step {
+          position: relative;
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          align-items: center;
+          gap: 7px;
+          padding: 10px 4px;
+          text-align: center;
+          border: 1px solid rgba(148,163,184,.12);
+          border-radius: 8px;
+          background: rgba(15,23,42,.56);
+        }
+        .aj-pipeline-step:not(:last-child)::after {
+          content: "→";
+          position: absolute;
+          top: 14px;
+          right: -13px;
+          z-index: 2;
+          color: #60a5fa;
+          font-size: 15px;
+          font-weight: 900;
+        }
+        .aj-pipeline-number {
+          display: flex;
+          width: 25px;
+          height: 25px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(96,165,250,.5);
+          border-radius: 50%;
+          color: #93c5fd;
+          background: rgba(30,58,138,.25);
+          font-size: 11px;
+          font-weight: 900;
+        }
+        .aj-pipeline-label {
+          color: #cbd5e1;
+          font-size: 10px;
+          font-weight: 750;
+          overflow-wrap: anywhere;
+        }
+        .aj-pipeline-step strong {
+          font-size: 9px;
+          overflow-wrap: anywhere;
+        }
+        .aj-pause-button {
+          border-color: rgba(180,130,65,.55) !important;
+          color: #f5deb3 !important;
+          background: rgba(146,98,35,.25) !important;
+        }
+        .aj-pause-button:hover { background: rgba(146,98,35,.38) !important; }
+        .aj-exit-button {
+          border-color: rgba(248,113,113,.55) !important;
+          color: #fecaca !important;
+          background: rgba(153,27,27,.25) !important;
+        }
+        .aj-exit-button:hover { background: rgba(153,27,27,.4) !important; }
+
+        @media (max-width: 600px) {
+          .aj-lifecycle-track { gap: 4px; }
+          .aj-lifecycle-stage { padding: 7px 2px; }
+          .aj-lifecycle-stage:not(:last-child)::after { right: -7px; font-size: 11px; }
+          .aj-lifecycle-label { font-size: 9px; }
+          .aj-lifecycle-stage strong { font-size: 8px; }
+          .aj-pipeline-steps { gap: 8px; }
+          .aj-pipeline-step:not(:last-child)::after { right: -10px; }
+        }
+
+        @media (max-width: 900px) {
+          .aj-execution-lower-grid { grid-template-columns: minmax(0, 1fr); }
+          .aj-option-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 600px) {
+          .aj-chart-toolbar, .aj-option-actions { grid-template-columns: minmax(0, 1fr); }
+        }
         .aj-card {
           padding: 21px;
         }
@@ -1438,7 +1842,7 @@ export default function AlgoHome() {
 
                 <div className="aj-feed-status">
                   <span className="aj-live-dot" />
-                  Connected ┬╖ Live
+                  Connected · Live
                 </div>
               </button>
             ))}
@@ -1470,7 +1874,24 @@ export default function AlgoHome() {
         </div>
       </header>
 
-      <div className="aj-shell">
+      <div className="aj-shell aj-page-layout">
+        <aside className="aj-side-nav" aria-label="Main navigation">
+          <div className="aj-side-nav-heading">WORKSPACE</div>
+          <div className="aj-side-nav-item is-current"><span>⌂</span>AlgoHome</div>
+          <div className="aj-side-nav-item"><span>▦</span>Charts</div>
+          <div className="aj-side-nav-item"><span>◇</span>Strategies</div>
+          <div className="aj-side-nav-item"><span>▤</span>Positions</div>
+          <div className="aj-side-nav-item"><span>⇄</span>Orders</div>
+          <div className="aj-side-nav-item"><span>◷</span>Order History</div>
+          <div className="aj-side-nav-item"><span>◉</span>Algo Monitor</div>
+          <div className="aj-side-nav-item"><span>▧</span>Basket</div>
+          <div className="aj-side-nav-item"><span>⌘</span>Strategy Builder</div>
+          <div className="aj-side-nav-item"><span>⇆</span>Brokers</div>
+          <div className="aj-side-nav-item"><span>☆</span>Watch List</div>
+          <div className="aj-side-nav-item"><span>⌁</span>Indicators</div>
+          <div className="aj-side-nav-item"><span>⚙</span>Settings</div>
+        </aside>
+        <div className="aj-page-main">
 
         {/* ====================================================
             HERO
@@ -1481,7 +1902,7 @@ export default function AlgoHome() {
           <div className="aj-panel aj-hero-main">
 
             <div className="aj-eyebrow">
-              AUTOMATED EXECUTION ┬╖ {FEED_LABELS[feed]}
+              AUTOMATED EXECUTION · {FEED_LABELS[feed]}
             </div>
 
             <h1 className="aj-h1">
@@ -1761,11 +2182,11 @@ export default function AlgoHome() {
 
               <div>
                 <h2 className="aj-card-title">
-                  Signal Engine
+                  Live Charts & Signals
                 </h2>
 
                 <div className="aj-card-subtitle">
-                  Existing AJ indicator pipeline
+                  Live instrument chart and signal lifecycle
                 </div>
               </div>
 
@@ -1782,183 +2203,8 @@ export default function AlgoHome() {
 
             </div>
 
-            <div className="aj-indicators">
-
-              {[
-                "AJIndicator",
-                "SuperTrend",
-                "EMA 21",
-                "EMA 50",
-                "RSI",
-                "Price Action",
-              ].map((name) => (
-                <span
-                  className="aj-indicator"
-                  key={name}
-                >
-                  <CheckCircle2
-                    size={12}
-                    color="#4ade80"
-                  />
-
-                  {name}
-
-                  <span
-                    style={{
-                      color: "#4ade80",
-                      fontSize: 9,
-                    }}
-                  >
-                    READY
-                  </span>
-                </span>
-              ))}
-
-            </div>
-
-            <div
-              style={{
-                marginTop: 20,
-                padding: 16,
-                borderRadius: 13,
-                border:
-                  "1px solid rgba(96,165,250,.12)",
-                background:
-                  "rgba(2,6,23,.30)",
-              }}
-            >
-
-              <div className="aj-eyebrow">
-                SIGNAL LIFECYCLE
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gap: 8,
-                  marginTop: 13,
-                }}
-              >
-
-                {[
-                  ["Signal", "DETECTED", true],
-                  ["Entry", "WAITING", false],
-                  ["Position", "PENDING", false],
-                  ["Targets", "PENDING", false],
-                  ["Exit", "PENDING", false],
-                ].map(
-                  ([label, state, active]) => (
-                    <div
-                      key={String(label)}
-                      style={{
-                        display: "flex",
-                        justifyContent:
-                          "space-between",
-                        alignItems: "center",
-                        padding:
-                          "8px 10px",
-                        borderRadius: 8,
-                        background:
-                          "rgba(15,23,42,.45)",
-                        fontSize: 10,
-                      }}
-                    >
-                      <span
-                        style={{
-                          color: "#71809a",
-                        }}
-                      >
-                        {label}
-                      </span>
-
-                      <span
-                        style={{
-                          color: active
-                            ? "#4ade80"
-                            : "#64748b",
-                          fontWeight: 850,
-                        }}
-                      >
-                        {state}
-                      </span>
-                    </div>
-                  ),
-                )}
-
-              </div>
-
-            </div>
-
-            <div
-              className="aj-action-row"
-              style={{
-                marginTop: 15,
-              }}
-            >
-
-              <button
-                type="button"
-                className="aj-secondary"
-                onClick={() =>
-                  setStrategyPaused(
-                    (value) => !value,
-                  )
-                }
-              >
-                {strategyPaused ? (
-                  <Play size={14} />
-                ) : (
-                  <Pause size={14} />
-                )}
-
-                {strategyPaused
-                  ? "Resume"
-                  : "Pause"}
-              </button>
-
-              <button
-                type="button"
-                className="aj-secondary"
-                onClick={() =>
-                  setAutoTrade(false)
-                }
-              >
-                <Square size={14} />
-
-                Exit / Close
-              </button>
-
-            </div>
-
-          </div>
-
-          {/* ==================================================
-              OPTION EXECUTION
-              Instrument search and canonical metadata live here.
-              ================================================== */}
-
-          <div className="aj-panel aj-card">
-
-            <div className="aj-card-header">
-
-              <div>
-                <h2 className="aj-card-title">
-                  Option Execution
-                </h2>
-
-                <div className="aj-card-subtitle">
-                  {FEED_LABELS[feed]} ┬╖ Signal driven
-                  execution plan
-                </div>
-              </div>
-
-              <Target
-                size={19}
-                color="#60a5fa"
-              />
-
-            </div>
-
+            <div className="aj-chart-toolbar">
+              <div className="aj-chart-toolbar-main">
             {/* ================================================
                 EXISTING BROKER SYMBOL SEARCH
                 ================================================ */}
@@ -2077,337 +2323,359 @@ export default function AlgoHome() {
 
             </div>
 
-            {/* ================================================
-                SELECTED CANONICAL INSTRUMENT
-                ================================================ */}
+            <div className="aj-indicators">
 
-            {selectedInstrument ? (
-              <div className="aj-selected-instrument">
+              {[
+                "AJIndicator",
+                "SuperTrend",
+                "EMA 21",
+                "EMA 50",
+                "RSI",
+                "Price Action",
+              ].map((name) => (
+                <span
+                  className="aj-indicator"
+                  key={name}
+                >
+                  <CheckCircle2
+                    size={12}
+                    color="#4ade80"
+                  />
 
-                <div className="aj-selected-top">
+                  {name}
 
-                  <div>
-                    <div className="aj-selected-symbol">
-                      {selectedLabel}
-                    </div>
-
-                    <div className="aj-selected-meta">
-                      {instrumentSecondaryLabel(
-                        selectedInstrument,
-                      ) ||
-                        FEED_LABELS[feed]}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="aj-selected-remove"
-                    onClick={
-                      clearInstrument
-                    }
-                    title="Remove instrument"
+                  <span
+                    style={{
+                      color: "#4ade80",
+                      fontSize: 9,
+                    }}
                   >
-                    <X size={15} />
-                  </button>
+                    READY
+                  </span>
+                </span>
+              ))}
 
-                </div>
+            </div>
 
-                <div className="aj-canonical-grid">
-
-                  <div className="aj-canonical-item">
-                    <div className="aj-canonical-label">
-                      Symbol
-                    </div>
-
-                    <div className="aj-canonical-value">
-                      {selectedInstrument.symbol ||
-                        "ΓÇö"}
-                    </div>
-                  </div>
-
-                  <div className="aj-canonical-item">
-                    <div className="aj-canonical-label">
-                      Trading Symbol
-                    </div>
-
-                    <div className="aj-canonical-value">
-                      {selectedInstrument.tradingSymbol ||
-                        "ΓÇö"}
-                    </div>
-                  </div>
-
-                  <div className="aj-canonical-item">
-                    <div className="aj-canonical-label">
-                      Underlying
-                    </div>
-
-                    <div className="aj-canonical-value">
-                      {selectedInstrument.underlying ||
-                        "ΓÇö"}
-                    </div>
-                  </div>
-
-                  <div className="aj-canonical-item">
-                    <div className="aj-canonical-label">
-                      Expiry
-                    </div>
-
-                    <div className="aj-canonical-value">
-                      {selectedInstrument.expiry ||
-                        "ΓÇö"}
-                    </div>
-                  </div>
-
-                  <div className="aj-canonical-item">
-                    <div className="aj-canonical-label">
-                      Strike
-                    </div>
-
-                    <div className="aj-canonical-value">
-                      {selectedInstrument.strike ??
-                        "ΓÇö"}
-                    </div>
-                  </div>
-
-                  <div className="aj-canonical-item">
-                    <div className="aj-canonical-label">
-                      Option Type
-                    </div>
-
-                    <div className="aj-canonical-value">
-                      {selectedInstrument.optionType ||
-                        "ΓÇö"}
-                    </div>
-                  </div>
-
-                </div>
 
               </div>
-            ) : (
+              <label className="aj-timeframe-wrap">
+                <span>TIMEFRAME</span>
+                <select
+                  className="aj-timeframe-control"
+                  value={chartTimeframe}
+                  onChange={(event) => setChartTimeframe(event.target.value)}
+                  aria-label="Chart timeframe"
+                >
+                  <option value="1">1m</option>
+                  <option value="3">3m</option>
+                  <option value="5">5m</option>
+                  <option value="15">15m</option>
+                  <option value="30">30m</option>
+                  <option value="60">1h</option>
+                </select>
+              </label>
+            </div>
+            {/* ================================================
+                EMBEDDED LIVE CHART
+                Reuses the existing ChartWindow and selected
+                canonical broker instrument.
+                ================================================ */}
+            <div
+              className="aj-home-chart"
+              style={{
+                marginTop: 16,
+                marginBottom: 18,
+                padding: 12,
+                borderRadius: 13,
+                border: "1px solid rgba(96,165,250,.20)",
+                background: "rgba(2,6,23,.42)",
+                minWidth: 0,
+              }}
+            >
               <div
                 style={{
-                  marginBottom: 16,
-                  padding: 13,
-                  borderRadius: 12,
-                  border:
-                    "1px dashed rgba(148,163,184,.14)",
-                  color: "#68778f",
-                  fontSize: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  marginBottom: 12,
                 }}
               >
-                Search and select the instrument
-                that this signal will operate on.
-              </div>
-            )}
-
-            {/* ================================================
-                EXECUTION PLAN
-                ================================================ */}
-
-            <div className="aj-execution">
-
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Feed
-                </span>
-
-                <span className="aj-exec-value">
-                  {FEED_LABELS[feed]}
-                </span>
-              </div>
-
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Signal Timeframe
-                </span>
-
-                <span className="aj-exec-value">
-                  5 minute
-                </span>
-              </div>
-
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Indicator
-                </span>
-
-                <span className="aj-exec-value">
-                  AJIndicator ┬╖ SuperTrend
-                </span>
-              </div>
-
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Underlying
-                </span>
-
-                <span className="aj-exec-value">
-                  {selectedInstrument?.underlying ||
-                    selectedInstrument?.symbol ||
-                    "ΓÇö"}
-                </span>
-              </div>
-
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Direction
-                </span>
+                <div>
+                  <div
+                    style={{
+                      color: "#e2e8f0",
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {selectedInstrument
+                      ? selectedLabel
+                      : "Live instrument chart"}
+                  </div>
+                  <div
+                    style={{
+                      color: "#8190a8",
+                      fontSize: 10,
+                      marginTop: 4,
+                    }}
+                  >
+                    {selectedInstrument
+                      ? `${FEED_LABELS[feed]} · ${chartTimeframe}-minute chart`
+                      : "Search and select an instrument above to load its chart"}
+                  </div>
+                </div>
 
                 <span
-                  className="aj-exec-value"
                   style={{
-                    color: "#4ade80",
+                    flexShrink: 0,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    letterSpacing: ".08em",
+                    color: selectedInstrument ? "#4ade80" : "#94a3b8",
+                    border: "1px solid rgba(148,163,184,.20)",
+                    borderRadius: 20,
+                    padding: "5px 8px",
                   }}
                 >
-                  BUY
+                  {selectedInstrument ? "CHART SELECTED" : "AWAITING SYMBOL"}
                 </span>
               </div>
 
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Contract
-                </span>
+              {selectedInstrument ? (
+                <div
+                  style={{
+                    height: 420,
+                    minHeight: 320,
+                    width: "100%",
+                    minWidth: 0,
+                    overflow: "hidden",
+                    borderRadius: 9,
+                  }}
+                >
+                  <ChartWindow
+                    chartId="aj-algo-home-chart"
+                    symbol={
+                      selectedInstrument.symbol ||
+                      selectedInstrument.tradingSymbol ||
+                      ""
+                    }
+                    displayName={selectedLabel}
+                    datasource={FEED_LABELS[feed]}
+                    timeframe={chartTimeframe}
+                    indicators={{
+                      ema: true,
+                      vwap: true,
+                      rsi: true,
+                      atr: false,
+                      adx: false,
+                      ajindicator: true,
+                    }}
+                    exchange={selectedInstrument.exchange}
+                    feedSource={feed}
+                    underlying={selectedInstrument.underlying}
+                    expiry={selectedInstrument.expiry}
+                    strike={
+                      typeof selectedInstrument.strike === "number"
+                        ? selectedInstrument.strike
+                        : Number(selectedInstrument.strike) || undefined
+                    }
+                    optionType={selectedInstrument.optionType}
+                    isActive={true}
+                    onActivate={() => {}}
+                  />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    height: 210,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    padding: 20,
+                    borderRadius: 9,
+                    border: "1px dashed rgba(148,163,184,.20)",
+                    color: "#8190a8",
+                    fontSize: 11,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  Select an instrument using the broker search above.
+                  <br />
+                  The existing chart will load here.
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                marginTop: 20,
+                padding: 16,
+                borderRadius: 13,
+                border:
+                  "1px solid rgba(96,165,250,.12)",
+                background:
+                  "rgba(2,6,23,.30)",
+              }}
+            >
 
-                <span className="aj-exec-value">
-                  {selectedInstrument
-                    ? instrumentLabel(
-                        selectedInstrument,
-                      )
-                    : "Waiting for instrument"}
-                </span>
+              <div className="aj-eyebrow">
+                SIGNAL LIFECYCLE
               </div>
 
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Quantity
-                </span>
-
-                <span className="aj-exec-value">
-                  75
-                </span>
-              </div>
-
-              <div className="aj-exec-row">
-                <span className="aj-exec-label">
-                  Entry
-                </span>
-
-                <span className="aj-exec-value">
-                  Γé╣124.50
-                </span>
+              <div className="aj-lifecycle-track">
+                {[
+                  ["Signal", "DETECTED", true],
+                  ["Entry", "WAITING", false],
+                  ["Position", "PENDING", false],
+                  ["Targets", "PENDING", false],
+                  ["Exit", "PENDING", false],
+                ].map(([label, state, active]) => (
+                  <div className="aj-lifecycle-stage" key={String(label)}>
+                    <span className={`aj-lifecycle-marker ${active ? "is-active" : ""}`}>
+                      {active ? "✓" : "○"}
+                    </span>
+                    <span className="aj-lifecycle-label">{label}</span>
+                    <strong className={active ? "is-active" : ""}>{state}</strong>
+                  </div>
+                ))}
               </div>
 
             </div>
 
-            {/* ================================================
-                TARGET / STOP LIFECYCLE
-                ================================================ */}
+          </div>
 
-            <div className="aj-targets">
+          {/* ==================================================
+              OPTION EXECUTION
+              Instrument search and canonical metadata live here.
+              ================================================== */}
 
-              <div className="aj-target hit">
-                <span>
-                  Target 1 ┬╖ Γé╣145
-                </span>
+          <div className="aj-panel aj-card">
 
-                <span>
-                  Γ£ô HIT
-                </span>
+            <div className="aj-card-header">
+
+              <div>
+                <h2 className="aj-card-title">
+                  Option Executions
+                </h2>
+
+                <div className="aj-card-subtitle">
+                  {FEED_LABELS[feed]} · Signal driven
+                  execution plan
+                </div>
               </div>
 
-              <div className="aj-target wait">
-                <span>
-                  Target 2 ┬╖ Γé╣160
-                </span>
-
-                <span>
-                  WAITING
-                </span>
-              </div>
-
-              <div className="aj-target wait">
-                <span>
-                  Final Target ┬╖ Γé╣175
-                </span>
-
-                <span>
-                  WAITING
-                </span>
-              </div>
-
-              <div className="aj-target stop">
-                <span>
-                  Stop Loss ┬╖ Γé╣110
-                </span>
-
-                <span>
-                  PROTECTED
-                </span>
-              </div>
+              <Target
+                size={19}
+                color="#60a5fa"
+              />
 
             </div>
 
-            <div className="aj-action-row">
+            <div className="aj-option-summary">
+              <div className="aj-option-field">
+                <span>Underlying</span>
+                <strong>{selectedInstrument?.underlying || selectedInstrument?.symbol || "NIFTY"}</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Signal</span>
+                <strong className="aj-positive">BUY</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Option Type</span>
+                <strong>{selectedInstrument?.optionType || "—"}</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Strike</span>
+                <strong>{selectedInstrument?.strike ?? "—"}</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Expiry</span>
+                <strong>{selectedInstrument?.expiry || "—"}</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Quantity</span>
+                <strong>75</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Entry</span>
+                <strong>₹124.50</strong>
+              </div>
+              <div className="aj-option-field">
+                <span>Entry Status</span>
+                <strong className={autoTrade ? "aj-positive" : "aj-pending"}>
+                  {autoTrade ? "ARMED" : "WAITING"}
+                </strong>
+              </div>
+            </div>
 
+            <div className="aj-action-row aj-option-actions">
               <button
                 type="button"
                 className="aj-primary"
-                style={{
-                  flex: 1,
-                }}
-                onClick={() =>
-                  setAutoTrade(
-                    (value) => !value,
-                  )
-                }
+                onClick={() => setAutoTrade((value) => !value)}
               >
-                <Bot
-                  size={15}
-                  style={{
-                    verticalAlign:
-                      "middle",
-                    marginRight: 7,
-                  }}
-                />
-
-                {autoTrade
-                  ? "Auto Trade Armed"
-                  : "Auto Trade Off"}
+                <Bot size={15} />
+                {autoTrade ? "Auto Trade Armed" : "Auto Trade"}
               </button>
 
               <button
                 type="button"
-                className="aj-secondary"
-                onClick={() =>
-                  setStrategyPaused(
-                    (value) => !value,
-                  )
-                }
+                className="aj-secondary aj-pause-button"
+                onClick={() => setStrategyPaused((value) => !value)}
               >
-                {strategyPaused ? (
-                  <Play size={14} />
-                ) : (
-                  <Pause size={14} />
-                )}
-
-                {strategyPaused
-                  ? "Resume"
-                  : "Pause"}
+                {strategyPaused ? <Play size={14} /> : <Pause size={14} />}
+                {strategyPaused ? "Resume" : "Pause"}
               </button>
 
               <button
                 type="button"
-                className="aj-secondary"
-                onClick={() =>
-                  setAutoTrade(false)
-                }
+                className="aj-secondary aj-exit-button"
+                onClick={() => setAutoTrade(false)}
               >
                 <Square size={14} />
                 Exit / Close
               </button>
-
             </div>
 
+            <div className="aj-execution-lower-grid">
+              <div className="aj-pipeline-card">
+                <div className="aj-eyebrow">EXECUTION PIPELINE</div>
+                <div className="aj-pipeline-steps">
+                  {[
+                    ["01", "Signal", "Triggered", "#4ade80"],
+                    ["02", "Option", selectedInstrument ? "Resolved" : "Waiting", selectedInstrument ? "#4ade80" : "#94a3b8"],
+                    ["03", "Order", autoTrade ? "Armed" : "Not sent", autoTrade ? "#60a5fa" : "#94a3b8"],
+                    ["04", "Filled", autoTrade ? "Preview only" : "Pending", autoTrade ? "#60a5fa" : "#94a3b8"],
+                  ].map(([step, label, value, color]) => (
+                    <div className="aj-pipeline-step" key={String(step)}>
+                      <span className="aj-pipeline-number">{step}</span>
+                      <span className="aj-pipeline-label">{label}</span>
+                      <strong style={{ color: String(color) }}>{value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="aj-targets-card">
+                <div className="aj-eyebrow">TARGETS & RISK</div>
+                <div className="aj-targets aj-targets-compact aj-targets-ladder">
+                  <div className="aj-target wait">
+                    <span className="aj-target-name"><span className="aj-target-check">✓</span>TP3 · ₹175</span><span>WAITING</span>
+                  </div>
+<div className="aj-target wait aj-target-step">
+                    <span className="aj-target-name"><span className="aj-target-check">✓</span>TP2 · ₹160</span><span>WAITING</span>
+                  </div>
+<div className="aj-target hit aj-target-step">
+                    <span className="aj-target-name"><span className="aj-target-check is-hit">✓</span>TP1 · ₹145</span><span>✓ HIT</span>
+                  </div>
+                  <div className="aj-target stop">
+                    <span>Stop Loss · ₹110</span><span>PROTECTED</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
         </section>
@@ -2509,14 +2777,14 @@ export default function AlgoHome() {
                         </td>
 
                         <td>
-                          Γé╣
+                          ₹
                           {item.avg.toFixed(
                             2,
                           )}
                         </td>
 
                         <td>
-                          Γé╣
+                          ₹
                           {item.ltp.toFixed(
                             2,
                           )}
@@ -2671,7 +2939,7 @@ export default function AlgoHome() {
                 </h2>
 
                 <div className="aj-card-subtitle">
-                  Prototype metrics ΓÇö not live
+                  Prototype metrics — not live
                   account data
                 </div>
               </div>
@@ -2691,7 +2959,7 @@ export default function AlgoHome() {
                 </span>
 
                 <strong className="aj-positive">
-                  Γé╣8,420
+                  ₹8,420
                 </strong>
               </div>
 
@@ -2776,15 +3044,15 @@ export default function AlgoHome() {
               {[
                 [
                   "NIFTY Momentum",
-                  "5m ┬╖ Option Buy ┬╖ 68% win rate",
+                  "5m · Option Buy · 68% win rate",
                 ],
                 [
                   "BankNifty Breakout",
-                  "5m ┬╖ Option Buy ┬╖ 61% win rate",
+                  "5m · Option Buy · 61% win rate",
                 ],
                 [
                   "Stock Option Buy",
-                  "15m ┬╖ Signal driven ┬╖ 64% win rate",
+                  "15m · Signal driven · 64% win rate",
                 ],
               ].map(
                 ([name, meta]) => (
@@ -2828,13 +3096,18 @@ export default function AlgoHome() {
         </section>
 
         <div className="aj-footer">
-          AJ Institutional ┬╖{" "}
-          {FEED_LABELS[feed]} ┬╖ Phase 2 Algo
-          Dashboard ┬╖ No live orders are
+          AJ Institutional ·{" "}
+          {FEED_LABELS[feed]} · Phase 2 Algo
+          Dashboard · No live orders are
           submitted by this prototype.
         </div>
 
+        </div>
       </div>
     </main>
   );
 }
+
+
+
+

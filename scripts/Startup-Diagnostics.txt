@@ -1,0 +1,1054 @@
+
+========================================================================
+TIMESTAMP
+========================================================================
+2026-10-09 18:21:06
+
+========================================================================
+PACKAGE SCRIPTS
+========================================================================
+dev = vite
+backend = nodemon server/index.js
+proxy = node proxy-server.js
+server = node start-server.js
+build = tsc -b && vite build
+lint = eslint .
+preview = vite preview
+
+========================================================================
+STARTUP CONFIGURATION
+========================================================================
+File: .\start-server.js
+6: //   1. Clean up existing Node.js listeners on required ports
+    //
+    // Startup order:
+    //   2. Start backend and verify HTTPS
+    //   3. Start Vite and verify HTTPS
+7: //   2. Start backend and verify HTTPS
+    // Startup order:
+    //   1. Clean up existing Node.js listeners on required ports
+    //   3. Start Vite and verify HTTPS
+    //   4. Start proxy and verify HTTPS
+8: //   3. Start Vite and verify HTTPS
+    //   1. Clean up existing Node.js listeners on required ports
+    //   2. Start backend and verify HTTPS
+    //   4. Start proxy and verify HTTPS
+    //   5. Display the ready banner
+9: //   4. Start proxy and verify HTTPS
+    //   2. Start backend and verify HTTPS
+    //   3. Start Vite and verify HTTPS
+    //   5. Display the ready banner
+    //   6. Open broker login routes
+10: //   5. Display the ready banner
+    //   3. Start Vite and verify HTTPS
+    //   4. Start proxy and verify HTTPS
+    //   6. Open broker login routes
+    //
+15: //   .logs\vite.log
+    // Complete subprocess logs:
+    //   .logs\backend.log
+    //   .logs\proxy.log
+    //
+23: import { spawn, execFileSync } from "node:child_process";
+    //======================================================
+    
+    import { createWriteStream, mkdirSync } from "node:fs";
+    import path from "node:path";
+24: import { createWriteStream, mkdirSync } from "node:fs";
+    
+    import { spawn, execFileSync } from "node:child_process";
+    import path from "node:path";
+    import https from "node:https";
+25: import path from "node:path";
+    import { spawn, execFileSync } from "node:child_process";
+    import { createWriteStream, mkdirSync } from "node:fs";
+    import https from "node:https";
+    
+26: import https from "node:https";
+    import { createWriteStream, mkdirSync } from "node:fs";
+    import path from "node:path";
+    
+    //------------------------------------------------------
+35: const PORTS_TO_CLEAN = [3001, 5173, 443];
+    const logDir = path.join(root, ".logs");
+    
+    
+    const BACKEND_URL = "https://localhost:3001";
+37: const BACKEND_URL = "https://localhost:3001";
+    const PORTS_TO_CLEAN = [3001, 5173, 443];
+    
+    const VITE_URL = "https://localhost:5173";
+    const PROXY_URL = "https://ajtrade.in";
+38: const VITE_URL = "https://localhost:5173";
+    
+    const BACKEND_URL = "https://localhost:3001";
+    const PROXY_URL = "https://ajtrade.in";
+    
+39: const PROXY_URL = "https://ajtrade.in";
+    const BACKEND_URL = "https://localhost:3001";
+    const VITE_URL = "https://localhost:5173";
+    
+    const BACKEND_HEALTH_URL = `${BACKEND_URL}/health`;
+41: const BACKEND_HEALTH_URL = `${BACKEND_URL}/health`;
+    const PROXY_URL = "https://ajtrade.in";
+    
+    
+    const BACKEND_TIMEOUT_MS = 60000;
+44: const SERVICE_TIMEOUT_MS = 30000;
+    
+    const BACKEND_TIMEOUT_MS = 60000;
+    const RETRY_INTERVAL_MS = 500;
+    
+97:         /\b(READY|LOADED|CONNECTED|LISTENING|DONE|SUCCESSFUL)\b/i.test(line);
+    
+        const isSuccess =
+    
+        if (isFailure) {
+111: // Windows: inspect owners of the required TCP ports.
+    // QUIETLY FIND EXISTING LISTENERS
+    //
+    // Node.js listeners are stopped before startup.
+    // Non-Node listeners are not killed.
+116: function getWindowsPortListeners() {
+    //------------------------------------------------------
+    
+        const script = `
+            $ports = @(${PORTS_TO_CLEAN.join(",")})
+118:         $ports = @(${PORTS_TO_CLEAN.join(",")})
+    function getWindowsPortListeners() {
+        const script = `
+            $items = @(
+                Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+121:             Where-Object { $ports -contains $_.LocalPort } |
+            $items = @(
+                Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty OwningProcess -Unique |
+                ForEach-Object {
+165: function getPortForPid(pid) {
+    }
+    
+        const script = `
+            $pidToFind = ${Number(pid)}
+168:         $ports = @(${PORTS_TO_CLEAN.join(",")})
+        const script = `
+            $pidToFind = ${Number(pid)}
+            $result = @(
+                Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+173:                 $ports -contains $_.LocalPort
+                Where-Object {
+                    $_.OwningProcess -eq $pidToFind -and
+                } |
+                Select-Object -ExpandProperty LocalPort -Unique
+175:             Select-Object -ExpandProperty LocalPort -Unique
+                    $ports -contains $_.LocalPort
+                } |
+            )
+            ConvertTo-Json -InputObject $result -Compress
+212: async function cleanupOccupiedPorts() {
+    }
+    
+        // Automatic port cleanup is Windows-specific.
+        if (process.platform !== "win32") {
+213:     // Automatic port cleanup is Windows-specific.
+    
+    async function cleanupOccupiedPorts() {
+        if (process.platform !== "win32") {
+            return;
+221:         listeners = getWindowsPortListeners();
+    
+        try {
+        } catch {
+            throw new Error(
+224:             "Unable to inspect occupied ports. " +
+        } catch {
+            throw new Error(
+                "Check Windows PowerShell permissions and retry."
+            );
+243:             "A required port is occupied by a non-Node process: " +
+    
+            throw new Error(
+                `${details}. Stop that service manually and retry.`
+            );
+274:             // The process may already have exited.
+                );
+            } catch {
+            }
+        }
+285:             remaining = getWindowsPortListeners();
+    
+            try {
+            } catch {
+                throw new Error(
+288:                 "Unable to verify port cleanup. Startup aborted."
+            } catch {
+                throw new Error(
+                );
+            }
+302:         remaining = getWindowsPortListeners();
+    
+        try {
+        } catch {
+            throw new Error(
+305:             "Unable to verify that required ports were released."
+        } catch {
+            throw new Error(
+            );
+        }
+315:             `Unable to release required ports: ${details}`
+    
+            throw new Error(
+            );
+        }
+340:         /VITE\s+v\d/i.test(line) ||
+            /INSTRUMENT.?CACHE/i.test(line) ||
+            /INSTRUMENT.?SYNCHRON/i.test(line) ||
+            /Local\s*:/i.test(line) ||
+            /Network\s*:/i.test(line) ||
+344:         /BROKER.*(READY|LOADED|CONNECTED|FAILED|ERROR)/i.test(line) ||
+            /Network\s*:/i.test(line) ||
+            /press\s+h\s*\+\s*enter/i.test(line) ||
+            /(?:FYERS|ALICEBLUE|ZERODHA|INDSTOCKS).*?(?:MASTER|INSTRUMENT|CONTRACT|READY|LOADED|CONNECTED|FAILED|ERROR)/i.test(line) ||
+            /(?:MASTER|INSTRUMENT|CONTRACT).*?(?:FYERS|ALICEBLUE|ZERODHA|INDSTOCKS)/i.test(line) ||
+345:         /(?:FYERS|ALICEBLUE|ZERODHA|INDSTOCKS).*?(?:MASTER|INSTRUMENT|CONTRACT|READY|LOADED|CONNECTED|FAILED|ERROR)/i.test(line) ||
+            /press\s+h\s*\+\s*enter/i.test(line) ||
+            /BROKER.*(READY|LOADED|CONNECTED|FAILED|ERROR)/i.test(line) ||
+            /(?:MASTER|INSTRUMENT|CONTRACT).*?(?:FYERS|ALICEBLUE|ZERODHA|INDSTOCKS)/i.test(line) ||
+            /SERVICES READY/i.test(line) ||
+347:         /SERVICES READY/i.test(line) ||
+            /(?:FYERS|ALICEBLUE|ZERODHA|INDSTOCKS).*?(?:MASTER|INSTRUMENT|CONTRACT|READY|LOADED|CONNECTED|FAILED|ERROR)/i.test(line) ||
+            /(?:MASTER|INSTRUMENT|CONTRACT).*?(?:FYERS|ALICEBLUE|ZERODHA|INDSTOCKS)/i.test(line) ||
+            /LISTENING/i.test(line) ||
+            /DEP0190/i.test(line) ||
+453: // WAIT FOR HTTPS
+    
+    //------------------------------------------------------
+    //------------------------------------------------------
+    
+456: function waitForHttps(url, name, timeoutMs) {
+    //------------------------------------------------------
+    
+        return new Promise((resolve, reject) => {
+            const started = Date.now();
+483:                         `${name} failed readiness check: ${message}`
+                    finish(
+                        new Error(
+                        )
+                    );
+498:             const request = https.get(
+                }
+    
+                    url,
+                    {
+518:                 retry("HTTPS endpoint not responding");
+    
+                request.on("error", () => {
+                });
+    
+612:         await cleanupOccupiedPorts();
+        try {
+            // Remove stale Node.js listeners before starting services.
+    
+            console.log("[STARTUP] Starting BACKEND...");
+617:         await waitForHttps(
+            startProcess("BACKEND", ["run", "backend"]);
+    
+                BACKEND_HEALTH_URL,
+                "Backend",
+618:             BACKEND_HEALTH_URL,
+    
+            await waitForHttps(
+                "Backend",
+                BACKEND_TIMEOUT_MS
+623:         console.log("[STARTUP] BACKEND READY");
+            );
+    
+    
+            console.log("[STARTUP] Starting VITE...");
+625:         console.log("[STARTUP] Starting VITE...");
+            console.log("[STARTUP] BACKEND READY");
+    
+            startProcess("VITE", ["run", "dev"]);
+    
+626:         startProcess("VITE", ["run", "dev"]);
+    
+            console.log("[STARTUP] Starting VITE...");
+    
+            await waitForHttps(
+628:         await waitForHttps(
+            startProcess("VITE", ["run", "dev"]);
+    
+                VITE_URL,
+                "Vite",
+629:             VITE_URL,
+    
+            await waitForHttps(
+                "Vite",
+                SERVICE_TIMEOUT_MS
+630:             "Vite",
+            await waitForHttps(
+                VITE_URL,
+                SERVICE_TIMEOUT_MS
+            );
+634:         console.log("[STARTUP] VITE READY");
+            );
+    
+    
+            console.log("[STARTUP] Starting PROXY...");
+639:         await waitForHttps(
+            startProcess("PROXY", ["run", "proxy"]);
+    
+                `${PROXY_URL}/`,
+                "Proxy",
+645:         console.log("[STARTUP] PROXY READY");
+            );
+    
+    
+            // All three services passed their HTTPS readiness checks.
+647:         // All three services passed their HTTPS readiness checks.
+            console.log("[STARTUP] PROXY READY");
+    
+            console.log("");
+            console.log("========================================");
+650:         console.log(" AJ-INSTITUTIONAL HTTPS SERVICES READY");
+            console.log("");
+            console.log("========================================");
+            console.log("========================================");
+            console.log(`1. BACKEND : ${BACKEND_URL}`);
+653:         console.log(`2. VITE    : ${VITE_URL}`);
+            console.log("========================================");
+            console.log(`1. BACKEND : ${BACKEND_URL}`);
+            console.log(`3. PROXY   : ${PROXY_URL}`);
+            console.log("4. PORT 443: PROXY HTTPS ENDPOINT");
+655:         console.log("4. PORT 443: PROXY HTTPS ENDPOINT");
+            console.log(`2. VITE    : ${VITE_URL}`);
+            console.log(`3. PROXY   : ${PROXY_URL}`);
+            console.log("========================================");
+            console.log("Frontend requests can now safely start.");
+661:         // Open broker login routes only after all services are ready.
+            console.log("");
+    
+            openUrl(`${BACKEND_URL}/api/fyers/login`);
+            openUrl(`${BACKEND_URL}/api/aliceblue/login`);
+
+========================================================================
+STARTUP CONFIGURATION
+========================================================================
+File: .\server\index.js
+8: import dotenv from "dotenv";
+    //===============================================
+    
+    
+    dotenv.config();
+15: console.log("PORT    :", process.env.PORT);
+    console.log("ENV CHECK");
+    console.log("=================================");
+    console.log("=================================");
+    
+18: import express from "express";
+    console.log("=================================");
+    
+    import https from "https";
+    import fs from "fs";
+19: import https from "https";
+    
+    import express from "express";
+    import fs from "fs";
+    import path from "path";
+20: import fs from "fs";
+    import express from "express";
+    import https from "https";
+    import path from "path";
+    import cors from "cors";
+21: import path from "path";
+    import https from "https";
+    import fs from "fs";
+    import cors from "cors";
+    import axios from "axios";
+22: import cors from "cors";
+    import fs from "fs";
+    import path from "path";
+    import axios from "axios";
+    import { WebSocketServer } from "ws";
+23: import axios from "axios";
+    import path from "path";
+    import cors from "cors";
+    import { WebSocketServer } from "ws";
+    
+24: import { WebSocketServer } from "ws";
+    import cors from "cors";
+    import axios from "axios";
+    
+    import { registerFeed } from "./feeds/FeedRegistry.js";
+26: import { registerFeed } from "./feeds/FeedRegistry.js";
+    import { WebSocketServer } from "ws";
+    
+    import feedManager from "./feeds/FeedManager.js";
+    
+27: import feedManager from "./feeds/FeedManager.js";
+    
+    import { registerFeed } from "./feeds/FeedRegistry.js";
+    
+    //==========================
+30: // ZERODHA import
+    
+    //==========================
+    //==========================
+    
+33: import { searchSymbols } from "./zerodha/SymbolSearch.js";
+    //==========================
+    
+    
+    import {
+35: import {
+    import { searchSymbols } from "./zerodha/SymbolSearch.js";
+    
+        initializeInstrumentDatabase
+    } from "./zerodha/instruments/InstrumentDatabase.js";
+39: import {
+    } from "./zerodha/instruments/InstrumentDatabase.js";
+    
+        initializeInstrumentSynchronizer,
+        startInstrumentSynchronization
+44: import {
+    } from "./zerodha/instruments/InstrumentSynchronizer.js";
+    
+        registerLoginRoutes,
+        getLoginUrl as getZerodhaLoginUrl
+49: import {
+    } from "./zerodha/login.js";
+    
+        registerTokenRoutes
+    } from "./zerodha/token.js";
+53: import {
+    } from "./zerodha/token.js";
+    
+        getAllInstruments,
+        instrumentCount,
+60: import {
+    } from "./zerodha/instruments/instruments.js";
+    
+        getHistoricalData
+    } from "./zerodha/history.js";
+64: import {
+    } from "./zerodha/history.js";
+    
+        upsertCandles as upsertZerodhaCandles,
+        zerodhaCandleDatabasePath
+69: import {
+    } from "./zerodha/data/ZerodhaCandleDatabase.js";
+    
+        isLoggedIn as isZerodhaLoggedIn
+    } from "./zerodha/token.js";
+74: // YAHOO import
+    
+    //==========================
+    //==========================
+    import {
+76: import {
+    // YAHOO import
+    //==========================
+        searchYahooSymbols
+    } from "./yahoo/YahooSymbolCatalog.js";
+80: import {
+    } from "./yahoo/YahooSymbolCatalog.js";
+    
+        createYahooFeed
+    } from "./yahoo/YahooFeedAdapter.js";
+85: // BINANCE import
+    
+    //============================
+    //============================
+    import {
+87: import {
+    // BINANCE import
+    //============================
+        createBinanceFeed
+    } from "./binance/BinanceFeedAdapter.js";
+91: import {
+    } from "./binance/BinanceFeedAdapter.js";
+    
+        createDeltaExchangeFeed
+    } from "./deltaexchange/DeltaExchangeFeedAdapter.js";
+96: // FYERS import
+    
+    //============================
+    //============================
+    import {
+98: import {
+    // FYERS import
+    //============================
+        createFyersFeed
+    } from "./fyers/FyersFeed.js";
+102: import {
+    } from "./fyers/FyersFeed.js";
+    
+        generateLoginUrl as generateFyersLoginUrl,
+        exchangeAuthCode as exchangeFyersAuthCode,
+109: import {
+    } from "./fyers/login.js";
+    
+        getHistory as getFyersHistory
+    } from "./fyers/history.js";
+113: import {
+    } from "./fyers/history.js";
+    
+        resolveFyersSymbol
+    } from "./fyers/symbolMaster.js";
+117: import {
+    } from "./fyers/symbolMaster.js";
+    
+        initializeFyersSymbolMaster,
+    	getFyersContractByTicker,
+124: import fyersOptionsRouter from "./fyers/optionsRoute.js";
+    } from "./fyers/symbolMaster.js";
+    
+    
+    import fyersEquitySearchRouter from "./fyers/equitySearchRoute.js";
+126: import fyersEquitySearchRouter from "./fyers/equitySearchRoute.js";
+    import fyersOptionsRouter from "./fyers/optionsRoute.js";
+    
+    
+    import {
+128: import {
+    import fyersEquitySearchRouter from "./fyers/equitySearchRoute.js";
+    
+        initializeFyersEquityMaster,
+        startFyersEquityRefresh
+133: import {
+    } from "./fyers/equityMaster.js";
+    
+        isLoggedIn as isFyersLoggedIn
+    } from "./fyers/token.js";
+138: // ALICEBLUE import
+    
+    //============================
+    //============================
+    
+141: import {
+    //============================
+    
+        generateLoginUrl as generateAliceBlueLoginUrl,
+        exchangeAuthCode as exchangeAliceBlueAuthCode,
+149: import {
+    } from "./aliceblue/login.js";
+    
+        createAliceBlueFeed
+    } from "./aliceblue/AliceBlueFeed.js";
+153: import {
+    } from "./aliceblue/AliceBlueFeed.js";
+    
+        initializeAliceBlueSymbols,
+        getAliceBlueContractBySymbol,
+159: import aliceBlueOptionsRouter from "./aliceblue/optionsRoute.js";
+    } from "./aliceblue/symbolMaster.js";
+    
+    import deltaExchangeOptionsRouter from "./deltaexchange/optionsRoute.js";
+    import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
+160: import deltaExchangeOptionsRouter from "./deltaexchange/optionsRoute.js";
+    
+    import aliceBlueOptionsRouter from "./aliceblue/optionsRoute.js";
+    import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
+    
+161: import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
+    import aliceBlueOptionsRouter from "./aliceblue/optionsRoute.js";
+    import deltaExchangeOptionsRouter from "./deltaexchange/optionsRoute.js";
+    
+    import {
+163: import {
+    import aliceBlueEquitySearchRouter from "./aliceblue/equitySearchRoute.js";
+    
+        startAliceBlueSync
+    } from "./aliceblue/syncWorker.js";
+167: import {
+    } from "./aliceblue/syncWorker.js";
+    
+        getTokenStatus as getAliceBlueTokenStatus,
+        isLoggedIn as isAliceBlueLoggedIn
+173: // INDSTOCKS import
+    
+    //============================
+    //============================
+    
+176: import {
+    //============================
+    
+        createIndstocksFeed
+    } from "./indstocks/INDstocksFeed.js";
+180: import {
+    } from "./indstocks/INDstocksFeed.js";
+    
+        initializeIndstocksSymbols,
+        startSymbolRefresh as startIndstocksSymbolRefresh
+185: import {
+    } from "./indstocks/symbolMaster.js";
+    
+        loadContractMaster,
+        getAllIndstocksSymbols,
+191: import {
+    } from "./indstocks/symbolMaster.js";
+    
+        getTokenStatus as getIndstocksTokenStatus
+    } from "./indstocks/token.js";
+195: import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
+    } from "./indstocks/token.js";
+    
+    import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
+    import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
+196: import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
+    
+    import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
+    import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
+    import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
+197: import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
+    import indstocksOptionsRouter from "./indstocks/optionsRoute.js";
+    import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
+    import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
+    import telegramRoute from "./telegram/telegramRoute.js";
+198: import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
+    import indstocksEquitySearchRouter from "./indstocks/equitySearchRoute.js";
+    import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
+    import telegramRoute from "./telegram/telegramRoute.js";
+    
+199: import telegramRoute from "./telegram/telegramRoute.js";
+    import zerodhaOptionsRouter from "./zerodha/optionsRoute.js";
+    import zerodhaEquitySearchRouter from "./zerodha/equitySearchRoute.js";
+    
+    //================================================
+203:     "https://ajtrade.in";
+    //================================================
+    const AJTRADE_FRONTEND_ORIGIN =
+    
+    const app = express();
+325:     "/health",
+    
+    app.get(
+        (req, res) => {
+            res.json({
+753:                         "Alice Blue feed does not support getHistory()."
+                    return res.status(500).json({
+                        error:
+                    });
+                }
+820:                 // ADANIENT-EQ 29SEP 3000PE
+                    //
+                    // Friendly UI symbols such as:
+                    //
+                    // must NOT be passed directly to the legacy
+901: 						// If the current-year date has already expired,
+    					
+    						//--------------------------------------------------
+    						// the DDMMM contract belongs to the next occurrence.
+    						//--------------------------------------------------
+919:                             await import(
+    
+                            const { searchAliceBlueOptions } =
+                                    "./aliceblue/symbolMaster.js"
+                                );
+977: 						} = await import(
+    						const {
+    							searchAliceBlueSymbols
+    							"./aliceblue/symbolMaster.js"
+    						);
+1198:                 EXCHANGE_NOT_SUPPORTED: 400,
+                const statusByReason = {
+                    MARKET_HOURS_RESTRICTED: 503,
+                    SESSION_EXPIRED: 401,
+                    RESOLUTION_NOT_SUPPORTED: 400
+1200:                 RESOLUTION_NOT_SUPPORTED: 400
+                    EXCHANGE_NOT_SUPPORTED: 400,
+                    SESSION_EXPIRED: 401,
+                };
+    
+1612:             // Supported:
+                // Default = spot
+                //
+                //   spot
+                //   futures
+1704:                     ? "https://fapi.binance.com"
+                    market === "futures"
+    
+    
+                        : "https://api.binance.com";
+1706:                     : "https://api.binance.com";
+                        ? "https://fapi.binance.com"
+    
+    
+    
+1863:             const deltaLogKey = `${symbol}:${interval}`;
+                    globalThis.__deltaLogged || new Set();
+    
+    
+                if (!globalThis.__deltaLogged.has(deltaLogKey)) {
+1865:             if (!globalThis.__deltaLogged.has(deltaLogKey)) {
+                const deltaLogKey = `${symbol}:${interval}`;
+    
+    
+                    globalThis.__deltaLogged.add(deltaLogKey);
+1867:                 globalThis.__deltaLogged.add(deltaLogKey);
+                if (!globalThis.__deltaLogged.has(deltaLogKey)) {
+    
+    
+                    console.log(
+1907:                 "https://api.india.delta.exchange";
+                const apiBase =
+                    process.env.DELTA_API_BASE ??
+    
+    
+1943:             // already consumes (epoch seconds + OHLCV).
+    
+                // Normalize into the Candle shape the frontend
+                const candles =
+                    rows
+2038:                     <title>Zerodha Already Connected</title>
+                    <head>
+                        <meta charset="utf-8">
+                    </head>
+                    <body>
+2041:                     <h2>Zerodha is already connected.</h2>
+                    </head>
+                    <body>
+                        <p>No additional login is required.</p>
+                        <script>
+2047:                                 "https://ajtrade.in"
+                                window.opener.postMessage(
+                                    { type: "ZERODHA_LOGIN_SUCCESS" },
+                                );
+                            }
+2077:                 <head><title>FYERS Already Connected</title></head>
+                    <!doctype html>
+                    <html>
+                    <body>
+                        <h2>FYERS is already connected.</h2>
+2079:                     <h2>FYERS is already connected.</h2>
+                    <head><title>FYERS Already Connected</title></head>
+                    <body>
+                        <p>No additional login is required.</p>
+                        <script>
+2310:                 <head><title>Alice Blue Already Connected</title></head>
+                    <!doctype html>
+                    <html>
+                    <body>
+                        <h2>Alice Blue is already connected.</h2>
+2312:                     <h2>Alice Blue is already connected.</h2>
+                    <head><title>Alice Blue Already Connected</title></head>
+                    <body>
+                        <p>No additional login is required.</p>
+                        <script>
+2389:                     "https://localhost:3001"
+                    new URL(
+                        "/api/aliceblue/callback",
+                    );
+    
+2596: const PORT =
+    );
+    
+        process.env.PORT ||
+        3001;
+2597:     process.env.PORT ||
+    
+    const PORT =
+        3001;
+    
+2598:     3001;
+    const PORT =
+        process.env.PORT ||
+    
+    try {
+2699: const TLS_KEY =
+    }
+    
+        path.resolve(
+            process.cwd(),
+2702:         "certs",
+        path.resolve(
+            process.cwd(),
+            "ajtrade-key.pem"
+        );
+2703:         "ajtrade-key.pem"
+            process.cwd(),
+            "certs",
+        );
+    
+2706: const TLS_CERT =
+        );
+    
+        path.resolve(
+            process.cwd(),
+2709:         "certs",
+        path.resolve(
+            process.cwd(),
+            "ajtrade.pem"
+        );
+2713: if (!fs.existsSync(TLS_KEY)) {
+        );
+    
+        throw new Error(
+            `[HTTPS] TLS key not found: ${TLS_KEY}`
+2715:         `[HTTPS] TLS key not found: ${TLS_KEY}`
+    if (!fs.existsSync(TLS_KEY)) {
+        throw new Error(
+        );
+    }
+2719: if (!fs.existsSync(TLS_CERT)) {
+    }
+    
+        throw new Error(
+            `[HTTPS] TLS certificate not found: ${TLS_CERT}`
+2721:         `[HTTPS] TLS certificate not found: ${TLS_CERT}`
+    if (!fs.existsSync(TLS_CERT)) {
+        throw new Error(
+        );
+    }
+2726:     https.createServer(
+    
+    const server =
+            {
+                key:
+2728:             key:
+        https.createServer(
+            {
+                    fs.readFileSync(
+                        TLS_KEY
+2730:                     TLS_KEY
+                key:
+                    fs.readFileSync(
+                    ),
+    
+2733:             cert:
+                    ),
+    
+                    fs.readFileSync(
+                        TLS_CERT
+2735:                     TLS_CERT
+                cert:
+                    fs.readFileSync(
+                    )
+            },
+2742: server.listen(
+        );
+    
+        PORT,
+        "0.0.0.0",
+2743:     PORT,
+    
+    server.listen(
+        "0.0.0.0",
+        () => {
+2776:             "AJ v2 HTTPS Server running on port",
+    
+            console.log(
+                PORT
+            );
+2777:             PORT
+            console.log(
+                "AJ v2 HTTPS Server running on port",
+            );
+    
+2781:             "[HTTPS] Backend:",
+    
+            console.log(
+                `https://localhost:${PORT}`
+            );
+2782:             `https://localhost:${PORT}`
+            console.log(
+                "[HTTPS] Backend:",
+            );
+        }
+
+========================================================================
+STARTUP CONFIGURATION
+========================================================================
+File: .\vite.config.ts
+2: // .\vite.config.ts
+    //====================================
+    //====================================
+    
+5: import { defineConfig } from "vite";
+    //====================================
+    
+    import react from "@vitejs/plugin-react";
+    import path from "path";
+6: import react from "@vitejs/plugin-react";
+    
+    import { defineConfig } from "vite";
+    import path from "path";
+    import fs from "fs";
+7: import path from "path";
+    import { defineConfig } from "vite";
+    import react from "@vitejs/plugin-react";
+    import fs from "fs";
+    
+8: import fs from "fs";
+    import react from "@vitejs/plugin-react";
+    import path from "path";
+    
+    const ROOT = import.meta.dirname;
+10: const ROOT = import.meta.dirname;
+    import fs from "fs";
+    
+    
+    const TLS_KEY =
+12: const TLS_KEY =
+    const ROOT = import.meta.dirname;
+    
+        path.resolve(ROOT, "certs", "ajtrade-key.pem");
+    
+13:     path.resolve(ROOT, "certs", "ajtrade-key.pem");
+    
+    const TLS_KEY =
+    
+    const TLS_CERT =
+15: const TLS_CERT =
+        path.resolve(ROOT, "certs", "ajtrade-key.pem");
+    
+        path.resolve(ROOT, "certs", "ajtrade.pem");
+    
+16:     path.resolve(ROOT, "certs", "ajtrade.pem");
+    
+    const TLS_CERT =
+    
+    export default defineConfig({
+18: export default defineConfig({
+        path.resolve(ROOT, "certs", "ajtrade.pem");
+    
+        plugins: [react()],
+    
+29:         host: "0.0.0.0",
+    
+        server: {
+            port: 5173,
+            strictPort: true,
+30:         port: 5173,
+        server: {
+            host: "0.0.0.0",
+            strictPort: true,
+    
+31:         strictPort: true,
+            host: "0.0.0.0",
+            port: 5173,
+    
+            https: {
+33:         https: {
+            strictPort: true,
+    
+                key: fs.readFileSync(TLS_KEY),
+                cert: fs.readFileSync(TLS_CERT),
+34:             key: fs.readFileSync(TLS_KEY),
+    
+            https: {
+                cert: fs.readFileSync(TLS_CERT),
+            },
+35:             cert: fs.readFileSync(TLS_CERT),
+            https: {
+                key: fs.readFileSync(TLS_KEY),
+            },
+    
+40:                 target: "https://localhost:3001",
+            proxy: {
+                "/api": {
+                    changeOrigin: true,
+                    secure: false,
+48: 			host: "ajtrade.in",
+    		hmr: {
+    			protocol: "wss",
+    			port: 5173,
+    			clientPort: 443,
+49: 			port: 5173,
+    			protocol: "wss",
+    			host: "ajtrade.in",
+    			clientPort: 443,
+    		},
+50: 			clientPort: 443,
+    			host: "ajtrade.in",
+    			port: 5173,
+    		},
+    
+53:         allowedHosts: [
+    		},
+    
+                "ajtrade.in",
+                "www.ajtrade.in",
+56:             "localhost",
+                "ajtrade.in",
+                "www.ajtrade.in",
+                "127.0.0.1",
+            ],
+
+========================================================================
+STARTUP CONFIGURATION
+========================================================================
+File: .\.env
+5: ZERODHA_API_KEY=tlb1tdqpzu1hte5b
+    #=========================================
+    
+    ZERODHA_API_SECRET=ailopo0nxhiim0uctkf6zjgoqsdcemrh
+    
+9: ZERODHA_CALLBACK_URL=https://localhost:3001/api/zerodha/callback
+    
+    # OAuth callback
+    
+    #=========================================
+16: FYERS_SECRET_KEY=3XQ04XC651
+    
+    FYERS_APP_ID=5MII16ISE5-100
+    FYERS_REDIRECT_URI=https://localhost:3001/api/fyers/callback
+    FYERS_STATE=ai-institutional
+17: FYERS_REDIRECT_URI=https://localhost:3001/api/fyers/callback
+    FYERS_APP_ID=5MII16ISE5-100
+    FYERS_SECRET_KEY=3XQ04XC651
+    FYERS_STATE=ai-institutional
+    
+26: ALICEBLUE_REDIRECT_URI=https://localhost:3001/api/aliceblue/callback
+    ALICEBLUE_APPCODE=3wSQgbDC05
+    ALICEBLUE_API_SECRET=0Nd42NHu4cPBIpaClnzsLqQfQu6gUnw0QcsZSMa0qfZRmSIws8fo9JuyH5p8sCGnrRjjKhzrQMYND3M7LFLNA4ZNJc0DEEBfWeXv
+    
+    #=========================================
+34: #INDSTOCKS_TOTP_SECRET=4XBPWHCWGKDAVUGWATKE7QBGOWPCQRDJ - old setup key itself secret key
+    INDSTOCKS_MPIN=2356
+    INDSTOCKS_TOTP_SECRET=NRXQ622P2QE66VQOGXY4P55DDMPD4ZTB
+    
+    #===========================================
+39: DELTA_API_KEY=TMvNCAFC40ciNUceSqkClJNgE6Vo5b
+    # Delta Exchange
+    #==========================================
+    DELTA_API_SECRET=MGseE7vwAQHyKXCOBo0bTJeG3CgSkKL16e3AA6KvwIJuDle7A2FwC3Zqk7ZF
+    
+46: PORT=3001
+    #=========================================
+    
+    
+    #=========================================
+
+========================================================================
+LISTENING TCP PORTS
+========================================================================
+Address=:: Port=135 PID=1672 Process=svchost
+Address=0.0.0.0 Port=135 PID=1672 Process=svchost
+Address=192.168.29.221 Port=139 PID=4 Process=System
+Address=:: Port=445 PID=4 Process=System
+Address=:: Port=2869 PID=4 Process=System
+Address=0.0.0.0 Port=5040 PID=9148 Process=svchost
+Address=127.0.0.1 Port=5050 PID=24272 Process=python
+Address=:: Port=7680 PID=3268 Process=svchost
+Address=127.0.0.1 Port=8884 PID=4 Process=System
+Address=127.0.0.1 Port=11790 PID=5492 Process=SupportAssistAgent
+Address=::1 Port=42050 PID=14676 Process=OneDrive.Sync.Service
+Address=:: Port=49664 PID=1360 Process=lsass
+Address=0.0.0.0 Port=49664 PID=1360 Process=lsass
+Address=0.0.0.0 Port=49665 PID=1184 Process=wininit
+Address=:: Port=49665 PID=1184 Process=wininit
+Address=:: Port=49666 PID=2468 Process=svchost
+Address=0.0.0.0 Port=49666 PID=2468 Process=svchost
+Address=:: Port=49667 PID=3804 Process=svchost
+Address=0.0.0.0 Port=49667 PID=3804 Process=svchost
+Address=0.0.0.0 Port=49668 PID=4680 Process=spoolsv
+Address=:: Port=49668 PID=4680 Process=spoolsv
+Address=::1 Port=49669 PID=5264 Process=jhi_service
+Address=0.0.0.0 Port=49670 PID=1328 Process=services
+Address=:: Port=49670 PID=1328 Process=services
+
+========================================================================
+RUNTIME VERSIONS
+========================================================================
+v24.16.0
+12.2.0
