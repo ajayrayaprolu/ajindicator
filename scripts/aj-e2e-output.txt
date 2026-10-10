@@ -1,12 +1,12 @@
-AJ v2 E2E TEST — 2026-10-08T11:21:40.592Z
+AJ v2 E2E TEST — 2026-10-10T10:17:33.123Z
 Log file: C:\AI-Institutional\scripts\aj-e2e-output.txt
 LIVE MODE: fetching NIFTY 5m from indstocks (https://ajtrade.in/api/indstocks/history?symbol=NIFTY&timeframe=5m) ...
-(node:26800) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(node:31576) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
 (Use `node --trace-warnings ...` to show where the warning was created)
-Loaded 300 live candles. Last close: 22231.8 at 2026-10-08T09:55:00.000Z
+Loaded 375 live candles. Last close: 22520.45 at 2026-10-09T09:55:00.000Z
 
 ==============================================================================
- SCENARIO: LIVE:INDSTOCKS  (300 bars)
+ SCENARIO: LIVE:INDSTOCKS  (375 bars)
 ==============================================================================
 BAR  STATE      MODE            SCORE  CONF  AUTH   REASON
 ------------------------------------------------------------------------------
@@ -19,54 +19,86 @@ BAR  STATE      MODE            SCORE  CONF  AUTH   REASON
      DIAG blocked bar 80 (score 90, conf 62): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","Liquidity confirmed","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","Confidence threshold met","AI recommendation approved","Risk qualified","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["AI+SMC core not qualified","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Trade grade b
   80 CONFIRMED  SCORE (INTELLI  90     62    WAIT   AI+SMC core not qualified
   83 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
- 100 EXECUTED   SCORE (INTELLI  50     24    WAIT   Confidence 24.2 < 60
- 105 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
- 115 EXECUTED   SCORE (INTELLI  100    74    PASS   Weak trend
- 116 EXECUTED   SCORE (INTELLI  100    68    PASS   Weak trend
- 120 EXECUTED   SCORE (INTELLI  50     34    WAIT   Confidence 33.6 < 60
- 140 EXECUTED   SCORE (INTELLI  60     46    WAIT   Confidence 45.6 < 60
- 146 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
- 147 EXECUTED   SCORE (INTELLI  100    70    PASS   Weak trend
- 149 EXECUTED   SCORE (INTELLI  100    60    PASS   Weak trend
- 150 EXECUTED   SCORE (INTELLI  85     60    PASS   Weak trend
- 151 EXECUTED   SCORE (INTELLI  85     60    PASS   Weak trend
- 160 EXECUTED   SCORE (INTELLI  30     30    WAIT   Confidence 30.4 < 60
-     DIAG blocked bar 170 (score 100, conf 53): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"BUY APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 53.4 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Con
- 180 EXECUTED   SCORE (INTELLI  35     24    WAIT   Confidence 23.7 < 60
-     DIAG blocked bar 190 (score 75, conf 48): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 48.3 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Con
-     DIAG blocked bar 195 (score 85, conf 59): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 58.6 < 60","AI+SMC core not qualified","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trad
- 199 EXECUTED   SCORE (INTELLI  90     60    PASS   Weak trend
+  84 MANAGE     SCORE (INTELLI  90     54    WAIT   Confidence 54.0 < 60
+ 100 MANAGE     SCORE (INTELLI  50     24    WAIT   Confidence 24.2 < 60
+ 105 MANAGE     SCORE (INTELLI  100    64    PASS   Weak trend
+ 115 MANAGE     SCORE (INTELLI  100    74    PASS   Weak trend
+ 116 MANAGE     SCORE (INTELLI  100    68    PASS   Weak trend
+ 120 MANAGE     SCORE (INTELLI  50     34    WAIT   Confidence 33.6 < 60
+ 140 MANAGE     SCORE (INTELLI  60     46    WAIT   Confidence 45.6 < 60
+ 146 MANAGE     SCORE (INTELLI  100    64    PASS   Weak trend
+ 147 MANAGE     SCORE (INTELLI  100    70    PASS   Weak trend
+ 149 CLOSED     SCORE (INTELLI  100    60    PASS   Weak trend
+ 150 SCAN       SCORE (INTELLI  85     60    PASS   Weak trend
+ 151 ARMED      SCORE (INTELLI  85     60    PASS   Weak trend
+ 160 ARMED      SCORE (INTELLI  30     30    WAIT   Confidence 30.4 < 60
+     DIAG blocked bar 170 (score 100, conf 53): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 53.4 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence"
+ 180 ARMED      SCORE (INTELLI  35     24    WAIT   Confidence 23.7 < 60
+     DIAG blocked bar 190 (score 75, conf 48): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 48.3 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence",
+     DIAG blocked bar 195 (score 85, conf 59): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 58.6 < 60","AI+SMC core not qualified","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade b
+ 199 CONFIRMED  SCORE (INTELLI  90     60    PASS   Weak trend
  200 EXECUTED   SCORE (INTELLI  90     60    PASS   Weak trend
- 202 EXECUTED   SCORE (INTELLI  90     60    PASS   Weak trend
- 220 EXECUTED   SCORE (INTELLI  50     26    WAIT   Confidence 25.9 < 60
-     DIAG blocked bar 225 (score 100, conf 60): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk qualified","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 59.7 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade bel
-     DIAG blocked bar 230 (score 100, conf 55): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 55.3 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Co
- 240 EXECUTED   SCORE (INTELLI  35     29    WAIT   Confidence 28.8 < 60
-     DIAG blocked bar 250 (score 100, conf 57): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 57.3 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Co
- 251 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
+ 201 MANAGE     SCORE (INTELLI  90     60    WAIT   AI+SMC core not qualified
+ 202 MANAGE     SCORE (INTELLI  90     60    PASS   Weak trend
+ 220 MANAGE     SCORE (INTELLI  50     26    WAIT   Confidence 25.9 < 60
+     DIAG blocked bar 225 (score 100, conf 60): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk qualified","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 59.7 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below thresh
+ 225 CLOSED     SCORE (INTELLI  100    60    WAIT   Confidence 59.7 < 60
+ 226 SCAN       SCORE (INTELLI  100    54    WAIT   Confidence 54.0 < 60
+ 227 ARMED      SCORE (INTELLI  100    54    WAIT   Confidence 54.3 < 60
+     DIAG blocked bar 230 (score 100, conf 55): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 55.3 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence"
+ 240 ARMED      SCORE (INTELLI  35     29    WAIT   Confidence 28.8 < 60
+     DIAG blocked bar 250 (score 100, conf 57): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 57.3 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence"
+ 251 CONFIRMED  SCORE (INTELLI  100    64    PASS   Weak trend
  252 EXECUTED   SCORE (INTELLI  100    64    PASS   Weak trend
+ 253 MANAGE     SCORE (INTELLI  90     54    WAIT   Confidence 54.3 < 60
      DIAG blocked bar 255 (score 90, conf 55): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 54.6 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Con
-     DIAG blocked bar 260 (score 90, conf 55): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 55.3 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Con
- 260 EXECUTED   SCORE (INTELLI  90     55    WAIT   Confidence 55.3 < 60
- 264 EXECUTED   SCORE (INTELLI  100    60    PASS   Weak trend
+ 258 CLOSED     SCORE (INTELLI  90     55    WAIT   Confidence 55.0 < 60
+ 259 SCAN       SCORE (INTELLI  90     55    WAIT   Confidence 55.2 < 60
+     DIAG blocked bar 260 (score 90, conf 55): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 55.3 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence",
+ 260 ARMED      SCORE (INTELLI  90     55    WAIT   Confidence 55.3 < 60
+ 264 CONFIRMED  SCORE (INTELLI  100    60    PASS   Weak trend
  265 EXECUTED   SCORE (INTELLI  100    60    PASS   Weak trend
- 269 EXECUTED   SCORE (INTELLI  100    61    PASS   Weak trend
- 273 EXECUTED   SCORE (INTELLI  100    61    PASS   Weak trend
- 280 EXECUTED   SCORE (INTELLI  35     38    WAIT   Confidence 38.4 < 60
- 282 EXECUTED   SCORE (INTELLI  100    67    PASS   Weak trend
- 283 EXECUTED   SCORE (INTELLI  100    77    PASS   Weak trend
-     DIAG blocked bar 295 (score 90, conf 58): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"SELL APPROVED","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","Liquidity confirmed","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 58.3 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Co
- 299 EXECUTED   SCORE (INTELLI  40     61    WAIT   AI+SMC core not qualified
+ 266 MANAGE     SCORE (INTELLI  50     26    WAIT   Confidence 26.4 < 60
+ 269 MANAGE     SCORE (INTELLI  100    61    PASS   Weak trend
+ 273 MANAGE     SCORE (INTELLI  100    61    PASS   Weak trend
+ 280 MANAGE     SCORE (INTELLI  35     38    WAIT   Confidence 38.4 < 60
+ 282 MANAGE     SCORE (INTELLI  100    67    PASS   Weak trend
+ 283 MANAGE     SCORE (INTELLI  100    77    PASS   Weak trend
+ 286 CLOSED     SCORE (INTELLI  50     43    WAIT   Confidence 42.6 < 60
+ 287 SCAN       SCORE (INTELLI  35     38    WAIT   Confidence 37.9 < 60
+ 293 ARMED      SCORE (INTELLI  90     58    WAIT   Confidence 58.5 < 60
+     DIAG blocked bar 295 (score 90, conf 58): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","Liquidity confirmed","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 58.3 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence"
+ 300 ARMED      SCORE (INTELLI  70     59    WAIT   Confidence 58.5 < 60
+     DIAG blocked bar 305 (score 85, conf 58): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 57.8 < 60","AI+SMC core not qualified","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade b
+     DIAG blocked bar 310 (score 85, conf 58): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 58.5 < 60","AI+SMC core not qualified","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade b
+     DIAG blocked bar 320 (score 90, conf 49): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 48.8 < 60","Weak trend","Weak momentum","CHOCH conflict","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence",
+ 320 ARMED      SCORE (INTELLI  90     49    WAIT   Confidence 48.8 < 60
+ 325 CONFIRMED  SCORE (INTELLI  100    64    PASS   Weak trend
+ 340 CONFIRMED  SCORE (INTELLI  35     36    WAIT   Confidence 36.3 < 60
+ 342 EXECUTED   SCORE (INTELLI  85     64    PASS   Weak trend
+ 343 MANAGE     SCORE (INTELLI  85     70    PASS   Weak trend
+ 344 CLOSED     SCORE (INTELLI  100    60    PASS   Weak trend
+ 345 SCAN       SCORE (INTELLI  35     20    WAIT   Confidence 20.0 < 60
+ 353 ARMED      SCORE (INTELLI  100    60    WAIT   Confidence 59.9 < 60
+     DIAG blocked bar 360 (score 100, conf 55): {"authorityDecision":"WAIT","executionAllowed":false,"authorityApproved":false,"authorityText":"WAIT","approvalReasons":["Trend aligned","Momentum confirmed","Break of Structure","CHOCH confirmed","Market structure aligned","MTF aligned","Dominant timeframe confirmed","Higher timeframe trend","Order Flow confirmed","AI recommendation approved","Risk score acceptable","Volatility acceptable","Market regime acceptable"],"rejectionReasons":["Confidence 55.2 < 60","Weak trend","Weak momentum","Weak structure","Liquidity sweep missing","Liquidity conflict","Order Block not aligned","No valid FVG","Institutional confluence incomplete","Confidence too low","Trade grade below threshold","Confidence"
+ 360 ARMED      SCORE (INTELLI  100    55    WAIT   Confidence 55.2 < 60
+ 374 ARMED      SCORE (INTELLI  35     22    WAIT   Confidence 22.1 < 60
 ------------------------------------------------------------------------------
-STATE DWELL (bars): {"ARMED":18,"CONFIRMED":5,"EXECUTED":217}
+STATE DWELL (bars): {"ARMED":148,"CONFIRMED":25,"EXECUTED":5,"MANAGE":115,"CLOSED":5,"SCAN":17}
 TELEGRAM DRY-RUN: 0 message(s) would have been sent for this run
 (spot symbol: Telegram only fires on option charts - pass one as the 4th argument)
-RESULT: 2 trade(s) detected:
+RESULT: 5 trade(s) detected:
 PLAN SANITY (LONG needs SL < entry < TP1; SHORT needs SL > entry > TP1):
   bar 83 LONG -> OK
-  bar 150 SHORT -> BAD (SL/TP on the wrong side for this direction)
-Distinct entry prices: 1 of 2 trade(s)
+  bar 200 SHORT -> OK
+  bar 252 SHORT -> OK
+  bar 265 SHORT -> OK
+  bar 342 LONG -> BAD (SL/TP on the wrong side for this direction)
+Distinct entry prices: 5 of 5 trade(s)
   bar 83 LONG (CE) entry=22554.25 SL=22508.17 TP1=22623.37 TP2=22669.45 (score=100 conf=64 state=EXECUTED)
-  bar 150 SHORT (PE) entry=22554.25 SL=22508.17 TP1=22623.37 TP2=22669.45 (score=85 conf=60 state=EXECUTED)
+  bar 200 SHORT (PE) entry=22618.25 SL=22658.15 TP1=22558.40 TP2=22518.51 (score=90 conf=60 state=EXECUTED)
+  bar 252 SHORT (PE) entry=22503.55 SL=22542.71 TP1=22444.81 TP2=22405.65 (score=100 conf=64 state=EXECUTED)
+  bar 265 SHORT (PE) entry=22347.45 SL=22385.66 TP1=22290.13 TP2=22251.92 (score=100 conf=60 state=EXECUTED)
+  bar 342 LONG (CE) entry=22203.25 SL=22243.21 TP1=22143.31 TP2=22103.35 (score=85 conf=64 state=EXECUTED)
 
 Done. Full output saved to scripts/aj-e2e-output.txt

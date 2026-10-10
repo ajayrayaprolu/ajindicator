@@ -1,3 +1,4 @@
+import { scheduleDailyAt0830IST } from "../../dailyIstScheduler.js";
 //======================================================
 // server/zerodha/instruments/InstrumentSynchronizer.js
 // Zerodha -> SQLite synchronization
@@ -467,22 +468,13 @@ export async function refreshInstrumentMaster() {
 //======================================================
 
 export function startInstrumentSynchronization() {
+    if (refreshTimer) return;
 
-    if (refreshTimer) {
-        return;
-    }
+    refreshTimer = scheduleDailyAt0830IST(async () => {
+        await refreshInstrumentMaster();
+    });
 
-    refreshTimer =
-        setInterval(
-            refreshInstrumentMaster,
-            REFRESH_INTERVAL_MS
-        );
-
-    console.log(
-        "[MASTER CONTRACT DATABASE SYNC]",
-        "Automatic refresh enabled:",
-        "30 minutes"
-    );
+    console.log("[MASTER CONTRACT DATABASE SYNC] Daily refresh scheduled for 08:30 IST.");
 }
 
 //======================================================
@@ -490,14 +482,8 @@ export function startInstrumentSynchronization() {
 //======================================================
 
 export function stopInstrumentSynchronization() {
-
-    if (!refreshTimer) {
-        return;
+    if (refreshTimer) {
+        refreshTimer();
+        refreshTimer = null;
     }
-
-    clearInterval(
-        refreshTimer
-    );
-
-    refreshTimer = null;
 }

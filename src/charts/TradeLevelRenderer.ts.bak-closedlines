@@ -62,12 +62,6 @@ export class TradeLevelRenderer {
                 ""
             ).toUpperCase();
 
-        // AJ: trade is over once the lifecycle says CLOSED - never draw its lines
-        if (stateStr === "CLOSED") {
-            return {
-                levels: []
-            };
-        }
         const tradeActive =
             stateStr === "EXECUTED" ||
             stateStr === "MANAGE";

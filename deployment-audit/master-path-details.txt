@@ -1,0 +1,144 @@
+
+===== .\server\aliceblue\symbolMaster.js =====
+Line 9: //  1. Download Alice Blue contract master
+Line 35: const DATA_DIR =
+Line 36: path.resolve(
+Line 37: process.cwd(),
+Line 44: path.join(
+Line 45: DATA_DIR,
+Line 49: const CONTRACT_DATABASE_FILE =
+Line 101: DATA_DIR
+Line 106: DATA_DIR,
+Line 824: // DOWNLOAD CONTRACT MASTER
+Line 827: export async function downloadContractMaster() {
+Line 832: "[ALICEBLUE SYMBOLS] Downloading contract master..."
+Line 851: `[ALICEBLUE SYMBOLS] Downloading ${exch} contract master...`
+Line 1066: CONTRACT_DATABASE_FILE,
+Line 1094: export function loadContractMaster() {
+Line 1253: CONTRACT_DATABASE_FILE
+Line 1293: export async function initializeAliceBlueSymbols(
+Line 1332: await downloadContractMaster();
+Line 1374: export function startSymbolRefresh() {
+Line 1378: await downloadContractMaster();
+Line 1388: export function stopSymbolRefresh() {
+Line 1399: export function getAllAliceBlueSymbols() {
+Line 1411: export function aliceBlueSymbolCount() {
+Line 1421: export function searchAliceBlueSymbols(
+Line 1649: export function searchAliceBlueOptions(options = {}) {
+Line 1737: export function searchAliceBlueStrike(
+Line 1826: export function getAliceBlueContractByToken(
+Line 1848: export function getAliceBlueContractBySymbol(symbol, exchange = "") {
+Line 2090: export function getAliceBlueInstrumentInfo(
+Line 2165: export function resolveAliceBlueToken(
+Line 2189: export function searchAliceBlueSymbolsForUI(
+Line 2421: export function getAliceBlueSymbolStatus() {
+Line 2438: CONTRACT_DATABASE_FILE,
+Line 2451: export function shutdownAliceBlueSymbols() {
+Line 2479: downloadContractMaster,
+
+===== .\server\fyers\symbolMaster.js =====
+Line 17: //   1. Download NSE_FO / BSE_FO symbol master CSVs
+Line 131: export function inspectRawSample(segmentKey = "NSE_FO", sampleSize = 5) {
+Line 146: "Raw CSV sample is not available in memory. Call downloadFyersSymbolMaster() first."
+Line 352: export async function downloadFyersSymbolMaster() {
+Line 355: "[FYERS MASTER] Downloading symbol master (NSE_FO, BSE_FO)..."
+Line 435: export function loadFyersSymbolMasterFromDisk() {
+Line 480: export async function initializeFyersSymbolMaster(options = {}) {
+Line 490: await downloadFyersSymbolMaster();
+Line 507: export function startFyersSymbolRefresh() {
+Line 511: await downloadFyersSymbolMaster();
+Line 517: export function stopFyersSymbolRefresh() {
+Line 528: export function searchFyersOptions(options = {}) {
+Line 569: export function getFyersOptionContract({ underlying, expiry, strike, optionType }) {
+Line 581: export function getFyersContractByTicker(symbolTicker) {
+Line 589: export function listFyersExpiries(underlying) {
+Line 601: export function getFyersSymbolMasterStatus() {
+Line 634: export function shutdownFyersSymbolMaster() {
+Line 723: export function resolveFyersSymbol(
+Line 883: export function resolveFyersSymbols(
+Line 913: export function isFyersSymbol(symbol) {
+Line 930: export function getFyersExchange(symbol) {
+Line 945: export function getFyersSymbolName(symbol) {
+Line 961: downloadFyersSymbolMaster,
+Line 963: initializeFyersSymbolMaster,
+
+===== .\server\fyers\equityMaster.js =====
+Line 153: export async function downloadFyersEquityMaster() {
+Line 209: export function loadFyersEquityMasterFromDisk() {
+Line 253: export async function initializeFyersEquityMaster(options = {}) {
+Line 263: await downloadFyersEquityMaster();
+Line 280: export function startFyersEquityRefresh() {
+Line 284: await downloadFyersEquityMaster();
+Line 290: export function stopFyersEquityRefresh() {
+Line 303: export function searchFyersEquities(query, limit = 20) {
+Line 353: export function getFyersEquityMasterStatus() {
+Line 372: downloadFyersEquityMaster,
+Line 374: initializeFyersEquityMaster,
+
+===== .\server\indstocks\symbolMaster.js =====
+Line 254: // DOWNLOAD CONTRACT MASTER
+Line 257: export async function downloadContractMaster() {
+Line 261: console.log("[INDSTOCKS SYMBOLS] Downloading master contracts...");
+Line 367: export function loadContractMaster() {
+Line 411: export async function initializeIndstocksSymbols(options = {}) {
+Line 422: await downloadContractMaster();
+Line 437: export function startSymbolRefresh() {
+Line 441: await downloadContractMaster();
+Line 447: export function stopSymbolRefresh() {
+Line 458: export function searchIndstocksSymbols(query = "", limit = 50) {
+Line 535: export function searchIndstocksOptions(options = {}) {
+Line 891: export function searchIndstocksStrike(strike, underlying = "", limit = 100) {
+Line 917: export function getIndstocksContractBySymbol(symbol, exchange = "") {
+Line 951: export function resolveIndstocksSecurityId(exchange, symbol) {
+Line 999: export function searchIndstocksSymbolsForUI(query = "", limit = 50) {
+Line 1035: export function getIndstocksSymbolStatus() {
+Line 1047: export function getAllIndstocksSymbols() {
+Line 1051: export function indstocksSymbolCount() {
+Line 1059: downloadContractMaster,
+
+===== .\server\zerodha\instruments\InstrumentDatabase.js =====
+Line 40: const DATABASE_DIR =
+Line 41: path.join(
+Line 42: process.cwd(),
+Line 48: const DATABASE_FILE =
+Line 49: path.join(
+Line 50: DATABASE_DIR,
+Line 73: export function initializeInstrumentDatabase() {
+Line 85: DATABASE_DIR,
+Line 95: DATABASE_FILE
+Line 305: export function getInstrumentDatabase() {
+Line 324: export function closeInstrumentDatabase() {
+Line 344: export function instrumentDatabasePath() {
+Line 346: return DATABASE_FILE;
+
+===== .\server\zerodha\instruments\instruments.js =====
+Line 6: // ✓ Download Zerodha instrument master
+Line 143: // DOWNLOAD MASTER
+Line 146: export async function downloadInstruments() {
+Line 414: export function loadCache() {
+Line 447: export function instrumentCount() {
+Line 453: export function getAllInstruments() {
+Line 463: export function getByInstrumentToken(
+Line 485: export function getByTradingSymbol(
+Line 510: export function getInstrument(
+Line 538: export function getExchangeInstruments(
+Line 563: export function searchInstrument(
+Line 606: export async function refreshInstrumentCache() {
+Line 627: export async function initializeInstrumentCache() {
+Line 650: "[ZERODHA] Downloading master Contract DB..."
+
+===== .\server\zerodha\instruments\InstrumentSynchronizer.js =====
+Line 355: export function synchronizeInstrumentMaster() {
+Line 393: export async function initializeInstrumentSynchronizer() {
+Line 429: export async function refreshInstrumentMaster() {
+Line 470: export function startInstrumentSynchronization() {
+Line 484: export function stopInstrumentSynchronization() {
+
+===== .\server\deltaexchange\check-login.ts =====
+Line 26: const envPath = path.resolve(process.cwd(), ".env");
+
+===== .\server\deltaexchange\DeltaExchangeAuth.ts =====
+Line 36: export function getDeltaCredentials(): {
+Line 50: export function buildDeltaSignature(
+Line 71: export async function deltaAuthenticatedRequest(
+Line 123: export async function checkDeltaCredentials(): Promise<{

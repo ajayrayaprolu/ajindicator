@@ -1,0 +1,621 @@
+
+Path       : C:\AI-Institutional\server\aliceblue\AliceBlueFeed.js
+LineNumber : 42
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\aliceblue\equitySearchRoute.js
+LineNumber : 7
+Line       : // symbolMaster.js — fully generic, driven entirely by the
+
+Path       : C:\AI-Institutional\server\aliceblue\equitySearchRoute.js
+LineNumber : 8
+Line       : // downloaded contract master. No hardcoded symbol lists.
+
+Path       : C:\AI-Institutional\server\aliceblue\equitySearchRoute.js
+LineNumber : 24
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\aliceblue\optionsRoute.js
+LineNumber : 17
+Line       : // symbolMaster.js — no new resolver logic, just an HTTP surface
+
+Path       : C:\AI-Institutional\server\aliceblue\optionsRoute.js
+LineNumber : 26
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\aliceblue\optionsRoute.js
+LineNumber : 89
+Line       : // prefix here, same heuristic symbolMaster.js uses internally.
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 3
+Line       : // server/aliceblue/symbolMaster.js
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 9
+Line       : //  1. Download Alice Blue contract master
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 46
+Line       :         "contract-master.json"
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 52
+Line       : // Alice Blue contract-master endpoint.
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 54
+Line       : // The contract-master data is used to obtain the
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 824
+Line       : // DOWNLOAD CONTRACT MASTER
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 827
+Line       : export async function downloadContractMaster() {
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 832
+Line       :         "[ALICEBLUE SYMBOLS] Downloading contract master..."
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 851
+Line       :                 `[ALICEBLUE SYMBOLS] Downloading ${exch} contract master...`
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 976
+Line       :             // this fresh download is missing one or more core
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 977
+Line       :             // indices that a correct download always has
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 989
+Line       :                 "[ALICEBLUE SYMBOLS] Fresh download is missing expected index(es):",
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1010
+Line       :                 "[ALICEBLUE SYMBOLS] Initial download is missing expected index(es):",
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1068
+Line       : 			downloadedAt:
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1079
+Line       :             "[ALICEBLUE SYMBOLS] Contract master download failed:",
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1245
+Line       :         // JSON downloadedAt metadata. Use the database
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1302
+Line       :         downloadIfMissing =
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1322
+Line       :             downloadIfMissing
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1332
+Line       :             await downloadContractMaster();
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1378
+Line       :         await downloadContractMaster();
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 2479
+Line       :     downloadContractMaster,
+
+Path       : C:\AI-Institutional\server\aliceblue\syncWorker.js
+LineNumber : 47
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\deltaexchange\DeltaOptionResolver.ts
+LineNumber : 11
+Line       : // Because Delta's option master is downloaded over HTTP (not a local
+
+Path       : C:\AI-Institutional\server\deltaexchange\DeltaProductMaster.ts
+LineNumber : 17
+Line       : // is matched against the downloaded products; symbols are never
+
+Path       : C:\AI-Institutional\server\deltaexchange\DeltaProductMaster.ts
+LineNumber : 48
+Line       : // other adapters keep their downloaded masters).
+
+Path       : C:\AI-Institutional\server\deltaexchange\DeltaProductMaster.ts
+LineNumber : 54
+Line       : // DOWNLOAD / CACHE
+
+Path       : C:\AI-Institutional\server\deltaexchange\SymbolMapper.ts
+LineNumber : 12
+Line       : // The master of truth is the /v2/products download
+
+Path       : C:\AI-Institutional\server\feeds\OptionContractResolver.ts
+LineNumber : 46
+Line       :  *      symbolMaster.js       symbolMaster.js     symbolMaster.js              	   ┌─────────────-──────┼────────────────────┐ 
+
+Path       : C:\AI-Institutional\server\feeds\OptionContractResolver.ts
+LineNumber : 57
+Line       : } from "../fyers/symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\feeds\OptionContractResolver.ts
+LineNumber : 61
+Line       : } from "../aliceblue/symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\feeds\OptionContractResolver.ts
+LineNumber : 65
+Line       : } from "../indstocks/symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\feeds\OptionContractResolver.ts
+LineNumber : 418
+Line       :  * Delta resolves through the downloaded product master; everything
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 24
+Line       : import { INDEX_MAP } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 42
+Line       : // COLUMN LAYOUT — same as symbolMaster.js, confirmed
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 59
+Line       : // symbolMaster.js (the same map resolveFyersSymbol() uses),
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 150
+Line       : // DOWNLOAD
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 153
+Line       : export async function downloadFyersEquityMaster() {
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 155
+Line       :     console.log("[FYERS EQUITY MASTER] Downloading NSE_CM...");
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 180
+Line       :     const downloadedAt =
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 185
+Line       :         downloadedAt
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 193
+Line       :         Date.parse(downloadedAt);
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 255
+Line       :     const { forceRefresh = false, downloadIfMissing = true } = options;
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 261
+Line       :     if (forceRefresh || (!localLoaded && downloadIfMissing) || (localLoaded && stale)) {
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 263
+Line       :             await downloadFyersEquityMaster();
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 284
+Line       :         await downloadFyersEquityMaster();
+
+Path       : C:\AI-Institutional\server\fyers\equityMaster.js
+LineNumber : 372
+Line       :     downloadFyersEquityMaster,
+
+Path       : C:\AI-Institutional\server\fyers\FyersFeed.js
+LineNumber : 36
+Line       : from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\fyers\optionsRoute.js
+LineNumber : 22
+Line       :     getFyersSymbolMasterStatus
+
+Path       : C:\AI-Institutional\server\fyers\optionsRoute.js
+LineNumber : 23
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\fyers\optionsRoute.js
+LineNumber : 144
+Line       :     res.json({ success: true, status: getFyersSymbolMasterStatus() });
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 3
+Line       : // server/fyers/symbolMaster.js
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 5
+Line       : // FYERS Symbol Master — download, cache, index, search.
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 9
+Line       : // live sample downloaded 2026-08-20:
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 17
+Line       : //   1. Download NSE_FO / BSE_FO symbol master CSVs
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 127
+Line       : // DIAGNOSTIC — call this after any future re-download to
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 146
+Line       :                 "Raw CSV sample is not available in memory. Call downloadFyersSymbolMaster() first."
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 349
+Line       : // DOWNLOAD
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 352
+Line       : export async function downloadFyersSymbolMaster() {
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 355
+Line       :         "[FYERS MASTER] Downloading symbol master (NSE_FO, BSE_FO)..."
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 363
+Line       :             `[FYERS MASTER] Downloading ${segmentKey}...`
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 401
+Line       :             "run inspectRawSample() immediately after download."
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 405
+Line       :     const downloadedAt =
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 410
+Line       :         downloadedAt
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 418
+Line       :     lastRefresh = Date.parse(downloadedAt);
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 431
+Line       :         downloadedAt
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 435
+Line       : export function loadFyersSymbolMasterFromDisk() {
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 480
+Line       : export async function initializeFyersSymbolMaster(options = {}) {
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 482
+Line       :     const { forceRefresh = false, downloadIfMissing = true } = options;
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 484
+Line       :     const localLoaded = loadFyersSymbolMasterFromDisk();
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 488
+Line       :     if (forceRefresh || (!localLoaded && downloadIfMissing) || (localLoaded && stale)) {
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 490
+Line       :             await downloadFyersSymbolMaster();
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 511
+Line       :         await downloadFyersSymbolMaster();
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 601
+Line       : export function getFyersSymbolMasterStatus() {
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 634
+Line       : export function shutdownFyersSymbolMaster() {
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 961
+Line       :     downloadFyersSymbolMaster,
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 962
+Line       :     loadFyersSymbolMasterFromDisk,
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 963
+Line       :     initializeFyersSymbolMaster,
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 970
+Line       :     getFyersSymbolMasterStatus,
+
+Path       : C:\AI-Institutional\server\fyers\symbolMaster.js
+LineNumber : 971
+Line       :     shutdownFyersSymbolMaster,
+
+Path       : C:\AI-Institutional\server\indstocks\equitySearchRoute.js
+LineNumber : 13
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\indstocks\INDstocksFeed.js
+LineNumber : 14
+Line       : } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\indstocks\optionsRoute.js
+LineNumber : 8
+Line       : import { searchIndstocksOptions } from "./symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 3
+Line       : // server/indstocks/symbolMaster.js
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 254
+Line       : // DOWNLOAD CONTRACT MASTER
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 257
+Line       : export async function downloadContractMaster() {
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 261
+Line       :     console.log("[INDSTOCKS SYMBOLS] Downloading master contracts...");
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 287
+Line       :         console.warn("[INDSTOCKS SYMBOLS] fno download failed:", error?.message ?? error);
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 313
+Line       :         console.warn("[INDSTOCKS SYMBOLS] equity download failed:", error?.message ?? error);
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 339
+Line       :         console.warn("[INDSTOCKS SYMBOLS] index download failed:", error?.message ?? error);
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 344
+Line       :         throw new Error("[INDSTOCKS SYMBOLS] No contracts downloaded from any source.");
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 347
+Line       :     const downloadedAt = new Date().toISOString();
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 349
+Line       :     replaceContracts(allContracts, downloadedAt);
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 413
+Line       :     const { forceRefresh = false, downloadIfMissing = true } = options;
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 419
+Line       :     if (forceRefresh || (!localLoaded && downloadIfMissing) || (localLoaded && stale)) {
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 422
+Line       :             await downloadContractMaster();
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 441
+Line       :         await downloadContractMaster();
+
+Path       : C:\AI-Institutional\server\indstocks\symbolMaster.js
+LineNumber : 1059
+Line       :     downloadContractMaster,
+
+Path       : C:\AI-Institutional\server\indstocks\websocket.js
+LineNumber : 12
+Line       : // (EXCH_SECURITYID, e.g. "NSE_2885") used by history.js/symbolMaster.js.
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentCache.ts
+LineNumber : 48
+Line       :     // DOWNLOAD FROM NODE SERVER
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 12
+Line       : // server/zerodha/data/zerodha-contract-master.db
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 24
+Line       : import Database from "better-sqlite3";
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 30
+Line       : // Contract-master database is intentionally stored under:
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 35
+Line       : //   - instruments/  -> instrument JSON/cache/synchronizer
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 51
+Line       :         "zerodha-contract-master.db"
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 69
+Line       : // synchronizer periodically updates the data.
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 94
+Line       :         new Database(
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 121
+Line       :         CREATE TABLE IF NOT EXISTS instruments (
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 6
+Line       : // ✓ Download Zerodha instrument master
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 143
+Line       : // DOWNLOAD MASTER
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 146
+Line       : export async function downloadInstruments() {
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 155
+Line       :         "ZERODHA MASTER CONTRACT DOWNLOAD"
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 612
+Line       :     return await downloadInstruments();
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 623
+Line       : //    download from Zerodha
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 644
+Line       :     // Try download
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 650
+Line       :             "[ZERODHA] Downloading master Contract DB..."
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 653
+Line       :         await downloadInstruments();
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\instruments.js
+LineNumber : 685
+Line       :     downloadInstruments,
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 3
+Line       : // server/zerodha/instruments/InstrumentSynchronizer.js
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 171
+Line       :     // Current successful master download reactivates
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 352
+Line       : // SYNCHRONIZE EXISTING CACHE
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 355
+Line       : export function synchronizeInstrumentMaster() {
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 382
+Line       :         "SQLite synchronized:",
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 393
+Line       : export async function initializeInstrumentSynchronizer() {
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 405
+Line       :         synchronizeInstrumentMaster();
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentSynchronizer.js
+LineNumber : 446
+Line       :         synchronizeInstrumentMaster();
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 10
+Line       : //   5. Synchronize Zerodha instrument master
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 28
+Line       :     synchronizeInstrumentMaster
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 30
+Line       : from "./instruments/InstrumentSynchronizer.js";
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 244
+Line       :                 // the correct point to download the Zerodha
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 260
+Line       :                         synchronizeInstrumentMaster();
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 262
+Line       :                         "[ZERODHA] master contract synchronized:",
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 82
+Line       :     initializeInstrumentSynchronizer,
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 84
+Line       : } from "./zerodha/instruments/InstrumentSynchronizer.js";
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 167
+Line       :     initializeFyersSymbolMaster,
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 171
+Line       : } from "./fyers/symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 201
+Line       : } from "./aliceblue/symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 230
+Line       : } from "./indstocks/symbolMaster.js";
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 304
+Line       : // Prepare the instrument database and synchronizer before serving requests.
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 309
+Line       : await initializeInstrumentSynchronizer();
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 464
+Line       : // downloaded FYERS master before requesting historical candles.
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 799
+Line       :                         "./aliceblue/symbolMaster.js"
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 841
+Line       :                         "./aliceblue/symbolMaster.js"
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 946
+Line       :                         symbolMaster: "NOT LOADED"
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 2156
+Line       :         downloadIfMissing: true
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 2181
+Line       :     const fyersSymbolStatus = await initializeFyersSymbolMaster({
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 2182
+Line       :         downloadIfMissing: true
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 2204
+Line       :         downloadIfMissing: true
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 2226
+Line       :         downloadIfMissing: true
+

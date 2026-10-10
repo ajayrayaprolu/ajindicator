@@ -1,3 +1,4 @@
+import { scheduleDailyAt0830IST } from "../dailyIstScheduler.js";
 //======================================================
 // server/fyers/symbolMaster.js
 //
@@ -504,25 +505,18 @@ export async function initializeFyersSymbolMaster(options = {}) {
 //======================================================
 
 export function startFyersSymbolRefresh() {
-
     if (refreshTimer) return;
 
-    refreshTimer = setInterval(async () => {
-        try {
-            await downloadFyersSymbolMaster();
-        } catch (error) {
-            console.error("[FYERS MASTER] Scheduled refresh failed:", error?.message ?? error);
-        }
-    }, REFRESH_INTERVAL_MS);
+    refreshTimer = scheduleDailyAt0830IST(async () => {
+        await downloadFyersSymbolMaster();
+    });
 
-    if (refreshTimer.unref) refreshTimer.unref();
-
-    console.log(`[FYERS MASTER] Auto refresh enabled every ${Math.round(REFRESH_INTERVAL_MS / 60000)} minutes.`);
+    console.log("[FYERS MASTER] Daily refresh scheduled for 08:30 IST.");
 }
 
 export function stopFyersSymbolRefresh() {
     if (refreshTimer) {
-        clearInterval(refreshTimer);
+        refreshTimer();
         refreshTimer = null;
     }
 }

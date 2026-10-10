@@ -1,0 +1,293 @@
+
+Path       : C:\AI-Institutional\server\aliceblue\login.js
+LineNumber : 36
+Line       :     getTokenStatus
+
+Path       : C:\AI-Institutional\server\aliceblue\login.js
+LineNumber : 313
+Line       : export function getLoginStatus() {
+
+Path       : C:\AI-Institutional\server\aliceblue\login.js
+LineNumber : 315
+Line       :     return getTokenStatus();
+
+Path       : C:\AI-Institutional\server\aliceblue\login.js
+LineNumber : 329
+Line       :     getLoginStatus
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 35
+Line       : const DATA_DIR =
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 45
+Line       :         DATA_DIR,
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 46
+Line       :         "contract-master.json"
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 49
+Line       : const CONTRACT_DATABASE_FILE =
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 101
+Line       :             DATA_DIR
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 106
+Line       :             DATA_DIR,
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1066
+Line       : 				CONTRACT_DATABASE_FILE,
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 1253
+Line       :                     CONTRACT_DATABASE_FILE
+
+Path       : C:\AI-Institutional\server\aliceblue\symbolMaster.js
+LineNumber : 2438
+Line       : 			CONTRACT_DATABASE_FILE,
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 163
+Line       :         process.env.ALICEBLUE_API_SECRET ??
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 164
+Line       :         process.env.ALICEBLUE_SECRET ??
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 213
+Line       : export function isLoggedIn() {
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 224
+Line       : export function getTokenStatus() {
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 234
+Line       :         loggedIn: isLoggedIn(),
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 266
+Line       :     isLoggedIn,
+
+Path       : C:\AI-Institutional\server\aliceblue\token.js
+LineNumber : 267
+Line       :     getTokenStatus
+
+Path       : C:\AI-Institutional\server\deltaexchange\check-login.ts
+LineNumber : 48
+Line       :     const apiKey = String(process.env.DELTA_API_KEY ?? "").trim();
+
+Path       : C:\AI-Institutional\server\deltaexchange\check-login.ts
+LineNumber : 49
+Line       :     const apiSecret = String(process.env.DELTA_API_SECRET ?? "").trim();
+
+Path       : C:\AI-Institutional\server\deltaexchange\DeltaExchangeAuth.ts
+LineNumber : 41
+Line       :         apiKey: String(process.env.DELTA_API_KEY ?? "").trim(),
+
+Path       : C:\AI-Institutional\server\deltaexchange\DeltaExchangeAuth.ts
+LineNumber : 42
+Line       :         apiSecret: String(process.env.DELTA_API_SECRET ?? "").trim()
+
+Path       : C:\AI-Institutional\server\fyers\FyersFeed.js
+LineNumber : 39
+Line       :     isLoggedIn,
+
+Path       : C:\AI-Institutional\server\fyers\login.js
+LineNumber : 33
+Line       :     getTokenStatus
+
+Path       : C:\AI-Institutional\server\fyers\login.js
+LineNumber : 265
+Line       :         process.env.FYERS_PIN ||
+
+Path       : C:\AI-Institutional\server\fyers\login.js
+LineNumber : 266
+Line       :         process.env.FYERS_USER_PIN;
+
+Path       : C:\AI-Institutional\server\fyers\login.js
+LineNumber : 397
+Line       : export function getLoginStatus() {
+
+Path       : C:\AI-Institutional\server\fyers\login.js
+LineNumber : 398
+Line       :     return getTokenStatus();
+
+Path       : C:\AI-Institutional\server\fyers\login.js
+LineNumber : 410
+Line       :     getLoginStatus
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 62
+Line       :         process.env.FYERS_APP_ID ||
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 63
+Line       :         process.env.FYERS_CLIENT_ID ||
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 70
+Line       :     return process.env.FYERS_SECRET_ID || process.env.FYERS_SECRET_KEY || "";
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 78
+Line       :     return loadSession()?.accessToken || process.env.FYERS_ACCESS_TOKEN || "";
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 112
+Line       : export function isLoggedIn() {
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 116
+Line       : export function getTokenStatus() {
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 144
+Line       :     isLoggedIn,
+
+Path       : C:\AI-Institutional\server\fyers\token.js
+LineNumber : 145
+Line       :     getTokenStatus
+
+Path       : C:\AI-Institutional\server\fyers\websocket.js
+LineNumber : 23
+Line       :     isLoggedIn
+
+Path       : C:\AI-Institutional\server\fyers\websocket.js
+LineNumber : 81
+Line       :     if (!isLoggedIn()) {
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 20
+Line       : const DATA_DIR = path.resolve(process.cwd(), "server", "indstocks", "data");
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 68
+Line       :     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 142
+Line       :     const secret = process.env.INDSTOCKS_TOTP_SECRET;
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 173
+Line       :     const clientId = process.env.INDSTOCKS_CLIENT_ID;
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 174
+Line       :     const mpin     = process.env.INDSTOCKS_MPIN;
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 337
+Line       : export function getTokenStatus() {
+
+Path       : C:\AI-Institutional\server\indstocks\token.js
+LineNumber : 351
+Line       : export default { getAccessToken, refreshToken, getTokenStatus };
+
+Path       : C:\AI-Institutional\server\telegram\telegramRoute.js
+LineNumber : 157
+Line       :     const token = process.env.TELEGRAM_BOT_TOKEN;
+
+Path       : C:\AI-Institutional\server\upstox\token.js
+LineNumber : 85
+Line       : export function isLoggedIn() {
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 40
+Line       : const DATABASE_DIR =
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 48
+Line       : const DATABASE_FILE =
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 50
+Line       :         DATABASE_DIR,
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 51
+Line       :         "zerodha-contract-master.db"
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 85
+Line       :         DATABASE_DIR,
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 95
+Line       :             DATABASE_FILE
+
+Path       : C:\AI-Institutional\server\zerodha\instruments\InstrumentDatabase.js
+LineNumber : 346
+Line       :     return DATABASE_FILE;
+
+Path       : C:\AI-Institutional\server\zerodha\history.js
+LineNumber : 291
+Line       :                 `token ${process.env.ZERODHA_API_KEY}:${accessToken}`,
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 79
+Line       :         process.env.ZERODHA_API_KEY ?? ""
+
+Path       : C:\AI-Institutional\server\zerodha\login.js
+LineNumber : 84
+Line       :         process.env.ZERODHA_API_SECRET ?? ""
+
+Path       : C:\AI-Institutional\server\zerodha\nativeWebSocket.js
+LineNumber : 24
+Line       :     isLoggedIn
+
+Path       : C:\AI-Institutional\server\zerodha\nativeWebSocket.js
+LineNumber : 35
+Line       :     if (!isLoggedIn()) {
+
+Path       : C:\AI-Institutional\server\zerodha\token.js
+LineNumber : 268
+Line       : export function isLoggedIn() {
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 93
+Line       :     isLoggedIn as isZerodhaLoggedIn
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 152
+Line       :     getLoginStatus as getFyersLoginStatus,
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 157
+Line       :     isLoggedIn as isFyersLoggedIn,
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 190
+Line       :     getLoginStatus as getAliceBlueLoginStatus
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 212
+Line       :     getTokenStatus as getAliceBlueTokenStatus,
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 213
+Line       :     isLoggedIn as isAliceBlueLoggedIn
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 233
+Line       :     getTokenStatus as getIndstocksTokenStatus
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 316
+Line       : // GENERAL HEALTH AND APPLICATION INFORMATION
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 323
+Line       : app.get("/health", (req, res) => {
+
+Path       : C:\AI-Institutional\server\index.js
+LineNumber : 2303
+Line       : // Current protocol supports ping/pong health checks.
+

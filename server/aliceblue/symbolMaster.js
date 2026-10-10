@@ -1,3 +1,4 @@
+import { scheduleDailyAt0830IST } from "../dailyIstScheduler.js";
 //======================================================
 // server/aliceblue/symbolMaster.js
 //
@@ -1371,55 +1372,13 @@ export async function initializeAliceBlueSymbols(
 //======================================================
 
 export function startSymbolRefresh() {
+    if (refreshTimer) return;
 
-    if (
-        refreshTimer
-    ) {
+    refreshTimer = scheduleDailyAt0830IST(async () => {
+        await downloadContractMaster();
+    });
 
-        return;
-
-    }
-
-    refreshTimer =
-        setInterval(
-            async () => {
-
-                try {
-
-                    await downloadContractMaster();
-
-                }
-
-                catch (
-                    error
-                ) {
-
-                    console.error(
-                        "[ALICEBLUE SYMBOLS] Scheduled refresh failed:",
-                        error?.message ??
-                        error
-                    );
-
-                }
-
-            },
-            REFRESH_INTERVAL_MS
-        );
-
-    if (
-        refreshTimer.unref
-    ) {
-
-        refreshTimer.unref();
-
-    }
-
-    console.log(
-        `[ALICEBLUE SYMBOLS] Auto refresh enabled every ${Math.round(
-            REFRESH_INTERVAL_MS / 60000
-        )} minutes.`
-    );
-
+    console.log("[ALICEBLUE SYMBOLS] Daily refresh scheduled for 08:30 IST.");
 }
 
 //======================================================
@@ -1427,20 +1386,10 @@ export function startSymbolRefresh() {
 //======================================================
 
 export function stopSymbolRefresh() {
-
-    if (
-        refreshTimer
-    ) {
-
-        clearInterval(
-            refreshTimer
-        );
-
-        refreshTimer =
-            null;
-
+    if (refreshTimer) {
+        refreshTimer();
+        refreshTimer = null;
     }
-
 }
 
 //======================================================

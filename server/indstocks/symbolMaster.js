@@ -1,3 +1,4 @@
+import { scheduleDailyAt0830IST } from "../dailyIstScheduler.js";
 //======================================================
 // server/indstocks/symbolMaster.js
 //
@@ -434,24 +435,18 @@ export async function initializeIndstocksSymbols(options = {}) {
 }
 
 export function startSymbolRefresh() {
-
     if (refreshTimer) return;
 
-    refreshTimer = setInterval(async () => {
-        try {
-            await downloadContractMaster();
-        } catch (error) {
-            console.error("[INDSTOCKS SYMBOLS] Scheduled refresh failed:", error?.message ?? error);
-        }
-    }, REFRESH_INTERVAL_MS);
+    refreshTimer = scheduleDailyAt0830IST(async () => {
+        await downloadContractMaster();
+    });
 
-    if (refreshTimer.unref) refreshTimer.unref();
-
+    console.log("[INDSTOCKS SYMBOLS] Daily refresh scheduled for 08:30 IST.");
 }
 
 export function stopSymbolRefresh() {
     if (refreshTimer) {
-        clearInterval(refreshTimer);
+        refreshTimer();
         refreshTimer = null;
     }
 }

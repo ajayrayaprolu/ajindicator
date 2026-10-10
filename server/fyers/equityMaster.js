@@ -1,3 +1,4 @@
+import { scheduleDailyAt0830IST } from "../dailyIstScheduler.js";
 //======================================================
 // server/fyers/equityMaster.js
 //
@@ -277,25 +278,18 @@ export async function initializeFyersEquityMaster(options = {}) {
 //======================================================
 
 export function startFyersEquityRefresh() {
-
     if (refreshTimer) return;
 
-    refreshTimer = setInterval(async () => {
-        try {
-            await downloadFyersEquityMaster();
-        } catch (error) {
-            console.error("[FYERS EQUITY MASTER] Scheduled refresh failed:", error?.message ?? error);
-        }
-    }, REFRESH_INTERVAL_MS);
+    refreshTimer = scheduleDailyAt0830IST(async () => {
+        await downloadFyersEquityMaster();
+    });
 
-    if (refreshTimer.unref) refreshTimer.unref();
-
-    console.log(`[FYERS EQUITY MASTER] Auto refresh enabled every ${Math.round(REFRESH_INTERVAL_MS / 60000)} minutes.`);
+    console.log("[FYERS EQUITY MASTER] Daily refresh scheduled for 08:30 IST.");
 }
 
 export function stopFyersEquityRefresh() {
     if (refreshTimer) {
-        clearInterval(refreshTimer);
+        refreshTimer();
         refreshTimer = null;
     }
 }
