@@ -40,7 +40,7 @@ const PROXY_URL = "https://ajtrade.in";
 
 const BACKEND_HEALTH_URL = `${BACKEND_URL}/health`;
 
-const BACKEND_TIMEOUT_MS = 60000;
+const BACKEND_TIMEOUT_MS = 300000;
 const SERVICE_TIMEOUT_MS = 30000;
 const RETRY_INTERVAL_MS = 500;
 
@@ -580,8 +580,30 @@ function stopAll() {
     shuttingDown = true;
 
     for (const { child } of children) {
-        if (child.exitCode === null && !child.killed) {
-            child.kill();
+        if (child.exitCode !== null || !child.pid) {
+            continue;
+        }
+
+        if (process.platform === "win32") {
+            try {
+                execFileSync(
+                    "taskkill.exe",
+                    ["/PID", String(child.pid), "/T", "/F"],
+                    {
+                        cwd: root,
+                        windowsHide: true,
+                        stdio: "ignore"
+                    }
+                );
+            } catch {
+                // The process may already have exited.
+            }
+        } else {
+            try {
+                child.kill("SIGTERM");
+            } catch {
+                // The process may already have exited.
+            }
         }
     }
 

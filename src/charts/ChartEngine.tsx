@@ -442,9 +442,13 @@ export default function ChartEngine({
 
     const emaSeries =
         useRef<ISeriesApi<"Line"> | null>(null);
+    const ema21Series = useRef<ISeriesApi<"Line"> | null>(null);
+    const ema50Series = useRef<ISeriesApi<"Line"> | null>(null);
 
     const vwapSeries =
         useRef<ISeriesApi<"Line"> | null>(null);
+
+    const superTrendSeries = useRef<ISeriesApi<"Line"> | null>(null);
 
     const rsiSeries =
         useRef<ISeriesApi<"Line"> | null>(null);
@@ -1011,6 +1015,16 @@ export default function ChartEngine({
                 }
             );
 
+        ema21Series.current = chart.current.addSeries(LineSeries, {
+            color: "#38bdf8",
+            lineWidth: 2
+        });
+
+        ema50Series.current = chart.current.addSeries(LineSeries, {
+            color: "#c084fc",
+            lineWidth: 2
+        });
+
 
         vwapSeries.current =
             chart.current.addSeries(
@@ -1022,8 +1036,13 @@ export default function ChartEngine({
             );
 
 
-        rsiSeries.current =
-            null;
+        superTrendSeries.current = chart.current.addSeries(LineSeries, {
+            color: "#22c55e",
+            lineWidth: 2,
+            lastValueVisible: true,
+            priceLineVisible: false
+        });
+        rsiSeries.current = null;
 
 
         atrSeries.current =
@@ -1151,6 +1170,8 @@ export default function ChartEngine({
             fvgPrimitive.current = null;
             liquidityPrimitive.current = null;
             orderBlockPrimitive.current = null;
+
+            rsiSeries.current = null;
 
             chart.current?.remove();
 
@@ -1736,6 +1757,31 @@ export default function ChartEngine({
 	]);
 
     //--------------------------------------------------
+    //--------------------------------------------------
+    // DRAW EMA 21
+    //--------------------------------------------------
+    useEffect(() => {
+        if (!ema21Series.current) return;
+
+        ema21Series.current.setData(
+            indicators.ema21
+                ? normalizeLineData(OverlayManager.buildEMA(candles, 21))
+                : []
+        );
+    }, [candles, indicators.ema21]);
+
+    //--------------------------------------------------
+    // DRAW EMA 50
+    //--------------------------------------------------
+    useEffect(() => {
+        if (!ema50Series.current) return;
+
+        ema50Series.current.setData(
+            indicators.ema50
+                ? normalizeLineData(OverlayManager.buildEMA(candles, 50))
+                : []
+        );
+    }, [candles, indicators.ema50]);
     // DRAW VWAP
     //--------------------------------------------------
 
@@ -1764,35 +1810,86 @@ export default function ChartEngine({
 	]);
 
     //--------------------------------------------------
+    //--------------------------------------------------
+    // DRAW SUPERTREND
+    //--------------------------------------------------
+    useEffect(() => {
+        if (!superTrendSeries.current) return;
+
+        superTrendSeries.current.setData(
+            indicators.supertrend
+                ? normalizeLineData(OverlayManager.buildSuperTrend(candles))
+                : []
+        );
+    }, [candles, indicators.supertrend]);
     // DRAW RSI
     //--------------------------------------------------
+    useEffect(() => {
+        const activeChart = chart.current;
+        if (!activeChart) return;
 
-	useEffect(() => {
-	
-		if (!rsiSeries.current)
-			return;
-	
-		rsiSeries.current.setData(
-	
-			indicators.rsi
-				? normalizeLineData(
-					OverlayManager
-						.buildRSI(candles)
-				)
-				: []
-	
-		);
-	
-	}, [
-	
-		candles,
-	
-		indicators.rsi
-	
-	]);
+        if (!indicators.rsi) {
+            if (rsiSeries.current) {
+                activeChart.removeSeries(rsiSeries.current);
+                rsiSeries.current = null;
+            }
+
+            const panes = activeChart.panes();
+            if (panes.length > 1) {
+                activeChart.removePane(panes.length - 1);
+            }
+            return;
+        }
+
+        if (!rsiSeries.current) {
+            const pane = activeChart.addPane(true);
+            pane.setHeight(100);
+
+            const paneIndex = activeChart.panes().length - 1;
+
+            rsiSeries.current = activeChart.addSeries(
+                LineSeries,
+                {
+                    color: "#f59e0b",
+                    lineWidth: 2,
+                    lastValueVisible: true,
+                    priceLineVisible: false,
+                    autoscaleInfoProvider: () => ({
+                        priceRange: {
+                            minValue: 0,
+                            maxValue: 100,
+                        },
+                    }),
+                },
+                paneIndex
+            );
+
+            rsiSeries.current.createPriceLine({
+                price: 70,
+                color: "#ef4444",
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: "70",
+            });
+
+            rsiSeries.current.createPriceLine({
+                price: 30,
+                color: "#22c55e",
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: "30",
+            });
+        }
+
+        rsiSeries.current.setData(
+            normalizeLineData(OverlayManager.buildRSI(candles))
+        );
+    }, [candles, indicators.rsi]);
 
     //--------------------------------------------------
-    // DRAW ATR
+// DRAW ATR
     //--------------------------------------------------
 
 	useEffect(() => {

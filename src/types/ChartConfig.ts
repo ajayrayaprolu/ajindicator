@@ -14,6 +14,9 @@ import type {
 export interface ChartIndicators {
 
   ema: boolean;
+  ema21?: boolean;
+  ema50?: boolean;
+  supertrend?: boolean;
 
   vwap: boolean;
 

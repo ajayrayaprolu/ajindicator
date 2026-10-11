@@ -18,6 +18,7 @@ import type { Candle } from "../types/Candle";
 import { EMA } from "../indicators/EMA";
 import { VWAP } from "../indicators/VWAP";
 import { RSI } from "../indicators/RSI";
+import { SuperTrend } from "../indicators/SuperTrend";
 import { ATR } from "../indicators/ATR";
 import { ADX } from "../indicators/ADX/ADX";
 
@@ -131,6 +132,16 @@ export class IndicatorRegistry {
 
         },
 
+        //--------------------------------------------------
+        // SUPERTREND
+        //--------------------------------------------------
+
+        SUPERTREND: {
+            kind: "legacy",
+            calculate(candles: Candle[]) {
+                return SuperTrend.calculate(candles, 7, 3);
+            }
+        },
         //--------------------------------------------------
         // ATR
         //--------------------------------------------------

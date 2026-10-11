@@ -6,6 +6,7 @@ import type {Candle} from "../types/Candle";
 import {EMA} from "../indicators/EMA";
 import {VWAP} from "../indicators/VWAP";
 import {RSI} from "../indicators/RSI";
+import { SuperTrend } from "../indicators/SuperTrend";
 import {ATR} from "../indicators/ATR";
 import { ADX } from "../indicators/ADX/ADX";
 
@@ -54,6 +55,20 @@ export class OverlayManager {
 
   }
 
+
+  static buildSuperTrend(
+    candles: Candle[],
+    period = 7,
+    multiplier = 3
+  ) {
+    const results = SuperTrend.calculateResults(candles, period, multiplier);
+
+    return results.flatMap((result, i) =>
+      result.valid && result.value !== null
+        ? [{ time: candles[i].time, value: result.value }]
+        : []
+    );
+  }
   static buildRSI(
     candles: Candle[]
   ) {

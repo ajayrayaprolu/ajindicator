@@ -16,6 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ChartWindow from "../components/ChartWindow";
+import AJSettingsPanel from "../components/AJSettingsPanel";
 
 import {
   ArrowDownRight,
@@ -30,6 +31,7 @@ import {
   Pause,
   Play,
   Search,
+  Settings2,
   ShieldCheck,
   Square,
   Target,
@@ -417,6 +419,16 @@ export default function AlgoHome() {
     useState(false);
   const [chartTimeframe, setChartTimeframe] = useState("5");
 
+  // These controls affect only the embedded AlgoHome ChartWindow.
+  const [algoIndicators, setAlgoIndicators] = useState({
+    ajindicator: true,
+    ema21: true,
+    ema50: true,
+    supertrend: true,
+    rsi: true,
+  });
+  const [showAJSettings, setShowAJSettings] = useState(false);
+
   const [searchText, setSearchText] =
     useState("");
 
@@ -454,6 +466,18 @@ export default function AlgoHome() {
    */
   useEffect(() => {
     const query = searchText.trim();
+
+    // A selected instrument stays in the input; do not reopen its results.
+    if (
+      selectedInstrument &&
+      query === instrumentLabel(selectedInstrument).trim()
+    ) {
+      searchAbortRef.current?.abort();
+      setSearchResults([]);
+      setSearchError("");
+      setSearching(false);
+      return;
+    }
 
     if (query.length < 2) {
       setSearchResults([]);
@@ -542,7 +566,7 @@ export default function AlgoHome() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [searchText, feed]);
+  }, [searchText, feed, selectedInstrument]);
 
   const handleFeed = (
     nextFeed: Feed,
@@ -557,6 +581,8 @@ export default function AlgoHome() {
   const handleInstrumentSelect = (
     instrument: Instrument,
   ) => {
+    searchAbortRef.current?.abort();
+    setSearchResults([]);
     setSelectedInstrument(instrument);
     setSearchText(
       instrumentLabel(instrument),
@@ -579,6 +605,12 @@ export default function AlgoHome() {
 
   return (
     <main className="aj-home">
+      {showAJSettings && (
+        <AJSettingsPanel
+          chartId="aj-algo-home-chart"
+          onClose={() => setShowAJSettings(false)}
+        />
+      )}
       <style>{`
         .aj-home {
           min-height: 100vh;
@@ -2324,40 +2356,203 @@ export default function AlgoHome() {
             </div>
 
             <div className="aj-indicators">
-
-              {[
-                "AJIndicator",
-                "SuperTrend",
-                "EMA 21",
-                "EMA 50",
-                "RSI",
-                "Price Action",
-              ].map((name) => (
-                <span
-                  className="aj-indicator"
-                  key={name}
+              <span className="aj-indicator">
+                <button
+                  type="button"
+                  aria-pressed={Boolean(selectedInstrument) && algoIndicators.ajindicator}
+                  onClick={() =>
+                    setAlgoIndicators((current) => ({
+                      ...current,
+                      ajindicator: !current.ajindicator,
+                    }))
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    border: 0,
+                    color: "inherit",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
                 >
-                  <CheckCircle2
-                    size={12}
-                    color="#4ade80"
-                  />
-
-                  {name}
-
-                  <span
+                  {selectedInstrument && algoIndicators.ajindicator ? (
+                    <CheckCircle2 size={12} color="#4ade80" />
+                  ) : (
+                    <Circle size={12} color="#94a3b8" />
+                  )}
+                  AJIndicator
+                  <span style={{ color: selectedInstrument && algoIndicators.ajindicator ? "#4ade80" : "#94a3b8", fontSize: 9 }}>
+                    {selectedInstrument && algoIndicators.ajindicator ? "ON" : "OFF"}
+                  </span>
+                </button>
+                {algoIndicators.ajindicator && (
+                  <button
+                    type="button"
+                    aria-label="AJIndicator settings"
+                    title="AJIndicator settings"
+                    onClick={() => setShowAJSettings(true)}
                     style={{
-                      color: "#4ade80",
-                      fontSize: 9,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: 0,
+                      border: 0,
+                      color: "#94a3b8",
+                      background: "transparent",
+                      cursor: "pointer",
                     }}
                   >
-                    READY
+                    <Settings2 size={12} />
+                  </button>
+                )}
+              </span>
+
+                            <span className="aj-indicator" title="Toggle SuperTrend on the embedded chart">
+                <button
+                  type="button"
+                  aria-pressed={algoIndicators.supertrend}
+                  onClick={() =>
+                    setAlgoIndicators((current) => ({
+                      ...current,
+                      supertrend: !current.supertrend,
+                    }))
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    border: 0,
+                    color: "inherit",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {algoIndicators.supertrend ? (
+                    <CheckCircle2 size={12} color="#22c55e" />
+                  ) : (
+                    <Circle size={12} color="#94a3b8" />
+                  )}
+                  SuperTrend
+                  <span style={{ color: algoIndicators.supertrend ? "#22c55e" : "#94a3b8", fontSize: 9 }}>
+                    {algoIndicators.supertrend ? "ON" : "OFF"}
                   </span>
+                </button>
+              </span>
+
+              <span className="aj-indicator">
+                <button
+                  type="button"
+                  aria-pressed={Boolean(selectedInstrument) && algoIndicators.ema21}
+                  onClick={() =>
+                    setAlgoIndicators((current) => ({
+                      ...current,
+                      ema21: !current.ema21,
+                    }))
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    border: 0,
+                    color: "inherit",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {selectedInstrument && algoIndicators.ema21 ? (
+                    <CheckCircle2 size={12} color="#38bdf8" />
+                  ) : (
+                    <Circle size={12} color="#94a3b8" />
+                  )}
+                  EMA 21
+                  <span style={{ color: selectedInstrument && algoIndicators.ema21 ? "#38bdf8" : "#94a3b8", fontSize: 9 }}>
+                    {selectedInstrument && algoIndicators.ema21 ? "ON" : "OFF"}
+                  </span>
+                </button>
+              </span>
+
+              <span className="aj-indicator">
+                <button
+                  type="button"
+                  aria-pressed={Boolean(selectedInstrument) && algoIndicators.ema50}
+                  onClick={() =>
+                    setAlgoIndicators((current) => ({
+                      ...current,
+                      ema50: !current.ema50,
+                    }))
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    border: 0,
+                    color: "inherit",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {selectedInstrument && algoIndicators.ema50 ? (
+                    <CheckCircle2 size={12} color="#c084fc" />
+                  ) : (
+                    <Circle size={12} color="#94a3b8" />
+                  )}
+                  EMA 50
+                  <span style={{ color: selectedInstrument && algoIndicators.ema50 ? "#c084fc" : "#94a3b8", fontSize: 9 }}>
+                    {selectedInstrument && algoIndicators.ema50 ? "ON" : "OFF"}
+                  </span>
+                </button>
+              </span>
+
+              <span className="aj-indicator" title="Toggle RSI in its own 0–100 oscillator pane">
+                <button
+                  type="button"
+                  aria-label="Toggle RSI"
+                  aria-pressed={algoIndicators.rsi}
+                  onClick={() =>
+                    setAlgoIndicators((current) => ({
+                      ...current,
+                      rsi: !current.rsi,
+                    }))
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    border: 0,
+                    color: "inherit",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {algoIndicators.rsi ? (
+                    <CheckCircle2 size={12} color="#f59e0b" />
+                  ) : (
+                    <Circle size={12} color="#94a3b8" />
+                  )}
+                  RSI
+                  <span style={{ color: algoIndicators.rsi ? "#f59e0b" : "#94a3b8", fontSize: 9 }}>
+                    {algoIndicators.rsi ? "ON" : "OFF"}
+                  </span>
+                </button>
+              </span>
+
+              <span className="aj-indicator" title="Price Action is part of the AJIndicator runtime, not an independent toggle">
+                {selectedInstrument && algoIndicators.ajindicator ? (
+                  <CheckCircle2 size={12} color="#4ade80" />
+                ) : (
+                  <Circle size={12} color="#94a3b8" />
+                )}
+                Price Action
+                <span style={{ color: selectedInstrument && algoIndicators.ajindicator ? "#4ade80" : "#94a3b8", fontSize: 9 }}>
+                  {selectedInstrument && algoIndicators.ajindicator ? "AJ CORE" : "INACTIVE"}
                 </span>
-              ))}
-
+              </span>
             </div>
-
-
               </div>
               <label className="aj-timeframe-wrap">
                 <span>TIMEFRAME</span>
@@ -2462,15 +2657,18 @@ export default function AlgoHome() {
                       ""
                     }
                     displayName={selectedLabel}
-                    datasource={FEED_LABELS[feed]}
+                    datasource={feed === "fyers" ? "Fyers" : FEED_LABELS[feed]}
                     timeframe={chartTimeframe}
                     indicators={{
-                      ema: true,
+                      ema: false,
+                      ema21: algoIndicators.ema21,
+                      ema50: algoIndicators.ema50,
                       vwap: true,
-                      rsi: true,
+                      rsi: algoIndicators.rsi,
                       atr: false,
                       adx: false,
-                      ajindicator: true,
+                      ajindicator: algoIndicators.ajindicator,
+                      supertrend: algoIndicators.supertrend,
                     }}
                     exchange={selectedInstrument.exchange}
                     feedSource={feed}
@@ -3107,6 +3305,9 @@ export default function AlgoHome() {
     </main>
   );
 }
+
+
+
 
 
 
