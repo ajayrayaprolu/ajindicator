@@ -1830,13 +1830,13 @@ export default function ChartEngine({
 
         if (!indicators.rsi) {
             if (rsiSeries.current) {
+                const paneIndex = rsiSeries.current.getPane().paneIndex();
                 activeChart.removeSeries(rsiSeries.current);
                 rsiSeries.current = null;
-            }
 
-            const panes = activeChart.panes();
-            if (panes.length > 1) {
-                activeChart.removePane(panes.length - 1);
+                if (paneIndex > 0 && activeChart.panes().length > 1) {
+                    activeChart.removePane(paneIndex);
+                }
             }
             return;
         }
@@ -1917,34 +1917,64 @@ export default function ChartEngine({
 	]);
 	
     //--------------------------------------------------
+    //--------------------------------------------------
     // DRAW ADX
     //--------------------------------------------------
+    useEffect(() => {
+        const activeChart = chart.current;
+        if (!activeChart) return;
 
-	useEffect(() => {
-	
-		if (!adxSeries.current)
-			return;
-	
-		adxSeries.current.setData(
-	
-			indicators.adx
-				? normalizeLineData(
-					OverlayManager
-						.buildADX(candles)
-				)
-				: []
-	
-		);
-	
-	}, [
-	
-		candles,
-	
-		indicators.adx
-	
-	]);
+        if (!indicators.adx) {
+            if (adxSeries.current) {
+                const paneIndex = adxSeries.current.getPane().paneIndex();
+                activeChart.removeSeries(adxSeries.current);
+                adxSeries.current = null;
 
-    //--------------------------------------------------
+                if (paneIndex > 0 && activeChart.panes().length > 1) {
+                    activeChart.removePane(paneIndex);
+                }
+            }
+            return;
+        }
+
+        if (!adxSeries.current) {
+            const pane = activeChart.addPane(true);
+            pane.setHeight(100);
+
+            const paneIndex = activeChart.panes().length - 1;
+
+            adxSeries.current = activeChart.addSeries(
+                LineSeries,
+                {
+                    color: "#a78bfa",
+                    lineWidth: 2,
+                    lastValueVisible: true,
+                    priceLineVisible: false,
+                    autoscaleInfoProvider: () => ({
+                        priceRange: {
+                            minValue: 0,
+                            maxValue: 100,
+                        },
+                    }),
+                },
+                paneIndex
+            );
+
+            adxSeries.current.createPriceLine({
+                price: 25,
+                color: "#f59e0b",
+                lineWidth: 1,
+                lineStyle: 2,
+                axisLabelVisible: true,
+                title: "25",
+            });
+        }
+
+        adxSeries.current.setData(
+            normalizeLineData(OverlayManager.buildADX(candles))
+        );
+    }, [candles, indicators.adx]);
+
     // APPLY MARKERS
     //--------------------------------------------------
     

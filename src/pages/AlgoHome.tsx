@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ChartWindow from "../components/ChartWindow";
-import AJSettingsPanel from "../components/AJSettingsPanel";
+import AJSettingsPanel from "../indicators/AJIndicator/config/AJIndicatorSettingsPanel";
 
 import {
   ArrowDownRight,
@@ -420,11 +420,12 @@ export default function AlgoHome() {
   const [chartTimeframe, setChartTimeframe] = useState("5");
 
   // These controls affect only the embedded AlgoHome ChartWindow.
-  const [algoIndicators, setAlgoIndicators] = useState({
+    const [algoIndicators, setAlgoIndicators] = useState({
     ajindicator: true,
     ema21: true,
     ema50: true,
     supertrend: true,
+    adx: false,
     rsi: true,
   });
   const [showAJSettings, setShowAJSettings] = useState(false);
@@ -2441,7 +2442,40 @@ export default function AlgoHome() {
                 </button>
               </span>
 
-              <span className="aj-indicator">
+                            <span className="aj-indicator" title="Toggle ADX in its own 0–100 oscillator pane">
+                <button
+                  type="button"
+                  aria-label="Toggle ADX"
+                  aria-pressed={algoIndicators.adx}
+                  onClick={() =>
+                    setAlgoIndicators((current) => ({
+                      ...current,
+                      adx: !current.adx,
+                    }))
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: 0,
+                    border: 0,
+                    color: "inherit",
+                    background: "transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {algoIndicators.adx ? (
+                    <CheckCircle2 size={12} color="#a78bfa" />
+                  ) : (
+                    <Circle size={12} color="#94a3b8" />
+                  )}
+                  ADX
+                  <span style={{ color: algoIndicators.adx ? "#a78bfa" : "#94a3b8", fontSize: 9 }}>
+                    {algoIndicators.adx ? "ON" : "OFF"}
+                  </span>
+                </button>
+              </span>
+<span className="aj-indicator">
                 <button
                   type="button"
                   aria-pressed={Boolean(selectedInstrument) && algoIndicators.ema21}
@@ -2666,7 +2700,7 @@ export default function AlgoHome() {
                       vwap: true,
                       rsi: algoIndicators.rsi,
                       atr: false,
-                      adx: false,
+                      adx: algoIndicators.adx,
                       ajindicator: algoIndicators.ajindicator,
                       supertrend: algoIndicators.supertrend,
                     }}
@@ -3305,6 +3339,7 @@ export default function AlgoHome() {
     </main>
   );
 }
+
 
 
 
