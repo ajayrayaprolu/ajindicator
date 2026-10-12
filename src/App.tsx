@@ -8,6 +8,10 @@
 
 import AlgoHome from "./pages/AlgoHome";
 import Terminal from "./pages/Terminal";
+import AlgoUtilityPages from "./pages/AlgoUtilityPages";
+import AlgoMonitorPage from "./pages/AlgoMonitorPage";
+import PositionsOrdersPage from "./pages/PositionsOrdersPage";
+import StrategiesBuilderPage from "./pages/StrategiesBuilderPage";
 
 function App() {
   const params = new URLSearchParams(window.location.search);
@@ -18,11 +22,30 @@ function App() {
     return <Terminal />;
   }
 
+  if (params.get("page") === "strategies") {
+    return <StrategiesBuilderPage />;
+  }
+
   // New default homepage:
   // https://ajtrade.in/
   // https://ajtrade.in/?feed=fyers
   // https://ajtrade.in/?feed=indstocks
-  return <AlgoHome />;
+  if (params.get("page") === "positions") {
+    return <PositionsOrdersPage />;
+  }
+    if (params.get("page") === "monitor") {
+    return <AlgoMonitorPage />;
+  }
+  const ajUtilityPage = params.get("page");
+
+  if (
+    ajUtilityPage === "brokers" ||
+    ajUtilityPage === "watchlist" ||
+    ajUtilityPage === "indicators"
+  ) {
+    return <AlgoUtilityPages page={ajUtilityPage} />;
+  }
+return <AlgoHome />;
 }
 
 export default App;

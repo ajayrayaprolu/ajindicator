@@ -41,7 +41,6 @@ import {
   TrendingUp,
   Wallet,
   X,
-  Zap,
 } from "lucide-react";
 
 type Feed = "fyers" | "indstocks";
@@ -134,15 +133,6 @@ function money(value: number) {
   return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
 }
 
-function openTerminal() {
-  const url = `${window.location.origin}${window.location.pathname}?terminal=1`;
-
-  window.open(
-    url,
-    "_blank",
-    "noopener,noreferrer",
-  );
-}
 
 function selectFeed(feed: Feed) {
   const url =
@@ -762,6 +752,8 @@ export default function AlgoHome() {
           grid-template-columns: 1.25fr .75fr;
           gap: 18px;
           padding: 30px 0 18px;
+          /* Keep Automated Execution and Current Signal equal-height. */
+          align-items: stretch;
         }
 
         .aj-panel {
@@ -986,6 +978,11 @@ export default function AlgoHome() {
           font-weight: 650;
           line-height: 1.3;
         }
+        .aj-side-nav-link {
+          text-decoration: none;
+          cursor: pointer;
+        }
+
         .aj-side-nav-item > span {
           display: inline-flex;
           flex: 0 0 17px;
@@ -2317,6 +2314,183 @@ export default function AlgoHome() {
           background: #eff6ff !important;
         }
 
+        /* AJ_MONITOR_SIDEBAR_WIDTH_FIX */
+        .aj-home .aj-page-layout {
+          grid-template-columns: 150px minmax(0, 1fr);
+        }
+        .aj-home .aj-side-nav {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-side-nav-item {
+          white-space: nowrap;
+        }
+        @media (max-width: 900px) {
+          .aj-home .aj-page-layout {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          .aj-home .aj-side-nav-item {
+            white-space: normal;
+          }
+        }
+        /* AJ_NAV_ALIGNMENT_THEME_OVERRIDES_V2 */
+        .aj-home .aj-page-layout {
+          grid-template-columns: 256px minmax(0, 1fr);
+          column-gap: 20px;
+        }
+
+        .aj-home .aj-side-nav {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+
+        .aj-home .aj-side-nav-item {
+          display: grid;
+          grid-template-columns: 24px minmax(0, 1fr);
+          align-items: center;
+          column-gap: 10px;
+          width: 100%;
+          min-height: 40px;
+          box-sizing: border-box;
+          white-space: nowrap;
+          text-align: left;
+          text-decoration: none;
+          line-height: 1.25;
+        }
+
+        .aj-home .aj-side-nav-item > .aj-side-nav-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          min-width: 24px;
+          height: 22px;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+          line-height: 1;
+          text-align: center;
+          font-size: 16px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .aj-home .aj-side-nav-item:focus-visible {
+          outline: 2px solid #60a5fa;
+          outline-offset: 2px;
+        }
+
+        @media (max-width: 900px) {
+          .aj-home .aj-page-layout {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .aj-home .aj-side-nav-item {
+            white-space: normal;
+          }
+        }
+
+
+        /* AJ_HOME_LAYOUT_RECOMPOSITION_V2 */
+        .aj-home .aj-hero {
+          grid-template-columns: minmax(0, 1fr);
+          align-items: stretch;
+        }
+        .aj-home .aj-hero-main {
+          width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: stretch;
+        }
+        .aj-home .aj-market-analysis-card {
+          display: flex;
+          flex-direction: column;
+          align-self: stretch;
+          height: 100%;
+          min-height: 0;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-market-analysis-card .aj-chart-toolbar {
+          flex: 0 0 auto;
+        }
+        .aj-home .aj-market-analysis-card .aj-home-chart {
+          display: flex;
+          flex: 1 1 560px;
+          flex-direction: column;
+          min-height: 560px;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-market-analysis-card .aj-home-chart > div {
+          flex: 1 1 auto;
+          height: 100% !important;
+          min-height: 520px;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-market-analysis-card > div:last-child {
+          flex: 0 0 auto;
+          margin-top: auto !important;
+        }
+        .aj-home .aj-execution-stack {
+          display: flex;
+          flex-direction: column;
+          align-self: stretch;
+          gap: 12px;
+          min-width: 0;
+          min-height: 0;
+          height: 100%;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-execution-stack > .aj-panel {
+          width: 100%;
+          min-width: 0;
+          margin-top: 0 !important;
+          box-sizing: border-box;
+        }
+        .aj-home .aj-execution-stack > .aj-hero-side {
+          flex: 0 0 auto;
+          padding: 18px;
+        }
+        .aj-home .aj-execution-stack > .aj-option-execution-card {
+          flex: 0 0 auto;
+        }
+        .aj-home .aj-execution-stack > .aj-signal-breakdown-card {
+          flex: 0 0 auto;
+          min-height: 0;
+          height: auto;
+          margin-top: 0 !important;
+          padding: 16px;
+        }
+        .aj-home .aj-signal-breakdown-card > div[style*="grid"] {
+          gap: 7px !important;
+        }
+        @media (max-width: 1100px) {
+          .aj-home .aj-grid {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          .aj-home .aj-market-analysis-card {
+            height: auto;
+          }
+          .aj-home .aj-market-analysis-card .aj-home-chart {
+            flex: 0 0 auto;
+            min-height: 0;
+          }
+          .aj-home .aj-market-analysis-card .aj-home-chart > div {
+            height: 500px !important;
+            min-height: 500px;
+          }
+          .aj-home .aj-execution-stack {
+            height: auto;
+          }
+        }
+
 `}</style>
 
       {/* ======================================================
@@ -2412,19 +2586,46 @@ export default function AlgoHome() {
       <div className="aj-shell aj-page-layout">
         <aside className="aj-side-nav" aria-label="Main navigation">
           <div className="aj-side-nav-heading">WORKSPACE</div>
-          <div className="aj-side-nav-item is-current"><span>⌂</span>AlgoHome</div>
-          <div className="aj-side-nav-item"><span>▦</span>Charts</div>
-          <div className="aj-side-nav-item"><span>◇</span>Strategies</div>
-          <div className="aj-side-nav-item"><span>▤</span>Positions</div>
-          <div className="aj-side-nav-item"><span>⇄</span>Orders</div>
-          <div className="aj-side-nav-item"><span>◷</span>Order History</div>
-          <div className="aj-side-nav-item"><span>◉</span>Algo Monitor</div>
-          <div className="aj-side-nav-item"><span>▧</span>Basket</div>
-          <div className="aj-side-nav-item"><span>⌘</span>Strategy Builder</div>
-          <div className="aj-side-nav-item"><span>⇆</span>Brokers</div>
-          <div className="aj-side-nav-item"><span>☆</span>Watch List</div>
-          <div className="aj-side-nav-item"><span>⌁</span>Indicators</div>
-          <div className="aj-side-nav-item"><span>⚙</span>Settings</div>
+
+          <a className="aj-side-nav-item is-current" href={`?feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">⌂</span>
+            AlgoHome
+          </a>
+
+          <a className="aj-side-nav-item" href={`?terminal=1&feed=${feed}`} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">▦↗</span>
+            Live Charts &amp; Signals
+          </a>
+
+          <a className="aj-side-nav-item" href={`?page=strategies&feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">◇⌘</span>
+            Strategies &amp; Builder
+          </a>
+
+          <a className="aj-side-nav-item" href={`?page=positions&feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">▤⇄</span>
+            Positions &amp; Orders
+          </a>
+
+          <a className="aj-side-nav-item" href={`?page=monitor&feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">◉</span>
+            Algo Monitor
+          </a>
+
+          <a className="aj-side-nav-item" href={`?page=brokers&feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">⇆</span>
+            Brokers
+          </a>
+
+          <a className="aj-side-nav-item" href={`?page=watchlist&feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">☆</span>
+            Watch List
+          </a>
+
+          <a className="aj-side-nav-item" href={`?page=indicators&feed=${feed}`} style={{ textDecoration: "none" }}>
+            <span className="aj-side-nav-icon">⌁</span>
+            Indicators
+          </a>
         </aside>
         <div className="aj-page-main">
 
@@ -2497,134 +2698,11 @@ export default function AlgoHome() {
 
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 9,
-                marginTop: 22,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                type="button"
-                className="aj-primary aj-light-theme-action"
-                onClick={openTerminal}
-              >
-                Get Charts
-              </button>
 
-              <button
-                type="button"
-                className="aj-secondary aj-light-theme-action"
-                onClick={() =>
-                  setAutoTrade(
-                    (value) => !value,
-                  )
-                }
-              >
-                {autoTrade ? (
-                  <Zap size={15} />
-                ) : (
-                  <Square size={15} />
-                )}
-
-                Auto Trade:{" "}
-                {autoTrade
-                  ? "ARMED"
-                  : "OFF"}
-              </button>
-            </div>
 
           </div>
 
-          {/* Current Signal remains independent from
-              instrument execution details. */}
 
-          <div className="aj-panel aj-hero-side">
-
-            <div className="aj-side-title">
-
-              <h3>
-                Current Signal
-              </h3>
-
-              <span className="aj-small-pill aj-light-theme-monitoring">
-                MONITORING
-              </span>
-
-            </div>
-
-            <div className="aj-signal-box">
-
-              <div className="aj-eyebrow">
-                INDICATOR SIGNAL
-              </div>
-
-              <div
-                style={{
-                  fontSize: 25,
-                  fontWeight: 900,
-                  margin: "9px 0",
-                }}
-              >
-                BUY SIGNAL
-              </div>
-
-              <div className="aj-signal-row">
-                <span className="aj-muted">
-                  State
-                </span>
-
-                <span
-                  style={{
-                    color: "#fbbf24",
-                    fontWeight: 850,
-                  }}
-                >
-                  Waiting for entry
-                </span>
-              </div>
-
-              <div className="aj-signal-row">
-                <span className="aj-muted">
-                  Time
-                </span>
-
-                <span className="aj-signal-value">
-                  10:15:42
-                </span>
-              </div>
-
-              <div className="aj-signal-row">
-                <span className="aj-muted">
-                  Direction
-                </span>
-
-                <span
-                  className="aj-positive"
-                >
-                  BUY
-                </span>
-              </div>
-
-            </div>
-
-            <div
-              style={{
-                marginTop: 14,
-                display: "flex",
-                gap: 7,
-                alignItems: "center",
-                color: "#75839b",
-                fontSize: 10,
-              }}
-            >
-              <ShieldCheck size={14} />
-
-              No order is sent by this prototype.
-            </div>
-
-          </div>
 
         </section>
 
@@ -2711,32 +2789,28 @@ export default function AlgoHome() {
               SIGNAL / INDICATOR STATUS
               ================================================== */}
 
-          <div className="aj-panel aj-card">
+          <div className="aj-panel aj-card aj-market-analysis-card">
 
-            <div className="aj-card-header">
-
-              <div>
-                <h2 className="aj-card-title">
-                  Live Charts & Signals
-                </h2>
-
-                <div className="aj-card-subtitle">
-                  Live instrument chart and signal lifecycle
-                </div>
-              </div>
-
-              <div className="aj-strategy-state">
-                <Circle
-                  size={9}
-                  fill="currentColor"
-                />
-
-                {strategyPaused
-                  ? "PAUSED"
-                  : "WAITING FOR ENTRY"}
-              </div>
-
-            </div>
+            <div className="aj-card-header" style={{ justifyContent: "flex-start" }}>
+  <h2
+    className="aj-card-title"
+    style={{
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      margin: 0,
+      padding: "10px 14px",
+      borderRadius: 9,
+      border: `1px solid ${algoHomeTheme === "light" ? "#2563eb" : "rgba(59,130,246,.55)"}`,
+      background: algoHomeTheme === "light" ? "#e8eef8" : "rgba(37,99,235,.16)",
+      color: algoHomeTheme === "light" ? "#1d4ed8" : "#bfdbfe",
+      fontSize: 14,
+      fontWeight: 800
+    }}
+  >
+    ⌁ Market Analysis
+  </h2>
+</div>
 
             <div className="aj-chart-toolbar">
               <div className="aj-chart-toolbar-main">
@@ -2911,7 +2985,7 @@ export default function AlgoHome() {
                 )}
               </span>
 
-                            <span className="aj-indicator" title="Toggle SuperTrend on the embedded chart">
+                <span className="aj-indicator" title="Toggle SuperTrend on the embedded chart">
                 <button
                   type="button"
                   aria-pressed={algoIndicators.supertrend}
@@ -3128,8 +3202,8 @@ export default function AlgoHome() {
               {selectedInstrument ? (
                 <div
                   style={{
-                    height: 420,
-                    minHeight: 320,
+                    height: 500,
+                    minHeight: 500,
                     width: "100%",
                     minWidth: 0,
                     overflow: "hidden",
@@ -3175,7 +3249,7 @@ export default function AlgoHome() {
               ) : (
                 <div
                   style={{
-                    height: 210,
+                    height: 500,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -3202,7 +3276,7 @@ export default function AlgoHome() {
                 border:
                   "1px solid rgba(96,165,250,.12)",
                 background: algoHomeTheme === "light" ? "#eff6ff" : "rgba(2,6,23,.30)",
-              }}
+}}
             >
 
               <div className="aj-eyebrow">
@@ -3236,7 +3310,95 @@ export default function AlgoHome() {
               Instrument search and canonical metadata live here.
               ================================================== */}
 
-          <div className="aj-panel aj-card">
+          <div className="aj-execution-stack">
+
+<div className="aj-panel aj-hero-side">
+
+            <div className="aj-side-title">
+
+              <h3>
+                Current Signal
+              </h3>
+
+              <span className="aj-small-pill aj-light-theme-monitoring">
+                MONITORING
+              </span>
+
+            </div>
+
+            <div className="aj-signal-box">
+
+              <div className="aj-eyebrow">
+                INDICATOR SIGNAL
+              </div>
+
+              <div
+                style={{
+                  fontSize: 25,
+                  fontWeight: 900,
+                  margin: "9px 0",
+                }}
+              >
+                BUY SIGNAL
+              </div>
+
+              <div className="aj-signal-row">
+                <span className="aj-muted">
+                  State
+                </span>
+
+                <span
+                  style={{
+                    color: "#fbbf24",
+                    fontWeight: 850,
+                  }}
+                >
+                  Waiting for entry
+                </span>
+              </div>
+
+              <div className="aj-signal-row">
+                <span className="aj-muted">
+                  Time
+                </span>
+
+                <span className="aj-signal-value">
+                  10:15:42
+                </span>
+              </div>
+
+              <div className="aj-signal-row">
+                <span className="aj-muted">
+                  Direction
+                </span>
+
+                <span
+                  className="aj-positive"
+                >
+                  BUY
+                </span>
+              </div>
+
+            </div>
+
+            <div
+              style={{
+                marginTop: 14,
+                display: "flex",
+                gap: 7,
+                alignItems: "center",
+                color: "#75839b",
+                fontSize: 10,
+              }}
+            >
+              <ShieldCheck size={14} />
+
+              No order is sent by this prototype.
+            </div>
+
+          </div>
+
+<div className="aj-panel aj-card aj-option-execution-card">
 
             <div className="aj-card-header">
 
@@ -3361,9 +3523,168 @@ export default function AlgoHome() {
                 </div>
               </div>
             </div>
+
+          
+
           </div>
 
-        </section>
+{/* AJ_SIGNAL_BREAKDOWN_PREVIEW_V1 */}
+          <div
+            className="aj-panel aj-card aj-signal-breakdown-card"
+            style={{
+              minWidth: 0,
+              
+              background: algoHomeTheme === "light" ? "#ffffff" : "rgba(9,15,29,.96)",
+              border: `1px solid ${algoHomeTheme === "light" ? "#dce4ef" : "rgba(96,165,250,.16)"}`,
+              color: algoHomeTheme === "light" ? "#172033" : "#e7edf7"
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                marginBottom: 13
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 850 }}>
+                Signal Breakdown
+              </h3>
+              <span
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 999,
+                  fontSize: 9,
+                  fontWeight: 850,
+                  letterSpacing: ".06em",
+                  color: algoHomeTheme === "light" ? "#64748b" : "#94a3b8",
+                  background: algoHomeTheme === "light" ? "#f1f5f9" : "rgba(148,163,184,.10)",
+                  border: `1px solid ${algoHomeTheme === "light" ? "#e2e8f0" : "rgba(148,163,184,.14)"}`
+                }}
+              >
+                PREVIEW VALUES
+              </span>
+              <p
+                style={{
+                  flexBasis: "100%",
+                  margin: "-4px 0 0",
+                  color: algoHomeTheme === "light" ? "#64748b" : "#8190a8",
+                  fontSize: 11,
+                  lineHeight: 1.5
+                }}
+              >
+                Hover over a signal for detail. These sample values are placeholders, not live analysis results.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(92px, 1fr))",
+                gap: 9
+              }}
+            >
+              {([
+                { label: "OI BIAS", value: "BEARISH", tone: "negative" },
+                { label: "ATM OI", value: "NEUTRAL", tone: "neutral" },
+                { label: "VWAP BIAS", value: "NEUTRAL", tone: "neutral" },
+                { label: "ORB", value: "NEUTRAL", tone: "neutral" },
+                { label: "TECHNICAL", value: "NEUTRAL", tone: "neutral" },
+                { label: "AI SENTIMENT", value: "NEGATIVE", tone: "negative" },
+                { label: "MOMENTUM", value: "NEUTRAL", tone: "neutral" },
+                { label: "LARGE GAP", value: "No", tone: "plain" }
+              ] as const).map((item) => (
+                <div
+                  key={item.label}
+                  title={`${item.label}: ${item.value}. Preview placeholder only.`}
+                  style={{
+                    minWidth: 0,
+                    minHeight: 34,
+                    padding: "6px 8px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 6,
+                    textAlign: "center",
+                    borderRadius: 11,
+                    background: algoHomeTheme === "light" ? "#f1f5f9" : "rgba(148,163,184,.08)",
+                    border: `1px solid ${algoHomeTheme === "light" ? "#edf1f6" : "rgba(148,163,184,.06)"}`
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 9,
+                      lineHeight: 1.3,
+                      fontWeight: 850,
+                      letterSpacing: ".035em",
+                      color: algoHomeTheme === "light" ? "#64748b" : "#8493aa"
+                    }}
+                  >
+                    {item.label}
+                  </span>
+
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      maxWidth: "100%",
+                      padding: item.tone === "plain" ? "0" : "5px 10px",
+                      borderRadius: 999,
+                      fontSize: 11,
+                      fontWeight: item.tone === "plain" ? 500 : 750,
+                      overflowWrap: "anywhere",
+                      color: item.tone === "negative"
+                        ? (algoHomeTheme === "light" ? "#dc2626" : "#f87171")
+                        : (algoHomeTheme === "light" ? "#64748b" : "#aebbd0"),
+                      background: item.tone === "negative"
+                        ? (algoHomeTheme === "light" ? "#fff1f2" : "rgba(248,113,113,.09)")
+                        : "transparent"
+                    }}
+                  >
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+                marginTop: 10,
+                paddingTop: 8,
+                borderTop: `1px solid ${algoHomeTheme === "light" ? "#e2e8f0" : "rgba(148,163,184,.18)"}`,
+                color: algoHomeTheme === "light" ? "#64748b" : "#8190a8",
+                fontSize: 12
+              }}
+            >
+              <span>Final Direction <span title="Preview placeholder; not a live recommendation.">ⓘ</span></span>
+              <span
+                title="Preview placeholder only."
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 999,
+                  background: algoHomeTheme === "light" ? "#fff1f2" : "rgba(248,113,113,.09)",
+                  color: algoHomeTheme === "light" ? "#dc2626" : "#f87171",
+                  fontWeight: 800
+                }}
+              >
+                PUT
+              </span>
+            </div>
+          </div>
+
+</div>
+
+                  
+</section>
 
         {/* ====================================================
             POSITIONS / ORDERS / HISTORY

@@ -201,6 +201,65 @@ function firstFrames(e: any, n = 5): string {
         .join(" | ");
 }
 
+// AJ OUTCOMES: how did each detected trade end with its plan levels?
+// (stop loss first when one bar touches both; ignores the new-day / 150-bar exits)
+function evaluateOutcomes(trades: any[], candles: Candle[]) {
+
+    console.log("TRADE OUTCOMES (plan SL / TP1-TP3, stop first when one bar touches both):");
+
+    let stops = 0, targets = 0, open = 0, totalR = 0, tp1First = 0;
+
+    for (const t of trades) {
+
+        const long = t.tp1 >= t.entry;
+        const risk = Math.abs(t.entry - t.sl);
+
+        let outcome = "OPEN";
+        let r = 0;
+        let bars = 0;
+        let reachedTp1 = false;
+
+        if (risk > 0) {
+            for (let k = t.bar + 1; k < candles.length; k++) {
+
+                const c = candles[k];
+                bars++;
+
+                const stopHit = long ? c.low <= t.sl : c.high >= t.sl;
+                const tp1Hit = long ? c.high >= t.tp1 : c.low <= t.tp1;
+                const tp3Hit = long ? c.high >= t.tp3 : c.low <= t.tp3;
+
+                if (tp1Hit) reachedTp1 = true;
+
+                if (stopHit) { outcome = "STOP"; r = -1; break; }
+                if (tp3Hit) { outcome = "TP3"; r = Math.abs(t.tp3 - t.entry) / risk; break; }
+            }
+        }
+
+        if (outcome === "STOP") stops++;
+        else if (outcome === "TP3") targets++;
+        else open++;
+
+        if (reachedTp1) tp1First++;
+        totalR += r;
+
+        console.log(
+            `  bar ${String(t.bar).padStart(3)} ${long ? "LONG " : "SHORT"} ${outcome.padEnd(5)} ` +
+            `after ${String(bars).padStart(3)} bars ${(r >= 0 ? "+" : "") + r.toFixed(1)}R   ` +
+            `TP1 reached: ${reachedTp1 ? "yes" : "no"}`
+        );
+    }
+
+    const closed = stops + targets;
+
+    console.log(
+        `  SUMMARY: ${trades.length} trade(s) | ${targets} reached TP3 | ${stops} stopped | ${open} still open | ` +
+        `TP1 reached in ${tp1First} | ` +
+        `hit rate ${closed ? Math.round((targets / closed) * 100) : 0}% | ` +
+        `total ${(totalR >= 0 ? "+" : "") + totalR.toFixed(1)}R | ` +
+        `avg ${(closed ? (totalR / closed) : 0).toFixed(2)}R per closed trade`
+    );
+}
 function runScenario(name: string, candles: Candle[]) {
     console.log("\n" + "=".repeat(78));
     console.log(` SCENARIO: ${name}  (${candles.length} bars)`);
@@ -243,7 +302,7 @@ function runScenario(name: string, candles: Candle[]) {
             // AJ TG: same fields ChartEngine reads from runtimePanel
             tgBar = i;
             tg?.onTick({
-                symbol: SYMBOL,
+                symbol: process.env.AJ_TG_SYMBOL ?? SYMBOL, // AJ: e.g. "NIFTY 13OCT 22500CE" previews Telegram on spot candles
                 entry: Number(result?.entryPrice),
                 stopLoss: Number(result?.stopLoss),
                 tps: [Number(result?.tp1), Number(result?.tp2), Number(result?.tp3)],
@@ -331,6 +390,7 @@ function runScenario(name: string, candles: Candle[]) {
             console.log(`  bar ${t.bar} ${t.dir > 0 ? "LONG" : "SHORT"} -> ${ok ? "OK" : "BAD (SL/TP on the wrong side for this direction)"}`);
         }
         console.log(`Distinct entry prices: ${new Set(trades.map((x: any) => x.entry)).size} of ${trades.length} trade(s)`);
+        evaluateOutcomes(trades, candles);
         for (const t of trades)
             console.log(`  bar ${t.bar} ${t.dir > 0 ? "LONG (CE)" : "SHORT (PE)"} entry=${t.entry?.toFixed(2)} SL=${t.sl?.toFixed(2)} TP1=${t.tp1?.toFixed(2)} TP2=${t.tp2?.toFixed(2)} (score=${t.score} conf=${t.conf} state=${t.state})`);
     }
