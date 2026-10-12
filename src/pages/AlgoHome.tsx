@@ -15,6 +15,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTheme } from "../theme/ThemeContext";
 import ChartWindow from "../components/ChartWindow";
 import AJSettingsPanel from "../indicators/AJIndicator/config/AJIndicatorSettingsPanel";
 
@@ -28,9 +29,11 @@ import {
   Circle,
   Clock3,
   Layers3,
+  Moon,
   Pause,
   Play,
   Search,
+  Sun,
   Settings2,
   ShieldCheck,
   Square,
@@ -393,6 +396,7 @@ function instrumentSecondaryLabel(
 }
 
 export default function AlgoHome() {
+  const { theme: algoHomeTheme, toggleTheme: toggleAlgoHomeTheme } = useTheme();
   const params = useMemo(
     () =>
       new URLSearchParams(
@@ -605,7 +609,7 @@ export default function AlgoHome() {
       : "No instrument selected";
 
   return (
-    <main className="aj-home">
+    <main className={`aj-home aj-theme-${algoHomeTheme}`}>
       {showAJSettings && (
         <AJSettingsPanel
           chartId="aj-algo-home-chart"
@@ -1070,7 +1074,7 @@ export default function AlgoHome() {
         .aj-grid {
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-          align-items: start;
+          align-items: stretch;
           gap: 18px;
           margin-bottom: 18px;
         }
@@ -1212,8 +1216,8 @@ export default function AlgoHome() {
         .aj-lifecycle-track {
           display: grid;
           grid-template-columns: repeat(5, minmax(0, 1fr));
-          gap: 8px;
-          margin-top: 13px;
+          gap: 4px;
+          margin-top: 6px;
         }
         .aj-lifecycle-stage {
           position: relative;
@@ -1221,8 +1225,8 @@ export default function AlgoHome() {
           min-width: 0;
           flex-direction: column;
           align-items: center;
-          gap: 7px;
-          padding: 8px 3px;
+          gap: 4px;
+          padding: 3px 2px;
           text-align: center;
           border: 1px solid rgba(148,163,184,.14);
           border-radius: 9px;
@@ -1240,8 +1244,8 @@ export default function AlgoHome() {
         }
         .aj-lifecycle-marker {
           display: flex;
-          width: 27px;
-          height: 27px;
+          width: 22px;
+          height: 22px;
           align-items: center;
           justify-content: center;
           border: 1px solid rgba(148,163,184,.35);
@@ -1825,8 +1829,8 @@ export default function AlgoHome() {
             grid-template-columns: 1fr 1fr;
           }
         }
-        /* AJ AlgoHome scoped light palette; layout rules remain unchanged. */
-        .aj-home {
+        /* AlgoHome-only light palette. Dark mode uses the original styles above. */
+        .aj-home.aj-theme-light {
           color: #202938 !important;
           background: #f3f6fa !important;
           --bg-modal: #ffffff;
@@ -1847,31 +1851,473 @@ export default function AlgoHome() {
           --shadow-heavy: 0 18px 48px rgba(30, 41, 59, .18);
         }
 
-        .aj-home .aj-card,
-        .aj-home .aj-panel,
-        .aj-home .aj-stat-card {
+        .aj-home.aj-theme-light .aj-topbar,
+        .aj-home.aj-theme-light .aj-side-nav {
+          color: #202938;
+          background: #ffffff;
+          border-color: #d7e0ea;
+        }
+
+        .aj-home.aj-theme-light .aj-card,
+        .aj-home.aj-theme-light .aj-panel,
+        .aj-home.aj-theme-light .aj-stat-card {
           color: #202938;
           background-color: #ffffff !important;
           border-color: #d7e0ea;
         }
 
-        .aj-home .aj-card-title { color: #172033 !important; }
-        .aj-home .aj-card-subtitle { color: #64748b !important; }
+        .aj-home.aj-theme-light .aj-card-title {
+          color: #172033 !important;
+        }
 
-        .aj-home input,
-        .aj-home select,
-        .aj-home textarea {
+        .aj-home.aj-theme-light .aj-card-subtitle {
+          color: #64748b !important;
+        }
+
+        .aj-home.aj-theme-light .aj-brand-title,
+        .aj-home.aj-theme-light .aj-side-nav-heading,
+        .aj-home.aj-theme-light .aj-side-nav-item,
+        .aj-home.aj-theme-light .aj-status {
+          color: #334155;
+        }
+
+        .aj-home.aj-theme-light .aj-brand-sub {
+          color: #64748b;
+        }
+
+        .aj-home.aj-theme-light .aj-icon-button {
+          color: #334155;
+          background-color: #f8fafc;
+          border-color: #cbd5e1;
+        }
+
+        .aj-home.aj-theme-light input,
+        .aj-home.aj-theme-light select,
+        .aj-home.aj-theme-light textarea {
           color: #202938 !important;
           background-color: #ffffff !important;
           border-color: #cbd5e1 !important;
         }
 
-        .aj-home input::placeholder,
-        .aj-home textarea::placeholder {
+        .aj-home.aj-theme-light input::placeholder,
+        .aj-home.aj-theme-light textarea::placeholder {
           color: #8491a3 !important;
           opacity: 1;
         }
-      `}</style>
+
+        .aj-home.aj-theme-light .aj-home-chart {
+          color: #202938 !important;
+          background: #ffffff !important;
+          border-color: #d7e0ea !important;
+        }
+
+        /* AJ FULL LIGHT THEME OVERRIDES
+           Scoped exclusively to AlgoHome. Dark mode retains the original CSS. */
+
+        .aj-home.aj-theme-light {
+          color-scheme: light;
+          color: #202938 !important;
+          background: #f3f6fa !important;
+        }
+
+        /* Main layout surfaces */
+        .aj-home.aj-theme-light .aj-shell,
+        .aj-home.aj-theme-light .aj-main,
+        .aj-home.aj-theme-light .aj-content,
+        .aj-home.aj-theme-light .aj-workspace,
+        .aj-home.aj-theme-light .aj-dashboard,
+        .aj-home.aj-theme-light .aj-hero,
+        .aj-home.aj-theme-light .aj-stats,
+        .aj-home.aj-theme-light .aj-grid {
+          color: #202938 !important;
+        }
+        /* AJ LIGHT PAGE CONTINUOUS BACKGROUND */
+        .aj-home.aj-theme-light .aj-shell,
+        .aj-home.aj-theme-light .aj-main,
+        .aj-home.aj-theme-light .aj-content,
+        .aj-home.aj-theme-light .aj-workspace,
+        .aj-home.aj-theme-light .aj-dashboard,
+        .aj-home.aj-theme-light .aj-grid {
+          background-color: #f3f6fa !important;
+        }
+
+        /* Equal-height cards within the desktop two-column grid */
+        .aj-home.aj-theme-light .aj-grid > .aj-panel {
+          height: 100%;
+          box-sizing: border-box;
+        }
+
+        .aj-home.aj-theme-light .aj-topbar,
+        .aj-home.aj-theme-light .aj-side-nav,
+        .aj-home.aj-theme-light .aj-panel,
+        .aj-home.aj-theme-light .aj-card,
+        .aj-home.aj-theme-light .aj-stat-card,
+        .aj-home.aj-theme-light .aj-hero-main,
+        .aj-home.aj-theme-light .aj-hero-side,
+        .aj-home.aj-theme-light .aj-stat,
+        .aj-home.aj-theme-light .aj-activity,
+        .aj-home.aj-theme-light .aj-home-chart {
+          color: #202938 !important;
+          background: #ffffff !important;
+          border-color: #d7e0ea !important;
+          box-shadow: 0 3px 12px rgba(30, 41, 59, .045);
+        }
+
+        /* Nested execution, signal, instrument and lifecycle panels */
+        .aj-home.aj-theme-light .aj-signal-box,
+        .aj-home.aj-theme-light .aj-option-summary,
+        .aj-home.aj-theme-light .aj-option-field,
+        .aj-home.aj-theme-light .aj-pipeline-card,
+        .aj-home.aj-theme-light .aj-targets-card,
+        .aj-home.aj-theme-light .aj-lifecycle-track,
+        .aj-home.aj-theme-light .aj-lifecycle-stage,
+        .aj-home.aj-theme-light .aj-search,
+        .aj-home.aj-theme-light .aj-search-input-wrap,
+        .aj-home.aj-theme-light .aj-selected-top,
+        .aj-home.aj-theme-light .aj-selected-instrument,
+        .aj-home.aj-theme-light .aj-canonical-item,
+        .aj-home.aj-theme-light .aj-metric,
+        .aj-home.aj-theme-light .aj-strategy-state,
+        .aj-home.aj-theme-light .aj-target,
+        .aj-home.aj-theme-light .aj-tab,
+        .aj-home.aj-theme-light .aj-pipeline-step {
+          color: #202938 !important;
+          background: #f8fafc !important;
+          border-color: #dbe2ea !important;
+        }
+
+        /* Text defaults: counteract the many hard-coded dark-mode text colors. */
+        .aj-home.aj-theme-light .aj-eyebrow,
+        .aj-home.aj-theme-light .aj-muted,
+        .aj-home.aj-theme-light .aj-card-subtitle,
+        .aj-home.aj-theme-light .aj-stat-label,
+        .aj-home.aj-theme-light .aj-side-title,
+        .aj-home.aj-theme-light .aj-brand-sub,
+        .aj-home.aj-theme-light .aj-side-nav-heading,
+        .aj-home.aj-theme-light .aj-pipeline-number,
+        .aj-home.aj-theme-light .aj-canonical-label,
+        .aj-home.aj-theme-light .aj-metric span,
+        .aj-home.aj-theme-light .aj-timeframe-wrap,
+        .aj-home.aj-theme-light .aj-option-field span {
+          color: #64748b !important;
+        }
+
+        .aj-home.aj-theme-light .aj-h1,
+        .aj-home.aj-theme-light .aj-card-title,
+        .aj-home.aj-theme-light .aj-stat-value,
+        .aj-home.aj-theme-light .aj-signal-value,
+        .aj-home.aj-theme-light .aj-pipeline-label,
+        .aj-home.aj-theme-light .aj-brand-title,
+        .aj-home.aj-theme-light .aj-side-nav-item,
+        .aj-home.aj-theme-light .aj-lifecycle-stage strong,
+        .aj-home.aj-theme-light .aj-option-field strong,
+        .aj-home.aj-theme-light .aj-strategy-name,
+        .aj-home.aj-theme-light .aj-metric strong {
+          color: #202938 !important;
+        }
+
+        .aj-home.aj-theme-light .aj-topbar *,
+        .aj-home.aj-theme-light .aj-side-nav *,
+        .aj-home.aj-theme-light .aj-card *,
+        .aj-home.aj-theme-light .aj-panel * {
+          text-shadow: none;
+        }
+
+        /* Search, timeframe, form fields and dropdowns */
+        .aj-home.aj-theme-light input,
+        .aj-home.aj-theme-light select,
+        .aj-home.aj-theme-light textarea,
+        .aj-home.aj-theme-light .aj-search-input,
+        .aj-home.aj-theme-light .aj-timeframe-control {
+          color: #202938 !important;
+          background: #ffffff !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        .aj-home.aj-theme-light input::placeholder,
+        .aj-home.aj-theme-light textarea::placeholder {
+          color: #8491a3 !important;
+          opacity: 1;
+        }
+
+        /* Buttons and navigation */
+        .aj-home.aj-theme-light .aj-icon-button {
+          color: #334155 !important;
+          background: #f8fafc !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        .aj-home.aj-theme-light .aj-side-nav-item {
+          color: #475569 !important;
+          background: transparent;
+        }
+
+        .aj-home.aj-theme-light .aj-side-nav-item.is-current {
+          color: #1d4ed8 !important;
+          background: #eff6ff !important;
+          border-color: #bfdbfe !important;
+        }
+
+        .aj-home.aj-theme-light .aj-strategy-state,
+        .aj-home.aj-theme-light .aj-small-pill {
+          color: #475569 !important;
+          background: #f1f5f9 !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        /* Preserve meaningful status colors and action-button semantics. */
+        .aj-home.aj-theme-light .aj-positive,
+        .aj-home.aj-theme-light .aj-target.hit,
+        .aj-home.aj-theme-light .aj-target.hit *,
+        .aj-home.aj-theme-light .aj-lifecycle-stage strong.is-active {
+          color: #15803d !important;
+        }
+
+        .aj-home.aj-theme-light .aj-pending {
+          color: #a16207 !important;
+        }
+
+        .aj-home.aj-theme-light .aj-negative {
+          color: #b91c1c !important;
+        }
+
+        .aj-home.aj-theme-light .aj-target.hit {
+          background: #f0fdf4 !important;
+          border-color: #bbf7d0 !important;
+        }
+
+        .aj-home.aj-theme-light .aj-pause-button {
+          color: #92400e !important;
+          background: #fffbeb !important;
+          border-color: #fcd34d !important;
+        }
+
+        .aj-home.aj-theme-light .aj-exit-button {
+          color: #b91c1c !important;
+          background: #fef2f2 !important;
+          border-color: #fecaca !important;
+        }
+
+        .aj-home.aj-theme-light .aj-home-chart > div:first-child {
+          color: #202938 !important;
+        }
+
+        /* AJSettingsPanel and any dialogs rendered inside the page */
+        .aj-home.aj-theme-light [role="dialog"],
+        .aj-home.aj-theme-light .aj-modal,
+        .aj-home.aj-theme-light .aj-settings-panel {
+          color: #202938 !important;
+          background: #ffffff !important;
+          border-color: #d7e0ea !important;
+        }
+
+/* AJ LIGHT THEME SECOND PASS: strategy, indicators and workflow */
+
+.aj-home.aj-theme-light .aj-strategy-list {
+  background: transparent !important;
+}
+
+.aj-home.aj-theme-light .aj-strategy {
+  color: #202938 !important;
+  background: #ffffff !important;
+  border: 1px solid #d7e4f2 !important;
+  border-radius: 12px;
+  box-shadow: 0 2px 7px rgba(37, 99, 235, .045);
+}
+
+.aj-home.aj-theme-light .aj-strategy:hover {
+  background: #f5f9ff !important;
+  border-color: #93c5fd !important;
+}
+
+.aj-home.aj-theme-light .aj-strategy-name {
+  color: #1e293b !important;
+}
+
+.aj-home.aj-theme-light .aj-strategy-meta {
+  color: #64748b !important;
+}
+
+.aj-home.aj-theme-light .aj-strategy [style*="color"] {
+  color: #2563eb !important;
+}
+
+/* Indicator controls: blue-tinted pills on the light surface. */
+.aj-home.aj-theme-light .aj-indicators {
+  background: transparent !important;
+}
+
+.aj-home.aj-theme-light .aj-indicator {
+  color: #334155 !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 8px;
+}
+
+.aj-home.aj-theme-light .aj-indicator button {
+  color: #334155 !important;
+  background: transparent !important;
+}
+
+.aj-home.aj-theme-light .aj-indicator button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Preserve recognizable ON/OFF colors while improving contrast. */
+.aj-home.aj-theme-light .aj-indicator button span {
+  font-weight: 800;
+}
+
+/* Four-step workflow: pale blue tiles with readable labels. */
+.aj-home.aj-theme-light .aj-flow-step {
+  color: #1e40af !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 10px;
+}
+
+.aj-home.aj-theme-light .aj-flow-number {
+  color: #ffffff !important;
+  background: #2563eb !important;
+  border: 1px solid #2563eb !important;
+  border-radius: 999px;
+}
+
+/* Signal lifecycle: pale blue stages and visible active marker. */
+.aj-home.aj-theme-light .aj-lifecycle-track {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+}
+
+.aj-home.aj-theme-light .aj-lifecycle-stage {
+  background: #f8fbff !important;
+  border-color: #dbeafe !important;
+}
+
+.aj-home.aj-theme-light .aj-lifecycle-label {
+  color: #64748b !important;
+}
+
+.aj-home.aj-theme-light .aj-lifecycle-marker {
+  color: #64748b !important;
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+}
+
+.aj-home.aj-theme-light .aj-lifecycle-marker.is-active {
+  color: #ffffff !important;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.aj-home.aj-theme-light .aj-lifecycle-stage strong.is-active {
+  color: #15803d !important;
+}
+
+/* AJ LIGHT THEME CONTROLS INSERT */
+.aj-home.aj-theme-light .aj-light-theme-action {
+  color: #1e40af !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: none !important;
+}
+
+.aj-home.aj-theme-light .aj-light-theme-action:hover {
+  color: #1e40af !important;
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+
+.aj-home.aj-theme-light .aj-light-theme-feed {
+  color: #1e40af !important;
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  box-shadow: none !important;
+}
+
+.aj-home.aj-theme-light .aj-light-theme-feed:hover,
+.aj-home.aj-theme-light .aj-light-theme-feed.active {
+  color: #1e40af !important;
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+
+.aj-home.aj-theme-light .aj-feed-name,
+.aj-home.aj-theme-light .aj-feed-status {
+  color: #1e40af !important;
+}
+
+.aj-home.aj-theme-light .aj-light-theme-monitoring {
+  color: #1e40af !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+}
+
+.aj-home.aj-theme-light .aj-light-theme-live-monitoring {
+  color: #1e40af !important;
+  background: #eff6ff !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+  box-sizing: border-box;
+}
+        /*         /* Light-theme Positions / Orders / Order History tab bar */
+        .aj-home.aj-theme-light .aj-tabs {
+          color: #1e40af !important;
+          background: #eff6ff !important;
+          border-bottom: 1px solid #bfdbfe !important;
+        }
+
+        .aj-home.aj-theme-light .aj-tabs > button {
+          color: #1e40af !important;
+          background: transparent !important;
+          border-color: transparent !important;
+        }
+
+        .aj-home.aj-theme-light .aj-tabs > button:hover {
+          color: #1e40af !important;
+          background: #dbeafe !important;
+          border-color: #bfdbfe !important;
+        }
+
+        .aj-home.aj-theme-light .aj-tabs > button.active {
+          color: #1e40af !important;
+          background: #dbeafe !important;
+          border-color: #93c5fd !important;
+        }
+
+        .aj-home.aj-theme-light .aj-light-theme-live-monitoring {
+          color: #1e40af !important;
+          background: #eff6ff !important;
+          border-color: #bfdbfe !important;
+        }
+/* Strategy and workflow controls should retain visible focus. */
+.aj-home.aj-theme-light .aj-strategy:focus-within {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+      
+        /* AJ LIGHT THEME - Positions / Orders / Order History table text */
+        .aj-home.aj-theme-light .aj-activity .aj-table th,
+        .aj-home.aj-theme-light .aj-activity .aj-table td {
+          color: #1e40af !important;
+        }
+
+        .aj-home.aj-theme-light .aj-activity .aj-table th {
+          background: #eff6ff !important;
+          border-color: #bfdbfe !important;
+        }
+
+        .aj-home.aj-theme-light .aj-activity .aj-table td {
+          border-color: #dbeafe !important;
+        }
+
+        .aj-home.aj-theme-light .aj-activity .aj-table tbody tr:hover {
+          background: #eff6ff !important;
+        }
+
+`}</style>
 
       {/* ======================================================
           TOP BAR
@@ -1906,7 +2352,7 @@ export default function AlgoHome() {
               <button
                 key={item}
                 type="button"
-                className={`aj-feed-tab ${
+                className={`aj-feed-tab aj-light-theme-feed ${
                   feed === item
                     ? "active"
                     : ""
@@ -1941,6 +2387,16 @@ export default function AlgoHome() {
               <Bell size={17} />
             </button>
 
+            <button
+              className="aj-icon-button aj-theme-toggle"
+              title={algoHomeTheme === "dark" ? "Switch AlgoHome to light mode" : "Switch AlgoHome to dark mode"}
+              aria-label={algoHomeTheme === "dark" ? "Switch AlgoHome to light mode" : "Switch AlgoHome to dark mode"}
+              aria-pressed={algoHomeTheme === "light"}
+              type="button"
+              onClick={toggleAlgoHomeTheme}
+            >
+              {algoHomeTheme === "dark" ? <Moon size={17} /> : <Sun size={17} />}
+            </button>
             <button
               className="aj-icon-button"
               title="Account"
@@ -2051,7 +2507,7 @@ export default function AlgoHome() {
             >
               <button
                 type="button"
-                className="aj-primary"
+                className="aj-primary aj-light-theme-action"
                 onClick={openTerminal}
               >
                 Get Charts
@@ -2059,7 +2515,7 @@ export default function AlgoHome() {
 
               <button
                 type="button"
-                className="aj-secondary"
+                className="aj-secondary aj-light-theme-action"
                 onClick={() =>
                   setAutoTrade(
                     (value) => !value,
@@ -2092,7 +2548,7 @@ export default function AlgoHome() {
                 Current Signal
               </h3>
 
-              <span className="aj-small-pill">
+              <span className="aj-small-pill aj-light-theme-monitoring">
                 MONITORING
               </span>
 
@@ -2664,59 +3120,10 @@ export default function AlgoHome() {
                 padding: 12,
                 borderRadius: 13,
                 border: "1px solid rgba(96,165,250,.20)",
-                background: "rgba(2,6,23,.42)",
+                background: algoHomeTheme === "light" ? "#ffffff" : "rgba(2,6,23,.42)",
                 minWidth: 0,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  marginBottom: 12,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      color: "#e2e8f0",
-                      fontSize: 12,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {selectedInstrument
-                      ? selectedLabel
-                      : "Live instrument chart"}
-                  </div>
-                  <div
-                    style={{
-                      color: "#8190a8",
-                      fontSize: 10,
-                      marginTop: 4,
-                    }}
-                  >
-                    {selectedInstrument
-                      ? `${FEED_LABELS[feed]} · ${chartTimeframe}-minute chart`
-                      : "Search and select an instrument above to load its chart"}
-                  </div>
-                </div>
-
-                <span
-                  style={{
-                    flexShrink: 0,
-                    fontSize: 9,
-                    fontWeight: 800,
-                    letterSpacing: ".08em",
-                    color: selectedInstrument ? "#4ade80" : "#94a3b8",
-                    border: "1px solid rgba(148,163,184,.20)",
-                    borderRadius: 20,
-                    padding: "5px 8px",
-                  }}
-                >
-                  {selectedInstrument ? "CHART SELECTED" : "AWAITING SYMBOL"}
-                </span>
-              </div>
 
               {selectedInstrument ? (
                 <div
@@ -2731,7 +3138,7 @@ export default function AlgoHome() {
                 >
                   <ChartWindow
                     chartId="aj-algo-home-chart"
-                    themeOverride="light"
+                    themeOverride={algoHomeTheme}
                     symbol={
                       selectedInstrument.symbol ||
                       selectedInstrument.tradingSymbol ||
@@ -2789,13 +3196,12 @@ export default function AlgoHome() {
             </div>
             <div
               style={{
-                marginTop: 20,
-                padding: 16,
+                marginTop: 10,
+                padding: 10,
                 borderRadius: 13,
                 border:
                   "1px solid rgba(96,165,250,.12)",
-                background:
-                  "rgba(2,6,23,.30)",
+                background: algoHomeTheme === "light" ? "#eff6ff" : "rgba(2,6,23,.30)",
               }}
             >
 
@@ -2892,7 +3298,7 @@ export default function AlgoHome() {
             <div className="aj-action-row aj-option-actions">
               <button
                 type="button"
-                className="aj-primary"
+                className="aj-primary aj-light-theme-action"
                 onClick={() => setAutoTrade((value) => !value)}
               >
                 <Bot size={15} />
@@ -2995,7 +3401,7 @@ export default function AlgoHome() {
               ),
             )}
 
-            <div
+            <div className="aj-light-theme-live-monitoring"
               style={{
                 marginLeft: "auto",
                 display: "flex",
@@ -3386,6 +3792,7 @@ export default function AlgoHome() {
     </main>
   );
 }
+
 
 
 
