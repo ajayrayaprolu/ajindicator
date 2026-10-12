@@ -1,0 +1,90 @@
+                         ┌──────────────────────┐
+                         │     Fyers API        │
+                         └──────────┬───────────┘
+                                    │
+                         contract / candle data
+                                    │
+             ┌──────────────────────┴─────────────────────┐
+             │                                            │
+             ▼                                            ▼
+┌────────────────────────┐                  ┌────────────────────────┐
+│ fyers-contract-master  │                  │ fyers-candle-cache     │
+│         .db            │                  │         .db             │
+├────────────────────────┤                  ├────────────────────────┤
+│ instruments            │                  │ candles                │
+│ symbol                 │                  │ exchange               │
+│ token                  │                  │ token                  │
+│ expiry                 │                  │ interval               │
+│ strike                 │                  │ timestamp              │
+│ lot size               │                  │ OHLCV                  │
+└────────────────────────┘                  └───────────┬────────────┘
+                                                         │
+                                                retention cleanup
+                                                         │
+                                                14 / 31 days
+                                                         │
+                                                         ▼
+                                                   old rows deleted
+
+server/
+└── fyers/
+    ├── data/
+    │   ├── fyers-contract-master.db
+    │   ├── fyers-candle-cache.db
+    │   │
+    │   └── legacy/                 <-- temporary during migration
+    │       ├── fyers-equity-master.json
+    │       ├── fyers-option-master.json
+    │       ├── NSE_CM.csv
+    │       ├── NSE_FO.csv
+    │       ├── BSE_FO.csv
+    │       └── candle-cache/
+    │
+    ├── FyersFeed.js
+    ├── equityMaster.js
+    ├── history.js
+    ├── symbolMaster.js
+    ├── optionsRoute.js
+    ├── equitySearchRoute.js
+    ├── ...
+    └── session.json
+	
+                 FYERS
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+ Contract API             Market Feed
+       │                       │
+       ▼                       ▼
+fyers-contract-master.db   fyers-candle-cache.db
+       │                       │
+       │                  31-day retention
+       │                       │
+       ▼                       ▼
+symbol search              history API
+option search              chart/API
+equity search              technical analysis
+
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Migration-Alicebluestorage.ps1 -RetentionDays 14
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Migration-Alicebluestorage.ps1 -RemoveLegacy
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Fix-TradeLifecycleExit.ps1
+
+
+
+Updated implementation scope
+File	Action
+server\zerodha\login.js	Add the FYERS-style diagnostic checkpoints and ensure callback failures are logged safely.
+server\aliceblue\login.js	Standardize exchange and session-save diagnostics; remove raw provider response details from thrown errors.
+server\index.js — AliceBlue callback	Match the existing callback logging structure, without exposing credentials or session data.
+server\indstocks\token.js	Standardize token lifecycle diagnostics and sanitize the three raw-response error logs.
+server\index.js — FYERS callback	No changes. Preserve the working code as your reference implementation.
+One limitation remains: the Zerodha excerpt you supplied ends before the complete callback handler, including its failure path. I won't invent or replace that missing code.
+Please run this read-only command to show the remainder of the Zerodha callback:
+
+
+
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\scripts\Fix-TradeLifecycleExit.ps1
+npm run build
+$env:NODE_TLS_REJECT_UNAUTHORIZED="0"; npx tsx scripts/aj-e2e-test.ts live indstocks
+
+================

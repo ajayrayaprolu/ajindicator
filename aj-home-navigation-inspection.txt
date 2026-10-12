@@ -1,0 +1,459 @@
+AJ INSTITUTIONAL — READ-ONLY NAVIGATION / HERO INSPECTION
+Generated: 2026-10-12 13:55:47
+No source files are modified by this inspection.
+
+===== APP ROUTING (FULL FILE) (.\src\App.tsx: lines 1-28) =====
+    1: // ============================================================
+    2: // src/App.tsx
+    3: // AJ Institutional
+    4: //
+    5: // Root routing for the new Algo Home and the existing Terminal.
+    6: // The existing Terminal remains untouched.
+    7: // ============================================================
+    8: 
+    9: import AlgoHome from "./pages/AlgoHome";
+   10: import Terminal from "./pages/Terminal";
+   11: 
+   12: function App() {
+   13:   const params = new URLSearchParams(window.location.search);
+   14: 
+   15:   // Existing chart terminal:
+   16:   // https://ajtrade.in/?terminal=1
+   17:   if (params.get("terminal") === "1") {
+   18:     return <Terminal />;
+   19:   }
+   20: 
+   21:   // New default homepage:
+   22:   // https://ajtrade.in/
+   23:   // https://ajtrade.in/?feed=fyers
+   24:   // https://ajtrade.in/?feed=indstocks
+   25:   return <AlgoHome />;
+   26: }
+   27: 
+   28: export default App;
+
+===== ALGOHOME HERO BUTTONS / SIGNAL / SIDEBAR JSX (.\src\pages\AlgoHome.tsx: lines 127-155) =====
+  127:   ["08 Sep", "RELIANCE 1240 CE", "BUY → SL", "-₹620"],
+  128:   ["07 Sep", "NIFTY 25,300 CE", "BUY → TARGET", "+₹2,190"],
+  129: ];
+  130: 
+  131: const fallbackInstruments: Instrument[] = [];
+  132: 
+  133: function money(value: number) {
+  134:   return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
+  135: }
+  136: 
+  137: function openTerminal() {
+  138:   const url = `${window.location.origin}${window.location.pathname}?terminal=1`;
+  139: 
+  140:   window.open(
+  141:     url,
+  142:     "_blank",
+  143:     "noopener,noreferrer",
+  144:   );
+  145: }
+  146: 
+  147: function selectFeed(feed: Feed) {
+  148:   const url =
+  149:     `${window.location.origin}` +
+  150:     `${window.location.pathname}?feed=${feed}`;
+  151: 
+  152:   window.location.assign(url);
+  153: }
+  154: 
+  155: /**
+
+===== ALGOHOME HERO BUTTONS / SIGNAL / SIDEBAR JSX (.\src\pages\AlgoHome.tsx: lines 2403-2458) =====
+ 2403:               type="button"
+ 2404:             >
+ 2405:               <Wallet size={17} />
+ 2406:             </button>
+ 2407:           </div>
+ 2408: 
+ 2409:         </div>
+ 2410:       </header>
+ 2411: 
+ 2412:       <div className="aj-shell aj-page-layout">
+ 2413:         <aside className="aj-side-nav" aria-label="Main navigation">
+ 2414:           <div className="aj-side-nav-heading">WORKSPACE</div>
+ 2415:           <div className="aj-side-nav-item is-current"><span>⌂</span>AlgoHome</div>
+ 2416:           <div className="aj-side-nav-item"><span>▦</span>Charts</div>
+ 2417:           <div className="aj-side-nav-item"><span>◇</span>Strategies</div>
+ 2418:           <div className="aj-side-nav-item"><span>▤</span>Positions</div>
+ 2419:           <div className="aj-side-nav-item"><span>⇄</span>Orders</div>
+ 2420:           <div className="aj-side-nav-item"><span>◷</span>Order History</div>
+ 2421:           <div className="aj-side-nav-item"><span>◉</span>Algo Monitor</div>
+ 2422:           <div className="aj-side-nav-item"><span>▧</span>Basket</div>
+ 2423:           <div className="aj-side-nav-item"><span>⌘</span>Strategy Builder</div>
+ 2424:           <div className="aj-side-nav-item"><span>⇆</span>Brokers</div>
+ 2425:           <div className="aj-side-nav-item"><span>☆</span>Watch List</div>
+ 2426:           <div className="aj-side-nav-item"><span>⌁</span>Indicators</div>
+ 2427:           <div className="aj-side-nav-item"><span>⚙</span>Settings</div>
+ 2428:         </aside>
+ 2429:         <div className="aj-page-main">
+ 2430: 
+ 2431:         {/* ====================================================
+ 2432:             HERO
+ 2433:             ==================================================== */}
+ 2434: 
+ 2435:         <section className="aj-hero">
+ 2436: 
+ 2437:           <div className="aj-panel aj-hero-main">
+ 2438: 
+ 2439:             <div className="aj-eyebrow">
+ 2440:               AUTOMATED EXECUTION · {FEED_LABELS[feed]}
+ 2441:             </div>
+ 2442: 
+ 2443:             <h1 className="aj-h1">
+ 2444:               Turn your indicator signal into a managed trade.
+ 2445:             </h1>
+ 2446: 
+ 2447:             <div className="aj-muted">
+ 2448:               Your indicator remains the decision source.
+ 2449:               AJ handles entry, option selection, position
+ 2450:               monitoring, targets, stop-loss and exit.
+ 2451:             </div>
+ 2452: 
+ 2453:             <div className="aj-flow">
+ 2454: 
+ 2455:               <div className="aj-flow-step">
+ 2456:                 <span className="aj-flow-number">
+ 2457:                   1
+ 2458:                 </span>
+
+===== ALGOHOME HERO BUTTONS / SIGNAL / SIDEBAR JSX (.\src\pages\AlgoHome.tsx: lines 2501-2566) =====
+ 2501:               style={{
+ 2502:                 display: "flex",
+ 2503:                 gap: 9,
+ 2504:                 marginTop: 22,
+ 2505:                 flexWrap: "wrap",
+ 2506:               }}
+ 2507:             >
+ 2508:               <button
+ 2509:                 type="button"
+ 2510:                 className="aj-primary aj-light-theme-action"
+ 2511:                 onClick={openTerminal}
+ 2512:               >
+ 2513:                 Get Charts
+ 2514:               </button>
+ 2515: 
+ 2516:               <button
+ 2517:                 type="button"
+ 2518:                 className="aj-secondary aj-light-theme-action"
+ 2519:                 onClick={() =>
+ 2520:                   setAutoTrade(
+ 2521:                     (value) => !value,
+ 2522:                   )
+ 2523:                 }
+ 2524:               >
+ 2525:                 {autoTrade ? (
+ 2526:                   <Zap size={15} />
+ 2527:                 ) : (
+ 2528:                   <Square size={15} />
+ 2529:                 )}
+ 2530: 
+ 2531:                 Auto Trade:{" "}
+ 2532:                 {autoTrade
+ 2533:                   ? "ARMED"
+ 2534:                   : "OFF"}
+ 2535:               </button>
+ 2536:             </div>
+ 2537: 
+ 2538:           </div>
+ 2539: 
+ 2540:           {/* Current Signal remains independent from
+ 2541:               instrument execution details. */}
+ 2542: 
+ 2543:           <div className="aj-panel aj-hero-side">
+ 2544: 
+ 2545:             <div className="aj-side-title">
+ 2546: 
+ 2547:               <h3>
+ 2548:                 Current Signal
+ 2549:               </h3>
+ 2550: 
+ 2551:               <span className="aj-small-pill aj-light-theme-monitoring">
+ 2552:                 MONITORING
+ 2553:               </span>
+ 2554: 
+ 2555:             </div>
+ 2556: 
+ 2557:             <div className="aj-signal-box">
+ 2558: 
+ 2559:               <div className="aj-eyebrow">
+ 2560:                 INDICATOR SIGNAL
+ 2561:               </div>
+ 2562: 
+ 2563:               <div
+ 2564:                 style={{
+ 2565:                   fontSize: 25,
+ 2566:                   fontWeight: 900,
+
+===== ALGOHOME HERO BUTTONS / SIGNAL / SIDEBAR JSX (.\src\pages\AlgoHome.tsx: lines 2710-2738) =====
+ 2710:           {/* ==================================================
+ 2711:               SIGNAL / INDICATOR STATUS
+ 2712:               ================================================== */}
+ 2713: 
+ 2714:           <div className="aj-panel aj-card">
+ 2715: 
+ 2716:             <div className="aj-card-header">
+ 2717: 
+ 2718:               <div>
+ 2719:                 <h2 className="aj-card-title">
+ 2720:                   Live Charts & Signals
+ 2721:                 </h2>
+ 2722: 
+ 2723:                 <div className="aj-card-subtitle">
+ 2724:                   Live instrument chart and signal lifecycle
+ 2725:                 </div>
+ 2726:               </div>
+ 2727: 
+ 2728:               <div className="aj-strategy-state">
+ 2729:                 <Circle
+ 2730:                   size={9}
+ 2731:                   fill="currentColor"
+ 2732:                 />
+ 2733: 
+ 2734:                 {strategyPaused
+ 2735:                   ? "PAUSED"
+ 2736:                   : "WAITING FOR ENTRY"}
+ 2737:               </div>
+ 2738: 
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 757-796) =====
+  757:           background: rgba(15,23,42,.55);
+  758:         }
+  759: 
+  760:         .aj-hero {
+  761:           display: grid;
+  762:           grid-template-columns: 1.25fr .75fr;
+  763:           gap: 18px;
+  764:           padding: 30px 0 18px;
+  765:         }
+  766: 
+  767:         .aj-panel {
+  768:           border: 1px solid rgba(148,163,184,.13);
+  769:           border-radius: 18px;
+  770:           background: linear-gradient(145deg, rgba(15,23,42,.84), rgba(7,13,28,.88));
+  771:           box-shadow: 0 20px 50px rgba(0,0,0,.18);
+  772:         }
+  773: 
+  774:         .aj-hero-main {
+  775:           padding: 30px;
+  776:           overflow: hidden;
+  777:           position: relative;
+  778:         }
+  779: 
+  780:         .aj-hero-main:after {
+  781:           content: "";
+  782:           position: absolute;
+  783:           width: 320px;
+  784:           height: 320px;
+  785:           right: -150px;
+  786:           top: -150px;
+  787:           border-radius: 50%;
+  788:           background: rgba(59,130,246,.10);
+  789:           filter: blur(8px);
+  790:         }
+  791: 
+  792:         .aj-eyebrow {
+  793:           color: #60a5fa;
+  794:           font-size: 11px;
+  795:           font-weight: 850;
+  796:           letter-spacing: .13em;
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 862-881) =====
+  862:           cursor: pointer;
+  863:         }
+  864: 
+  865:         .aj-hero-side {
+  866:           padding: 22px;
+  867:         }
+  868: 
+  869:         .aj-side-title {
+  870:           display: flex;
+  871:           align-items: center;
+  872:           justify-content: space-between;
+  873:           gap: 12px;
+  874:           margin-bottom: 16px;
+  875:         }
+  876: 
+  877:         .aj-side-title h3 {
+  878:           margin: 0;
+  879:           font-size: 14px;
+  880:         }
+  881: 
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 1778-1797) =====
+ 1778:         }
+ 1779: 
+ 1780:         @media (max-width: 1100px) {
+ 1781:           .aj-hero,
+ 1782:           .aj-grid,
+ 1783:           .aj-bottom-grid {
+ 1784:             grid-template-columns: 1fr;
+ 1785:           }
+ 1786: 
+ 1787:           .aj-stats {
+ 1788:             grid-template-columns: repeat(2,1fr);
+ 1789:           }
+ 1790: 
+ 1791:           .aj-strategy-list {
+ 1792:             grid-template-columns: 1fr;
+ 1793:           }
+ 1794: 
+ 1795:           .aj-topbar-inner {
+ 1796:             flex-wrap: wrap;
+ 1797:             padding: 10px 0;
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 1859-1878) =====
+ 1859:         }
+ 1860: 
+ 1861:         .aj-home.aj-theme-light .aj-card,
+ 1862:         .aj-home.aj-theme-light .aj-panel,
+ 1863:         .aj-home.aj-theme-light .aj-stat-card {
+ 1864:           color: #202938;
+ 1865:           background-color: #ffffff !important;
+ 1866:           border-color: #d7e0ea;
+ 1867:         }
+ 1868: 
+ 1869:         .aj-home.aj-theme-light .aj-card-title {
+ 1870:           color: #172033 !important;
+ 1871:         }
+ 1872: 
+ 1873:         .aj-home.aj-theme-light .aj-card-subtitle {
+ 1874:           color: #64748b !important;
+ 1875:         }
+ 1876: 
+ 1877:         .aj-home.aj-theme-light .aj-brand-title,
+ 1878:         .aj-home.aj-theme-light .aj-side-nav-heading,
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 1926-1972) =====
+ 1926:         .aj-home.aj-theme-light .aj-content,
+ 1927:         .aj-home.aj-theme-light .aj-workspace,
+ 1928:         .aj-home.aj-theme-light .aj-dashboard,
+ 1929:         .aj-home.aj-theme-light .aj-hero,
+ 1930:         .aj-home.aj-theme-light .aj-stats,
+ 1931:         .aj-home.aj-theme-light .aj-grid {
+ 1932:           color: #202938 !important;
+ 1933:         }
+ 1934:         /* AJ LIGHT PAGE CONTINUOUS BACKGROUND */
+ 1935:         .aj-home.aj-theme-light .aj-shell,
+ 1936:         .aj-home.aj-theme-light .aj-main,
+ 1937:         .aj-home.aj-theme-light .aj-content,
+ 1938:         .aj-home.aj-theme-light .aj-workspace,
+ 1939:         .aj-home.aj-theme-light .aj-dashboard,
+ 1940:         .aj-home.aj-theme-light .aj-grid {
+ 1941:           background-color: #f3f6fa !important;
+ 1942:         }
+ 1943: 
+ 1944:         /* Equal-height cards within the desktop two-column grid */
+ 1945:         .aj-home.aj-theme-light .aj-grid > .aj-panel {
+ 1946:           height: 100%;
+ 1947:           box-sizing: border-box;
+ 1948:         }
+ 1949: 
+ 1950:         .aj-home.aj-theme-light .aj-topbar,
+ 1951:         .aj-home.aj-theme-light .aj-side-nav,
+ 1952:         .aj-home.aj-theme-light .aj-panel,
+ 1953:         .aj-home.aj-theme-light .aj-card,
+ 1954:         .aj-home.aj-theme-light .aj-stat-card,
+ 1955:         .aj-home.aj-theme-light .aj-hero-main,
+ 1956:         .aj-home.aj-theme-light .aj-hero-side,
+ 1957:         .aj-home.aj-theme-light .aj-stat,
+ 1958:         .aj-home.aj-theme-light .aj-activity,
+ 1959:         .aj-home.aj-theme-light .aj-home-chart {
+ 1960:           color: #202938 !important;
+ 1961:           background: #ffffff !important;
+ 1962:           border-color: #d7e0ea !important;
+ 1963:           box-shadow: 0 3px 12px rgba(30, 41, 59, .045);
+ 1964:         }
+ 1965: 
+ 1966:         /* Nested execution, signal, instrument and lifecycle panels */
+ 1967:         .aj-home.aj-theme-light .aj-signal-box,
+ 1968:         .aj-home.aj-theme-light .aj-option-summary,
+ 1969:         .aj-home.aj-theme-light .aj-option-field,
+ 1970:         .aj-home.aj-theme-light .aj-pipeline-card,
+ 1971:         .aj-home.aj-theme-light .aj-targets-card,
+ 1972:         .aj-home.aj-theme-light .aj-lifecycle-track,
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 2019-2038) =====
+ 2019:         .aj-home.aj-theme-light .aj-topbar *,
+ 2020:         .aj-home.aj-theme-light .aj-side-nav *,
+ 2021:         .aj-home.aj-theme-light .aj-card *,
+ 2022:         .aj-home.aj-theme-light .aj-panel * {
+ 2023:           text-shadow: none;
+ 2024:         }
+ 2025: 
+ 2026:         /* Search, timeframe, form fields and dropdowns */
+ 2027:         .aj-home.aj-theme-light input,
+ 2028:         .aj-home.aj-theme-light select,
+ 2029:         .aj-home.aj-theme-light textarea,
+ 2030:         .aj-home.aj-theme-light .aj-search-input,
+ 2031:         .aj-home.aj-theme-light .aj-timeframe-control {
+ 2032:           color: #202938 !important;
+ 2033:           background: #ffffff !important;
+ 2034:           border-color: #cbd5e1 !important;
+ 2035:         }
+ 2036: 
+ 2037:         .aj-home.aj-theme-light input::placeholder,
+ 2038:         .aj-home.aj-theme-light textarea::placeholder {
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 2434-2453) =====
+ 2434: 
+ 2435:         <section className="aj-hero">
+ 2436: 
+ 2437:           <div className="aj-panel aj-hero-main">
+ 2438: 
+ 2439:             <div className="aj-eyebrow">
+ 2440:               AUTOMATED EXECUTION · {FEED_LABELS[feed]}
+ 2441:             </div>
+ 2442: 
+ 2443:             <h1 className="aj-h1">
+ 2444:               Turn your indicator signal into a managed trade.
+ 2445:             </h1>
+ 2446: 
+ 2447:             <div className="aj-muted">
+ 2448:               Your indicator remains the decision source.
+ 2449:               AJ handles entry, option selection, position
+ 2450:               monitoring, targets, stop-loss and exit.
+ 2451:             </div>
+ 2452: 
+ 2453:             <div className="aj-flow">
+
+===== ALGOHOME HERO / PANEL CSS (.\src\pages\AlgoHome.tsx: lines 2537-2564) =====
+ 2537: 
+ 2538:           </div>
+ 2539: 
+ 2540:           {/* Current Signal remains independent from
+ 2541:               instrument execution details. */}
+ 2542: 
+ 2543:           <div className="aj-panel aj-hero-side">
+ 2544: 
+ 2545:             <div className="aj-side-title">
+ 2546: 
+ 2547:               <h3>
+ 2548:                 Current Signal
+ 2549:               </h3>
+ 2550: 
+ 2551:               <span className="aj-small-pill aj-light-theme-monitoring">
+ 2552:                 MONITORING
+ 2553:               </span>
+ 2554: 
+ 2555:             </div>
+ 2556: 
+ 2557:             <div className="aj-signal-box">
+ 2558: 
+ 2559:               <div className="aj-eyebrow">
+ 2560:                 INDICATOR SIGNAL
+ 2561:               </div>
+ 2562: 
+ 2563:               <div
+ 2564:                 style={{
+
+===== TERMINAL ROUTE / FEED HANDLING (.\src\pages\Terminal.tsx: lines 1-5) =====
+    1: import Workspace8 from "../layouts/Workspace8";
+    2: 
+    3: export default function Terminal() {
+    4:   return <Workspace8 />;
+    5: }

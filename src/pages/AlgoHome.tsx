@@ -41,7 +41,6 @@ import {
   TrendingUp,
   Wallet,
   X,
-  Zap,
 } from "lucide-react";
 
 type Feed = "fyers" | "indstocks";
@@ -134,15 +133,6 @@ function money(value: number) {
   return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
 }
 
-function openTerminal() {
-  const url = `${window.location.origin}${window.location.pathname}?terminal=1`;
-
-  window.open(
-    url,
-    "_blank",
-    "noopener,noreferrer",
-  );
-}
 
 function selectFeed(feed: Feed) {
   const url =
@@ -762,6 +752,8 @@ export default function AlgoHome() {
           grid-template-columns: 1.25fr .75fr;
           gap: 18px;
           padding: 30px 0 18px;
+          /* Keep Automated Execution and Current Signal equal-height. */
+          align-items: stretch;
         }
 
         .aj-panel {
@@ -986,6 +978,11 @@ export default function AlgoHome() {
           font-weight: 650;
           line-height: 1.3;
         }
+        .aj-side-nav-link {
+          text-decoration: none;
+          cursor: pointer;
+        }
+
         .aj-side-nav-item > span {
           display: inline-flex;
           flex: 0 0 17px;
@@ -2413,7 +2410,15 @@ export default function AlgoHome() {
         <aside className="aj-side-nav" aria-label="Main navigation">
           <div className="aj-side-nav-heading">WORKSPACE</div>
           <div className="aj-side-nav-item is-current"><span>⌂</span>AlgoHome</div>
-          <div className="aj-side-nav-item"><span>▦</span>Charts</div>
+          <a
+            className="aj-side-nav-item aj-side-nav-link"
+            href={`${window.location.pathname}?terminal=1&feed=${feed}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open the existing terminal with the selected feed"
+          >
+            <span>▦</span>Live Charts &amp; Signals
+          </a>
           <div className="aj-side-nav-item"><span>◇</span>Strategies</div>
           <div className="aj-side-nav-item"><span>▤</span>Positions</div>
           <div className="aj-side-nav-item"><span>⇄</span>Orders</div>
@@ -2497,43 +2502,7 @@ export default function AlgoHome() {
 
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: 9,
-                marginTop: 22,
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                type="button"
-                className="aj-primary aj-light-theme-action"
-                onClick={openTerminal}
-              >
-                Get Charts
-              </button>
 
-              <button
-                type="button"
-                className="aj-secondary aj-light-theme-action"
-                onClick={() =>
-                  setAutoTrade(
-                    (value) => !value,
-                  )
-                }
-              >
-                {autoTrade ? (
-                  <Zap size={15} />
-                ) : (
-                  <Square size={15} />
-                )}
-
-                Auto Trade:{" "}
-                {autoTrade
-                  ? "ARMED"
-                  : "OFF"}
-              </button>
-            </div>
 
           </div>
 
