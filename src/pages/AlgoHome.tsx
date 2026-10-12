@@ -1825,6 +1825,52 @@ export default function AlgoHome() {
             grid-template-columns: 1fr 1fr;
           }
         }
+        /* AJ AlgoHome scoped light palette; layout rules remain unchanged. */
+        .aj-home {
+          color: #202938 !important;
+          background: #f3f6fa !important;
+          --bg-modal: #ffffff;
+          --bg-panel: #ffffff;
+          --bg-panel-secondary: #f5f7fa;
+          --bg-panel-tertiary: #e9eef5;
+          --bg-input: #ffffff;
+          --text-primary: #202938;
+          --text-secondary: #465467;
+          --text-muted: #69778a;
+          --text-heading: #172033;
+          --text-inverse: #ffffff;
+          --border-primary: #cbd5e1;
+          --border-secondary: #dbe2ea;
+          --border-subtle: #e7ecf2;
+          --border-strong: #aab6c5;
+          --accent-primary: #2962ff;
+          --shadow-heavy: 0 18px 48px rgba(30, 41, 59, .18);
+        }
+
+        .aj-home .aj-card,
+        .aj-home .aj-panel,
+        .aj-home .aj-stat-card {
+          color: #202938;
+          background-color: #ffffff !important;
+          border-color: #d7e0ea;
+        }
+
+        .aj-home .aj-card-title { color: #172033 !important; }
+        .aj-home .aj-card-subtitle { color: #64748b !important; }
+
+        .aj-home input,
+        .aj-home select,
+        .aj-home textarea {
+          color: #202938 !important;
+          background-color: #ffffff !important;
+          border-color: #cbd5e1 !important;
+        }
+
+        .aj-home input::placeholder,
+        .aj-home textarea::placeholder {
+          color: #8491a3 !important;
+          opacity: 1;
+        }
       `}</style>
 
       {/* ======================================================
@@ -2685,6 +2731,7 @@ export default function AlgoHome() {
                 >
                   <ChartWindow
                     chartId="aj-algo-home-chart"
+                    themeOverride="light"
                     symbol={
                       selectedInstrument.symbol ||
                       selectedInstrument.tradingSymbol ||

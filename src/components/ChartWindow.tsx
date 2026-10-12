@@ -405,6 +405,7 @@ interface Props {
     }) => void;
 
     chartTimezone?: string;
+    themeOverride?: "dark" | "light";
 
     onChartTimezoneChange?: (timezone: string) => void;
 }
@@ -1097,6 +1098,7 @@ export default function ChartWindow({
     candleColors,
     onCandleColorsChange,
     chartTimezone,
+    themeOverride,
     onChartTimezoneChange,
 }: Props) {
 	
@@ -4396,6 +4398,7 @@ useEffect(() => {
 						<ChartErrorBoundary>
 							<ChartEngine
 								chartId={chartId}
+							    themeOverride={themeOverride}
 								candles={candles}
 								symbol={chartSymbol}
 								timeframe={timeframe}

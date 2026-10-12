@@ -320,6 +320,7 @@ function getZoneTooltip(zone: any): string {
 export interface ChartEngineProps {
 
     chartId:string;
+    themeOverride?: "dark" | "light";
     candles:Candle[];
     symbol:string;
     timeframe:string;
@@ -355,6 +356,7 @@ export interface ChartEngineProps {
 export default function ChartEngine({
 
     chartId,
+    themeOverride,
     candles,
     timeframe,
     indicators,
@@ -754,7 +756,7 @@ export default function ChartEngine({
         }
 
         const chartColors =
-            CHART_THEME_COLORS[theme];
+            CHART_THEME_COLORS[themeOverride ?? theme];
 
         const chartBg = chartColors.background;
         const chartText = chartColors.text;
@@ -2507,7 +2509,7 @@ export default function ChartEngine({
         }
 
         const chartColors =
-            CHART_THEME_COLORS[theme];
+            CHART_THEME_COLORS[themeOverride ?? theme];
 
         const chartBg = chartColors.background;
         const chartText = chartColors.text;
