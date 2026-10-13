@@ -17,10 +17,6 @@ import {
     getAccessToken
 } from "./token.js";
 
-import {
-    refreshAccessToken
-} from "./login.js";
-
 import * as candleDb from "./data/FyersCandleDatabase.js";
 
 //======================================================
@@ -185,8 +181,8 @@ export async function getHistory(
     }
 
     //--------------------------------------------------
-    // REQUEST + ONE TOKEN REFRESH RETRY
-    //--------------------------------------------------
+    // REQUEST + AUTHORIZATION ERROR HANDLING
+//--------------------------------------------------
 
     let response;
 
@@ -197,62 +193,30 @@ export async function getHistory(
             accessToken
         );
     } catch (firstError) {
-        const firstStatus =
-            firstError?.response?.status;
+        const firstStatus = firstError?.response?.status;
 
         if (firstStatus === 401 || firstStatus === 403) {
-            console.warn(
-                "[FYERS HISTORY] Authorization rejected; attempting one token refresh.",
-                params.symbol,
-                firstStatus
+            const sessionError = new Error(
+                "[FYERS HISTORY] FYERS rejected the access token " +
+                "(HTTP " + firstStatus + "). Complete the supported " +
+                "interactive login via /api/fyers/login, then retry."
             );
 
-            try {
-                accessToken = await refreshAccessToken();
-
-                response = await requestHistory(
-                    params,
-                    appId,
-                    accessToken
-                );
-            } catch (refreshOrRetryError) {
-                const retryStatus =
-                    refreshOrRetryError?.response?.status;
-
-                console.error(
-                    "[FYERS HISTORY] Refresh/retry failed.",
-                    {
-                        symbol: params.symbol,
-                        status: retryStatus,
-                        message:
-                            refreshOrRetryError?.response?.data?.message ??
-                            refreshOrRetryError?.message
-                    }
-                );
-
-                const sessionError = new Error(
-                    "[FYERS HISTORY] Automatic token refresh or retry failed. " +
-                    "Check FYERS session.json, refresh-token validity, and FYERS_PIN. " +
-                    "If refresh is no longer possible, complete login via /api/fyers/login."
-                );
-
-                sessionError.fyersReason = "SESSION_EXPIRED";
-                sessionError.cause = refreshOrRetryError;
-
-                throw sessionError;
-            }
-        } else {
-            handleHistoryRequestError(
-                firstError,
-                params,
-                rangeFrom,
-                rangeTo
-            );
+            sessionError.fyersReason = "SESSION_EXPIRED";
+            sessionError.cause = firstError;
+            throw sessionError;
         }
+
+        handleHistoryRequestError(
+            firstError,
+            params,
+            rangeFrom,
+            rangeTo
+        );
     }
 
     //--------------------------------------------------
-    // VALIDATE RESPONSE
+// VALIDATE RESPONSE
     //--------------------------------------------------
 
     const data = response?.data;

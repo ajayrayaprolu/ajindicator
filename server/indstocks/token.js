@@ -245,9 +245,32 @@ async function requestNewToken() {
     if (status < 200 || status >= 300) {
         consecutiveFailures += 1;
         const wait = Math.min(BACKOFF_BASE_MS * 2 ** (consecutiveFailures - 1), BACKOFF_MAX_MS);
-        enterCooldown(wait, `HTTP ${status}`);
-        console.error("[INDSTOCKS TOKEN] Unexpected HTTP status.", { status });
-        const err = new Error(`[INDSTOCKS TOKEN] Login failed with HTTP ${status}.`);
+
+        const safeProviderMessage = [
+            data?.message,
+            data?.error_description,
+            typeof data?.error === "string" ? data.error : null,
+            data?.code
+        ]
+            .filter(value => typeof value === "string" || typeof value === "number")
+            .map(value => String(value).replace(/\s+/g, " ").slice(0, 200))
+            .join(" | ")
+            .slice(0, 500);
+
+        enterCooldown(
+            wait,
+            `HTTP ${status}${safeProviderMessage ? ": " + safeProviderMessage : ""}`
+        );
+
+        console.error("[INDSTOCKS TOKEN] Unexpected HTTP status.", {
+            status,
+            providerMessage: safeProviderMessage || "(no safe message returned)"
+        });
+
+        const err = new Error(
+            `[INDSTOCKS TOKEN] Login failed with HTTP ${status}.` +
+            (safeProviderMessage ? ` Provider: ${safeProviderMessage}` : "")
+        );
         err.indstocksReason = "HTTP_ERROR";
         throw err;
     }

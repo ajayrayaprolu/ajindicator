@@ -11,6 +11,7 @@
 
 import axios from "axios";
 import { getAccessToken, refreshToken } from "./token.js";
+
 import {
     getCandles,
     upsertCandles
@@ -118,28 +119,33 @@ async function fetchLiveCandles({ exchange, securityId, resolution, fromMs, toMs
 
     } catch (error) {
 
+
         const httpStatus = error?.response?.status;
+        const providerErrorType = error?.response?.data?.error_type;
 
         console.error("[INDSTOCKS HISTORY] REQUEST FAILED", {
             status: httpStatus,
+            errorType: providerErrorType,
             data: error?.response?.data,
             message: error?.message
         });
 
-        if (httpStatus === 401 || httpStatus === 403) {
-
+        if (
+            httpStatus === 401 ||
+            (httpStatus === 403 && providerErrorType === "TokenException")
+        ) {
             const sessionError = new Error(
-                "[INDSTOCKS HISTORY] IndStocks token invalid or expired."
+                "[INDSTOCKS HISTORY] IndStocks token rejected by provider."
             );
             sessionError.indstocksReason = "SESSION_EXPIRED";
             throw sessionError;
-
         }
 
-        const liveUnavailable = new Error(error?.message ?? "IndStocks live request failed.");
+        const liveUnavailable = new Error(
+            error?.message ?? "IndStocks live request failed."
+        );
         liveUnavailable.indstocksReason = "LIVE_UNAVAILABLE";
         throw liveUnavailable;
-
     }
 
     const key = `${exchange}_${securityId}`;
@@ -190,41 +196,28 @@ async function fetchLiveCandles({ exchange, securityId, resolution, fromMs, toMs
 }
 
 //======================================================
-// LIVE FETCH WITH SESSION RECOVERY
-//
-// IndStocks appears to invalidate a previously issued
-// token whenever a new one is generated for the same
-// client id/MPIN (this project and OpenAlgo currently
-// share that client id). getAccessToken()'s own cache
-// can therefore believe a token is still valid for hours
-// while IndStocks has already killed it server-side.
-//
-// On a 401/403 (SESSION_EXPIRED), force one token refresh
-// and retry the request exactly once before giving up.
+// LIVE FETCH WITH AUTHENTICATION ERROR PROPAGATION
 //======================================================
 
+
 async function fetchLiveCandlesWithRecovery(params) {
-
     try {
-
         return await fetchLiveCandles(params);
-
     } catch (error) {
-
         if (error?.indstocksReason !== "SESSION_EXPIRED") {
             throw error;
         }
 
         console.warn(
-            "[INDSTOCKS HISTORY] Session expired mid-request - refreshing token and retrying once."
+            "[INDSTOCKS HISTORY] Token rejected. " +
+            "Attempting one token refresh before retrying history."
         );
 
         await refreshToken();
 
+        // Retry exactly once. A second rejection propagates to the caller.
         return await fetchLiveCandles(params);
-
     }
-
 }
 
 //======================================================
@@ -270,9 +263,10 @@ export async function getIndstocksHistory({
     const narrowFromMs = from ?? (now - DAY_MS);
     const wideFromMs = from ?? (now - (LOOKBACK_DAYS[resolution] ?? 1) * DAY_MS);
 
-    try {
-
-        let candles = [];
+	let liveError = null;
+	
+	try {
+		let candles = [];
 
         try {
 
@@ -285,9 +279,18 @@ export async function getIndstocksHistory({
             });
 
         } catch (wideError) {
+            liveError = wideError;
 
-            console.log("[INDSTOCKS HISTORY] Wide window failed, retrying 24h:", wideError?.message);
+            // Authentication and token-manager failures are not
+            // date-range failures. Do not retry them with a shorter range.
+            if (wideError?.indstocksReason) {
+                throw wideError;
+            }
 
+            console.log(
+                "[INDSTOCKS HISTORY] Wide window failed:",
+                wideError?.message
+            );
         }
 
         if (candles.length === 0 && wideFromMs !== narrowFromMs) {
@@ -311,9 +314,11 @@ export async function getIndstocksHistory({
         console.log("[INDSTOCKS HISTORY] Live returned 0 rows, checking cache...");
 
     } catch (error) {
-
-        console.log("[INDSTOCKS HISTORY] Live unavailable, checking cache. Reason:", error?.message);
-
+        liveError = error;
+        console.log(
+            "[INDSTOCKS HISTORY] Live unavailable, checking cache. Reason:",
+            error?.message
+        );
     }
 
     const cached = readCache(exch, secId, resolution);
@@ -324,6 +329,11 @@ export async function getIndstocksHistory({
     }
 
     console.log("[INDSTOCKS HISTORY] No live data and no cache available.");
+
+    if (liveError?.indstocksReason) {
+        throw liveError;
+    }
+
     return [];
 
 }

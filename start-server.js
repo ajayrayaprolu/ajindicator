@@ -680,59 +680,122 @@ async function main() {
         console.log("========================================");
         console.log("");
 
-        // Open broker login routes only after all services are ready.
-		// Check saved broker sessions without opening browser windows.
-		const brokerChecks = [
-			{
-				name: "FYERS",
-				url: `${BACKEND_URL}/api/fyers/status`,
-				valid: data => data?.loggedIn === true
-			},
-			{
-				name: "ALICEBLUE",
-				url: `${BACKEND_URL}/api/aliceblue/status`,
-				valid: data => data?.loggedIn === true
-			},
-			{
-				name: "ZERODHA",
-				url: `${BACKEND_URL}/api/zerodha/session/validate`,
-				valid: data => data?.valid === true
-			}
-		];
-		
-		const https = await import("node:https");
-		const axios = (await import("axios")).default;
-		
-		const agent = new https.Agent({
-			rejectUnauthorized: false
-		});
-		
-		console.log("\n========== BROKER SESSION CHECK ==========");
-		
-		for (const broker of brokerChecks) {
-			try {
-				const response = await axios.get(broker.url, {
-					httpsAgent: agent,
-					timeout: 8000
-				});
-		
-				console.log(
-					`[${broker.name}] ${
-						broker.valid(response.data)
-							? "SESSION PRESENT (not API-verified)"
-							: "LOGIN REQUIRED"
-					}`
-				);
-			} catch (error) {
-				console.log(
-					`[${broker.name}] CHECK FAILED: ${error.message}`
-				);
-			}
-		}
-		
-		agent.destroy();
-		
-		console.log("==========================================\n");
+        // Check all broker session endpoints after services are ready.
+        // A successful status response confirms session presence, not
+        // necessarily successful market-data access.
+        const brokerChecks = [
+            {
+                name: "ZERODHA",
+                url: `${BACKEND_URL}/api/zerodha/session`,
+                isLoggedIn: data =>
+                    data?.loggedIn === true ||
+                    data?.status === "connected" ||
+                    data?.valid === true ||
+                    data?.hasToken === true
+            },
+            {
+                name: "ALICEBLUE",
+                url: `${BACKEND_URL}/api/aliceblue/status`,
+                isLoggedIn: data =>
+                    data?.loggedIn === true ||
+                    data?.status === "connected" ||
+                    data?.hasToken === true
+            },
+            {
+                name: "FYERS",
+                url: `${BACKEND_URL}/api/fyers/status`,
+                isLoggedIn: data =>
+                    data?.loggedIn === true ||
+                    data?.status === "connected" ||
+                    data?.hasToken === true
+            },
+            {
+                name: "INDSTOCKS",
+                url: `${BACKEND_URL}/api/indstocks/status`,
+                isLoggedIn: data =>
+                    data?.loggedIn === true ||
+                    data?.status === "connected" ||
+                    data?.hasToken === true
+            }
+        ];
+
+        const axios = (await import("axios")).default;
+
+        const agent = new https.Agent({
+            rejectUnauthorized: false
+        });
+
+        const brokerResults = [];
+
+        console.log("");
+        console.log("========== BROKER SESSION STATUS ==========");
+
+        for (const broker of brokerChecks) {
+            try {
+                const response = await axios.get(broker.url, {
+                    httpsAgent: agent,
+                    timeout: 8000
+                });
+
+                const loggedIn = broker.isLoggedIn(response.data);
+
+                const result = {
+                    name: broker.name,
+                    ok: response.status >= 200 &&
+                        response.status < 300 &&
+                        loggedIn
+                };
+
+                brokerResults.push(result);
+
+                console.log(
+                    `[${broker.name}] ${
+                        result.ok
+                            ? "SESSION PRESENT"
+                            : "LOGIN REQUIRED / STATUS UNCONFIRMED"
+                    }`
+                );
+            } catch (error) {
+                brokerResults.push({
+                    name: broker.name,
+                    ok: false
+                });
+
+                const status = error.response?.status;
+
+                console.log(
+                    `[${broker.name}] CHECK FAILED` +
+                    (status ? ` (HTTP ${status})` : `: ${error.message}`)
+                );
+            }
+        }
+
+        agent.destroy();
+
+        const allSessionsPresent =
+            brokerResults.length === brokerChecks.length &&
+            brokerResults.every(result => result.ok);
+
+        console.log("==========================================");
+
+        if (allSessionsPresent) {
+            console.log("All four broker sessions are present.");
+            console.log(
+                "Market-data API access still requires successful API responses."
+            );
+        } else {
+            console.log(
+                "WARNING: One or more broker sessions need attention."
+            );
+        }
+
+        console.log("==========================================");
+        console.log("Frontend requests can now safely start.");
+        console.log("==========================================");
+        console.log("");
+
+        // Keep the startup supervisor alive.
+        await new Promise(() => {});
 
         // Keep the startup supervisor alive.
         await new Promise(() => {});

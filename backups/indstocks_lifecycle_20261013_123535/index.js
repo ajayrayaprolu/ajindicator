@@ -54,6 +54,7 @@ console.log("=================================");
 // ---------------------------------------------------------------------------
 
 import express from "express";
+import executionRouter from "./execution/routes.js";
 import https from "https";
 import fs from "fs";
 import path from "path";
@@ -258,6 +259,8 @@ app.use("/api/telegram", telegramRoute);
 
 app.use(cors());
 app.use(express.json());
+// AJ_EXECUTION_ROUTE_MOUNT_V1 — default-disabled until application auth is wired.
+app.use("/api/execution", executionRouter);
 
 // ===========================================================================
 // MARKET-DATA FEED REGISTRATION
