@@ -67,13 +67,105 @@ type Instrument = {
 
 type Position = {
   symbol: string;
-  side: "BUY" | "SELL";
+  side: "BUY" | "SELL" | "—";
   qty: number;
-  avg: number;
-  ltp: number;
-  pnl: number;
+  avg: number | null;
+  ltp: number | null;
+  pnl: number | null;
   strategy: string;
-  status: "OPEN" | "CLOSED";
+  status: string;
+};
+
+type ExecutionOrderRecord = {
+  brokerOrderId: string | null;
+  symbol: string;
+  exchange: string;
+  product: string;
+  side: string;
+  quantity: number;
+  filledQuantity: number;
+  remainingQuantity: number;
+  averageFillPrice: number | null;
+  limitPrice: number | null;
+  status: string;
+  statusMessage: string | null;
+  orderTime: string | null;
+};
+
+type ExecutionTradeRecord = {
+  tradeKey: string;
+  symbol: string;
+  exchange: string;
+  side: string;
+  quantity: number;
+  price: number | null;
+  timestamp: string | null;
+};
+
+type ExecutionPositionRecord = {
+  positionKey: string;
+  symbol: string;
+  exchange: string;
+  product: string;
+  netQuantity: number;
+  averagePrice: number | null;
+  ltp: number | null;
+  brokerReportedPnl: number | null;
+  estimatedOpenPnl: number | null;
+  pnl: number | null;
+  pnlSource: string;
+  realizedPnl: number | null;
+  isOpen: boolean;
+};
+
+type ExecutionPnlSummary = {
+  openPositionCount: number;
+  brokerReportedPnlTotal: number | null;
+  estimatedOpenPnlTotal: number | null;
+  brokerReportedRealizedPnlTotal: number | null;
+  estimatedGrossRealizedPnlFromAvailableTrades: number | null;
+  chargesAndTaxes: number | null;
+  netPnlAfterCharges: number | null;
+  dataQuality?: {
+    positionSnapshotComplete?: boolean;
+    brokerPnlComplete?: boolean;
+    estimatedOpenPnlComplete?: boolean;
+    brokerRealizedPnlComplete?: boolean;
+    chargesAvailable?: boolean;
+  };
+};
+
+type ExecutionSyncResource = {
+  resource: string;
+  status?: string;
+  lastSuccessAt?: string | null;
+  lastAttemptAt?: string | null;
+  lastErrorCode?: string | null;
+  lastErrorMessage?: string | null;
+  recordCount?: number | null;
+};
+
+type ExecutionSnapshot = {
+  success: boolean;
+  broker: string;
+  readOnly: boolean;
+  data: {
+    orders: ExecutionOrderRecord[];
+    trades: ExecutionTradeRecord[];
+    positions: ExecutionPositionRecord[];
+    pnl: ExecutionPnlSummary;
+  };
+  sync: ExecutionSyncResource[];
+  returnedAt: string;
+  source?: string;
+  refresh?: { hasErrors?: boolean; skipped?: boolean; reason?: string };
+};
+
+type ExecutionUiState = {
+  loading: boolean;
+  error: string;
+  errorCode: string;
+  lastAttemptAt: string | null;
 };
 
 const FEED_LABELS: Record<Feed, string> = {
@@ -81,56 +173,45 @@ const FEED_LABELS: Record<Feed, string> = {
   indstocks: "INDSTOCKS",
 };
 
-const positions: Position[] = [
-  {
-    symbol: "NIFTY 25,500 CE",
-    side: "BUY",
-    qty: 75,
-    avg: 124.5,
-    ltp: 152.3,
-    pnl: 2085,
-    strategy: "NIFTY Momentum",
-    status: "OPEN",
-  },
-  {
-    symbol: "RELIANCE 1250 CE",
-    side: "BUY",
-    qty: 50,
-    avg: 48.2,
-    ltp: 69.2,
-    pnl: 1050,
-    strategy: "Stock Option Buy",
-    status: "OPEN",
-  },
-  {
-    symbol: "BANKNIFTY 57,000 PE",
-    side: "BUY",
-    qty: 25,
-    avg: 236.75,
-    ltp: 219.35,
-    pnl: -435,
-    strategy: "BankNifty Breakout",
-    status: "OPEN",
-  },
-];
-
-const orders = [
-  ["10:15:42", "NIFTY 25,500 CE", "BUY", "75", "124.50", "FILLED"],
-  ["09:52:11", "BANKNIFTY 57,000 PE", "BUY", "25", "236.75", "FILLED"],
-  ["09:34:27", "RELIANCE 1250 CE", "BUY", "50", "48.20", "FILLED"],
-];
-
-const history = [
-  ["09 Sep", "NIFTY 25,400 CE", "BUY → EXIT", "+₹3,420"],
-  ["08 Sep", "BANKNIFTY 56,800 CE", "BUY → EXIT", "+₹1,870"],
-  ["08 Sep", "RELIANCE 1240 CE", "BUY → SL", "-₹620"],
-  ["07 Sep", "NIFTY 25,300 CE", "BUY → TARGET", "+₹2,190"],
-];
-
 const fallbackInstruments: Instrument[] = [];
+
 
 function money(value: number) {
   return `${value < 0 ? "-" : ""}₹${Math.abs(value).toLocaleString("en-IN")}`;
+}
+
+function displayMoney(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? money(value) : "—";
+}
+
+function executionPrice(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? `₹${value.toFixed(2)}` : "—";
+}
+
+function executionTimestamp(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return String(value);
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function executionErrorMessage(code: string, message: string) {
+  if (code === "EXECUTION_API_DISABLED") {
+    return "Read-only account API is disabled by the safe rollout gate. No sample account data is shown.";
+  }
+  if (code === "AUTHENTICATION_REQUIRED") {
+    return "Application authentication is required before account data can be displayed.";
+  }
+  if (code === "BROKER_NOT_SUPPORTED") {
+    return "This broker's order/position read adapter is not verified yet.";
+  }
+  return message || "Unable to load broker account data.";
 }
 
 
@@ -442,16 +523,143 @@ export default function AlgoHome() {
   const searchAbortRef =
     useRef<AbortController | null>(null);
 
-  const livePositions =
-    positions.filter(
-      (item) => item.status === "OPEN",
-    );
+  // AJ_READONLY_EXECUTION_UI_V1: read-only account snapshot state. No order APIs are called.
+  const [executionSnapshot, setExecutionSnapshot] = useState<ExecutionSnapshot | null>(null);
+  const [executionUiState, setExecutionUiState] = useState<ExecutionUiState>({
+    loading: true,
+    error: "",
+    errorCode: "",
+    lastAttemptAt: null,
+  });
+  const [executionRefreshVersion, setExecutionRefreshVersion] = useState(0);
+  const priorExecutionFeed = useRef<Feed>(feed);
 
-  const unrealized =
-    livePositions.reduce(
-      (sum, item) => sum + item.pnl,
-      0,
-    );
+  const executionPnl = executionSnapshot?.data?.pnl;
+  const positions: Position[] = (executionSnapshot?.data?.positions ?? [])
+    .filter((item) => item.netQuantity !== 0 && item.isOpen !== false)
+    .map((item) => ({
+      symbol: item.symbol || "—",
+      side: item.netQuantity > 0 ? "BUY" : item.netQuantity < 0 ? "SELL" : "—",
+      qty: Math.abs(item.netQuantity),
+      avg: item.averagePrice,
+      ltp: item.ltp,
+      pnl: item.brokerReportedPnl ?? item.estimatedOpenPnl ?? null,
+      strategy: "—",
+      status: item.netQuantity === 0 ? "FLAT" : "OPEN",
+    }));
+
+  const livePositions = positions.filter((item) => item.status === "OPEN");
+  const unrealized = executionPnl?.brokerReportedPnlTotal ?? executionPnl?.estimatedOpenPnlTotal ?? null;
+  const realizedPnl = executionPnl?.brokerReportedRealizedPnlTotal ?? executionPnl?.estimatedGrossRealizedPnlFromAvailableTrades ?? null;
+  const executionTrades = executionSnapshot?.data?.trades ?? [];
+  const allExecutionOrders = [...(executionSnapshot?.data?.orders ?? [])].sort((a, b) => {
+    const ta = a.orderTime ? Date.parse(a.orderTime) : 0;
+    const tb = b.orderTime ? Date.parse(b.orderTime) : 0;
+    return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+  });
+  const terminalOrderStatuses = new Set(["FILLED", "CANCELLED", "REJECTED", "EXPIRED"]);
+  const orders: string[][] = allExecutionOrders
+    .filter((item) => !terminalOrderStatuses.has(String(item.status).toUpperCase()))
+    .map((item) => [
+      executionTimestamp(item.orderTime),
+      item.symbol || "—",
+      item.side || "—",
+      String(item.quantity ?? "—"),
+      executionPrice(item.averageFillPrice ?? item.limitPrice),
+      item.status || "UNKNOWN",
+    ]);
+  const history: string[][] = allExecutionOrders.map((item) => [
+    executionTimestamp(item.orderTime),
+    item.symbol || "—",
+    item.statusMessage ? `${item.status || "UNKNOWN"} · ${item.statusMessage}` : (item.status || "UNKNOWN"),
+    executionPrice(item.averageFillPrice ?? item.limitPrice),
+  ]);
+
+  const accountDataEmptyMessage = executionUiState.error
+    ? executionErrorMessage(executionUiState.errorCode, executionUiState.error)
+    : executionUiState.loading
+      ? "Loading read-only broker account data…"
+      : "No broker records were returned for this account.";
+
+  // Read-only poll. Failed refreshes preserve the last successful snapshot and
+  // are explicitly reported as stale/error; failed requests never look like empty positions.
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+    let controller: AbortController | null = null;
+
+    if (priorExecutionFeed.current !== feed) {
+      setExecutionSnapshot(null);
+      priorExecutionFeed.current = feed;
+    }
+
+    const pollSnapshot = async () => {
+      const attemptedAt = new Date().toISOString();
+      if (feed !== "fyers") {
+        setExecutionUiState({
+          loading: false,
+          error: "The read-only execution adapter is currently verified for FYERS only.",
+          errorCode: "BROKER_NOT_SUPPORTED",
+          lastAttemptAt: attemptedAt,
+        });
+        return;
+      }
+
+      controller = new AbortController();
+      setExecutionUiState((previous) => ({
+        ...previous,
+        loading: true,
+        error: "",
+        errorCode: "",
+        lastAttemptAt: attemptedAt,
+      }));
+
+      try {
+        const response = await fetch(`/api/execution/snapshot?broker=${encodeURIComponent(feed)}`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          credentials: "include",
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || payload?.success !== true || !payload?.data) {
+          const error = new Error(payload?.message || `Execution API request failed (${response.status}).`) as Error & { code?: string };
+          error.code = String(payload?.code || `HTTP_${response.status}`);
+          throw error;
+        }
+        if (!Array.isArray(payload.data.positions) || !Array.isArray(payload.data.orders) || !Array.isArray(payload.data.trades)) {
+          throw new Error("Execution API response is missing normalized broker resources.");
+        }
+        if (!cancelled) {
+          setExecutionSnapshot(payload as ExecutionSnapshot);
+          setExecutionUiState({
+            loading: false,
+            error: payload.refresh?.hasErrors ? "One or more broker resources failed to refresh; displayed rows may be stale." : "",
+            errorCode: payload.refresh?.hasErrors ? "PARTIAL_SYNC" : "",
+            lastAttemptAt: attemptedAt,
+          });
+        }
+      } catch (error) {
+        if (cancelled || (error instanceof DOMException && error.name === "AbortError")) return;
+        const typed = error as Error & { code?: string };
+        setExecutionUiState({
+          loading: false,
+          error: typed.message || "Unable to load broker account data.",
+          errorCode: typed.code || "EXECUTION_API_ERROR",
+          lastAttemptAt: attemptedAt,
+        });
+      } finally {
+        if (!cancelled) timer = window.setTimeout(pollSnapshot, 15000);
+      }
+    };
+
+    void pollSnapshot();
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      controller?.abort();
+    };
+  }, [feed, executionRefreshVersion]);
 
   /**
    * Phase 2 broker symbol search.
@@ -2764,16 +2972,27 @@ export default function AlgoHome() {
 
             <div
               className={`aj-stat-value ${
-                unrealized >= 0
-                  ? "aj-positive"
-                  : "aj-negative"
+                unrealized === null
+                  ? ""
+                  : unrealized >= 0
+                    ? "aj-positive"
+                    : "aj-negative"
               }`}
+              title={executionPnl?.brokerReportedPnlTotal !== null && executionPnl?.brokerReportedPnlTotal !== undefined
+                ? "Broker-reported open-position P&L"
+                : executionPnl?.estimatedOpenPnlTotal !== null && executionPnl?.estimatedOpenPnlTotal !== undefined
+                  ? "Local estimated open-position P&L"
+                  : "P&L unavailable until a complete position snapshot is available"}
             >
-              {money(unrealized)}
+              {displayMoney(unrealized)}
             </div>
 
             <div className="aj-stat-change">
-              3 open positions
+              {executionPnl?.brokerReportedPnlTotal !== null && executionPnl?.brokerReportedPnlTotal !== undefined
+                ? "Broker-reported P&L"
+                : executionPnl?.estimatedOpenPnlTotal !== null && executionPnl?.estimatedOpenPnlTotal !== undefined
+                  ? "Estimated P&L"
+                  : "Waiting for verified account data"}
             </div>
           </div>
 
@@ -3722,19 +3941,49 @@ export default function AlgoHome() {
               ),
             )}
 
-            <div className="aj-light-theme-live-monitoring"
+            <div
+              className="aj-light-theme-live-monitoring"
               style={{
                 marginLeft: "auto",
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                flexWrap: "wrap",
+                justifyContent: "flex-end",
+                gap: 8,
                 padding: "0 10px",
-                color: "#56647a",
+                color: executionUiState.error
+                  ? (algoHomeTheme === "light" ? "#b45309" : "#fbbf24")
+                  : (algoHomeTheme === "light" ? "#56647a" : "#94a3b8"),
                 fontSize: 10,
               }}
             >
               <Clock3 size={12} />
-              Live monitoring
+              {executionUiState.loading
+                ? "Refreshing account snapshot…"
+                : executionUiState.error
+                  ? `${executionErrorMessage(executionUiState.errorCode, executionUiState.error)}${executionSnapshot ? ` · Last good snapshot ${executionTimestamp(executionSnapshot.returnedAt)}` : ""}`
+                  : executionSnapshot
+                    ? `Read-only · ${executionSnapshot.broker.toUpperCase()} · Updated ${executionTimestamp(executionSnapshot.returnedAt)}`
+                    : "Read-only account data unavailable"}
+              <button
+                type="button"
+                onClick={() => setExecutionRefreshVersion((value) => value + 1)}
+                disabled={executionUiState.loading}
+                title="Refresh read-only broker orders, trades, positions and P&L"
+                style={{
+                  border: `1px solid ${algoHomeTheme === "light" ? "#cbd5e1" : "rgba(148,163,184,.25)"}`,
+                  borderRadius: 7,
+                  padding: "5px 8px",
+                  background: "transparent",
+                  color: "inherit",
+                  cursor: executionUiState.loading ? "wait" : "pointer",
+                  opacity: executionUiState.loading ? .6 : 1,
+                  fontSize: 10,
+                  fontWeight: 750,
+                }}
+              >
+                Refresh
+              </button>
             </div>
 
           </div>
@@ -3758,10 +4007,17 @@ export default function AlgoHome() {
                 </thead>
 
                 <tbody>
+                  {positions.length === 0 && (
+                    <tr>
+                      <td colSpan={8} style={{ padding: 24, textAlign: "center", color: algoHomeTheme === "light" ? "#64748b" : "#94a3b8" }}>
+                        {accountDataEmptyMessage}
+                      </td>
+                    </tr>
+                  )}
                   {positions.map(
                     (item) => (
                       <tr
-                        key={item.symbol}
+                        key={`${item.symbol}-${item.side}`}
                       >
                         <td
                           style={{
@@ -3774,7 +4030,7 @@ export default function AlgoHome() {
                           {item.symbol}
                         </td>
 
-                        <td className="aj-positive">
+                        <td className={item.side === "BUY" ? "aj-positive" : item.side === "SELL" ? "aj-negative" : ""}>
                           {item.side}
                         </td>
 
@@ -3783,29 +4039,18 @@ export default function AlgoHome() {
                         </td>
 
                         <td>
-                          ₹
-                          {item.avg.toFixed(
-                            2,
-                          )}
+                          {executionPrice(item.avg)}
                         </td>
 
                         <td>
-                          ₹
-                          {item.ltp.toFixed(
-                            2,
-                          )}
+                          {executionPrice(item.ltp)}
                         </td>
 
                         <td
-                          className={
-                            item.pnl >= 0
-                              ? "aj-positive"
-                              : "aj-negative"
-                          }
+                          className={item.pnl === null ? "" : item.pnl >= 0 ? "aj-positive" : "aj-negative"}
+                          title={item.pnl === null ? "P&L unavailable for this position" : "Broker-reported P&L when provided, otherwise local estimate"}
                         >
-                          {money(
-                            item.pnl,
-                          )}
+                          {displayMoney(item.pnl)}
                         </td>
 
                         <td>
@@ -3838,6 +4083,13 @@ export default function AlgoHome() {
                 </thead>
 
                 <tbody>
+                  {orders.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 24, textAlign: "center", color: algoHomeTheme === "light" ? "#64748b" : "#94a3b8" }}>
+                        {accountDataEmptyMessage}
+                      </td>
+                    </tr>
+                  )}
                   {orders.map(
                     (row) => (
                       <tr
@@ -3877,11 +4129,18 @@ export default function AlgoHome() {
                     <th>Date</th>
                     <th>Symbol</th>
                     <th>Lifecycle</th>
-                    <th>Net P&L</th>
+                    <th>Fill / Limit Price</th>
                   </tr>
                 </thead>
 
                 <tbody>
+                  {history.length === 0 && (
+                    <tr>
+                      <td colSpan={4} style={{ padding: 24, textAlign: "center", color: algoHomeTheme === "light" ? "#64748b" : "#94a3b8" }}>
+                        {accountDataEmptyMessage}
+                      </td>
+                    </tr>
+                  )}
                   {history.map(
                     (row) => (
                       <tr
@@ -3906,15 +4165,7 @@ export default function AlgoHome() {
                           {row[2]}
                         </td>
 
-                        <td
-                          className={
-                            row[3].startsWith(
-                              "-",
-                            )
-                              ? "aj-negative"
-                              : "aj-positive"
-                          }
-                        >
+                        <td>
                           {row[3]}
                         </td>
                       </tr>
@@ -3945,8 +4196,7 @@ export default function AlgoHome() {
                 </h2>
 
                 <div className="aj-card-subtitle">
-                  Prototype metrics — not live
-                  account data
+                  Read-only broker P&L · other performance metrics remain prototype-only
                 </div>
               </div>
 
@@ -3964,8 +4214,8 @@ export default function AlgoHome() {
                   Realized P&L
                 </span>
 
-                <strong className="aj-positive">
-                  ₹8,420
+                <strong className={realizedPnl === null ? "" : realizedPnl >= 0 ? "aj-positive" : "aj-negative"} title={executionPnl?.brokerReportedRealizedPnlTotal !== null && executionPnl?.brokerReportedRealizedPnlTotal !== undefined ? "Broker-reported realized P&L" : "Gross FIFO estimate from available trade-book rows; charges excluded; history may be intraday-only"}>
+                  {displayMoney(realizedPnl)}
                 </strong>
               </div>
 
@@ -3974,8 +4224,8 @@ export default function AlgoHome() {
                   Unrealized P&L
                 </span>
 
-                <strong className="aj-positive">
-                  {money(unrealized)}
+                <strong className={unrealized === null ? "" : unrealized >= 0 ? "aj-positive" : "aj-negative"}>
+                  {displayMoney(unrealized)}
                 </strong>
               </div>
 
@@ -4005,17 +4255,17 @@ export default function AlgoHome() {
                 </span>
 
                 <strong>
-                  3
+                  {executionSnapshot ? livePositions.length : "—"}
                 </strong>
               </div>
 
               <div className="aj-metric">
                 <span>
-                  Today Trades
+                  Available Trades
                 </span>
 
                 <strong>
-                  7
+                  {executionSnapshot ? executionTrades.length : "—"}
                 </strong>
               </div>
 

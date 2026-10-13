@@ -1,0 +1,4 @@
+AJ Institutional Execution Foundation — Phase 1/2 backend slice
+Patch version: 1.0.0
+Live broker order submission: HARD DISABLED
+Default execution API flag: DISABLED
